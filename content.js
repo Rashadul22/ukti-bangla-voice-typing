@@ -1,0 +1,1983 @@
+// Ukti - content script.
+// Watches for the hotkeys, remembers which box the user was in, and inserts
+// text the way each kind of editor expects.
+
+(function () {
+  'use strict';
+
+  if (self.__uktiLoaded) return;
+  self.__uktiLoaded = true;
+
+  // ------------------------------------------------------------- strings
+
+  const STRINGS = {
+    bn: {
+      speak: 'বলে লিখুন', stopSpeak: 'বলা বন্ধ করুন', startSpeak: 'বলা শুরু করুন',
+      toBangla: 'বাংলা করুন', toEnglish: 'ইংরেজি করুন',
+      undo: 'ফেরত নিন', move: 'টেনে সরান', more: 'আরও', less: 'গুটিয়ে নিন',
+      listening: 'শুনছি', stopped: 'থামানো হলো', doneBangla: 'বাংলা হয়েছে',
+      doneEnglish: 'ইংরেজি হয়েছে', working: 'ইংরেজি করছি',
+      putBackFailed: 'এই বক্সটা লেখা বদলাতে দিল না। লেখাটা সিলেক্ট করে আবার চেষ্টা করুন।',
+      noBox: 'কোনো লেখার বক্সে ক্লিক করুন', noText: 'বক্সে কোনো লেখা নাই',
+      alreadyBangla: 'এটা তো অলরেডি বাংলা',
+      alreadyEnglish: 'এটা তো অলরেডি ইংরেজি',
+      mixedText: 'লেখাটা মেশানো, আগে এক ভাষায় আনুন',
+      toBanglaBtn: 'বাংলা করুন', toEnglishBtn: 'ইংরেজি করুন',
+      workingBangla: 'বাংলা করছি',
+      boxGone: 'বক্সটা আর নাই, লেখাটা প্রিভিউতে আছে',
+      transFail: 'অনুবাদ হলো না',
+      transNoop: 'অনুবাদ করে একই লেখা ফেরত আসলো। সেটআপে দেখুন ভাষা প্যাক নামানো আছে কিনা।',
+      needPack: 'ভাষা প্যাক নামানো দরকার, সেটআপ খুলুন',
+      reload: 'উক্তি আবার লোড হয়েছে, পেজটা রিফ্রেশ করুন (F5)',
+      nothingUndo: 'ফেরত নেওয়ার কিছু নাই', undone: 'ফেরত নেওয়া হলো',
+      throttled: n => `Google এর ভয়েস সার্ভিস একটু বিশ্রাম চাইছে, ${n} সেকেন্ড পর নিজেই চালু হবে`,
+      stuck: 'ভয়েস আটকে গেছে। মাইকে চেপে বন্ধ করুন, তারপর আবার চালু করুন',
+      coachTitle: 'উক্তি তৈরি',
+      coachBody: 'ডানদিকের মাইকে চাপুন, তারপর বাংলায় বলুন। লেখা এখানেই বসে যাবে।',
+      coachNote: 'নতুন কোনো পেজে কাজ না করলে একবার F5 চেপে নিন।',
+      coachOk: 'বুঝেছি'
+    },
+    en: {
+      speak: 'Speak to type', stopSpeak: 'Stop listening', startSpeak: 'Start listening',
+      toBangla: 'Make it Bangla', toEnglish: 'Make it English',
+      undo: 'Undo', move: 'Drag to move', more: 'More', less: 'Collapse',
+      listening: 'Listening', stopped: 'Stopped', doneBangla: 'Converted to Bangla',
+      doneEnglish: 'Converted to English', working: 'Translating',
+      putBackFailed: 'This box refused the change. Select the text and try again.',
+      noBox: 'Click inside a text box first', noText: 'The box is empty',
+      alreadyBangla: 'This is already Bangla',
+      alreadyEnglish: 'This is already English',
+      mixedText: 'Mixed text, get it into one language first',
+      toBanglaBtn: 'Make it Bangla', toEnglishBtn: 'Make it English',
+      workingBangla: 'Translating to Bangla',
+      boxGone: 'The box is gone, your words are in the preview',
+      transFail: 'Translation failed',
+      transNoop: 'The translation came back unchanged. Check in setup that the language pack is downloaded.',
+      needPack: 'The language pack is needed, open Setup',
+      reload: 'Ukti was reloaded, please refresh this page (F5)',
+      nothingUndo: 'Nothing to undo', undone: 'Undone',
+      throttled: n => `Google's speech service needs a short break, back in ${n}s`,
+      stuck: 'Speech is stuck. Tap the mic to stop, then start again',
+      coachTitle: 'Ukti is ready',
+      coachBody: 'Press the mic on the right, then speak. Your words land right here.',
+      coachNote: 'If it does not work on a page, press F5 once.',
+      coachOk: 'Got it'
+    }
+  };
+
+  function t(key, ...args) {
+    const table = STRINGS[settings.uiLang === 'en' ? 'en' : 'bn'];
+    const value = table[key] ?? STRINGS.bn[key] ?? key;
+    return typeof value === 'function' ? value(...args) : value;
+  }
+
+  const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  let listening = false;
+  let target = null;          // the box dictation was started in
+  let undoStack = [];         // {element, kind, snapshot}
+  let indicator = null;
+  let settings = {
+    outputMode: 'bangla', autoSubmit: false, uiSize: 'medium',
+    showHints: false, useCount: 0, barPos: null, barCorner: 'auto', coachDone: false,
+    theme: 'glass', uiLang: 'bn', layout: 'compact',
+    buttons: { banglish: true, english: true, undo: true, grip: true },
+    enabled: true, disabledSites: []
+  };
+
+  // ------------------------------------------------------- target detection
+
+  function editableFrom(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    if (node instanceof HTMLTextAreaElement) return node;
+
+    if (node instanceof HTMLInputElement) {
+      // Password fields are deliberately absent. Dictation there would
+      // send a password to a speech service, and no store reviewer would
+      // pass a microphone extension that switches itself on at a login box.
+      const ok = ['text', 'search', 'url', 'tel', 'email'];
+      if (!ok.includes(node.type)) return null;
+      // Sites that hide a password behind type="text" still mark it up for
+      // their own password managers, so honour those hints too.
+      const hint = `${node.autocomplete || ''} ${node.name || ''} ${node.id || ''}`;
+      if (/password|passwd|\bpin\b|\botp\b|cvv|cardnumber|creditcard/i.test(hint)) {
+        return null;
+      }
+      return node;
+    }
+
+    if (node.isContentEditable) {
+      return node.closest('[contenteditable=""],[contenteditable="true"]') || node;
+    }
+
+    return null;
+  }
+
+  // document.activeElement stops at the shadow host, so walk into open roots.
+  function deepActiveElement() {
+    let element = document.activeElement;
+    while (element && element.shadowRoot && element.shadowRoot.activeElement) {
+      element = element.shadowRoot.activeElement;
+    }
+    return element;
+  }
+
+  function currentEditable() {
+    return editableFrom(deepActiveElement());
+  }
+
+  // The box can lose focus while the user fiddles, so keep the last good one.
+  let lastEditable = null;
+  document.addEventListener(
+    'focusin',
+    () => {
+      const found = currentEditable();
+      if (!found) return;
+      // A heavy site can fire focusin many times for one user action, and
+      // measuring the page on each of them is how a control like this
+      // starts costing frames. Nothing to do if the box has not changed.
+      if (found === lastEditable && bar && bar.classList.contains('on')) return;
+      lastEditable = found;
+      showButtons();
+      if (found !== anchored) requestAnimationFrame(() => anchorToField(found));
+    },
+    true
+  );
+
+  function resolveTarget() {
+    return currentEditable() || (lastEditable?.isConnected ? lastEditable : null);
+  }
+
+  // ------------------------------------------------------ insertion engine
+
+  function snapshot(element) {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      return {
+        element,
+        kind: 'value',
+        snapshot: element.value,
+        start: element.selectionStart,
+        end: element.selectionEnd
+      };
+    }
+    // Rich editors used to be left to the browser's own undo. That never
+    // worked: our insert goes in through execCommand, which the editor
+    // folds into its own history, so the browser's undo stepped somewhere
+    // else entirely and the old text came back beside the new one instead
+    // of replacing it. Keep the text ourselves and put it back the same
+    // way we put text in.
+    return { element, kind: 'editable', snapshot: existingText(element) };
+  }
+
+  function insertIntoNative(element, text) {
+    const start = element.selectionStart ?? element.value.length;
+    const end = element.selectionEnd ?? element.value.length;
+    const old = element.value;
+    const next = old.slice(0, start) + text + old.slice(end);
+
+    const prototype =
+      element instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+
+    // React installs its own value setter on the instance and uses it to
+    // detect changes. Going through the prototype setter bypasses that, and
+    // the input event below is what makes React pick the change up.
+    const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+    if (!setter) return false;
+
+    element.focus();
+    setter.call(element, next);
+
+    const caret = start + text.length;
+    try { element.setSelectionRange(caret, caret); } catch (_) {}
+
+    element.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertText',
+        data: text
+      })
+    );
+    return true;
+  }
+
+  // `only` runs one strategy instead of walking all three. replaceAll uses
+  // it because a strategy can look like it worked and be undone a tick
+  // later: Gemini's editor accepts a synthetic paste into the DOM and then
+  // rewrites it from its own model, so a check taken here reports success
+  // on an edit that is already doomed. Driving one strategy at a time lets
+  // the caller wait, see what survived, and move to the next one.
+  function insertIntoEditable(element, text, expect, only) {
+    element.focus();
+
+    const doc = element.ownerDocument;
+    const selection = doc.getSelection();
+    if (!selection) return false;
+
+    const range =
+      selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const inside =
+      range && element.contains(range.commonAncestorContainer);
+
+    if (!inside) {
+      const fresh = doc.createRange();
+      fresh.selectNodeContents(element);
+      fresh.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(fresh);
+    }
+
+    // Which way in works depends on the editor, and the order matters.
+    // execCommand writes straight into the DOM without the editor's model
+    // hearing about it, so on a site like WhatsApp the text appears for an
+    // instant and is thrown away on the next render, while a check made
+    // here would call it a success. A paste is the one edit every editor
+    // that owns its model handles properly, so it goes first; plain boxes
+    // ignore it and fall through.
+    const before = existingText(element);
+    // When the caller says what the box should end up holding, check for
+    // exactly that. Otherwise any change counts, which is right for
+    // dictation, where text is added at the caret.
+    const ok = () => expect == null
+      ? existingText(element) !== before
+      : sameText(existingText(element), expect);
+
+    // When replacing, cover the whole box again before each attempt. A
+    // strategy that appended rather than replaced has left the box wrong,
+    // and the next attempt must overwrite all of it, not add to it.
+    const coverAll = () => {
+      if (expect == null) return;
+      try { if (doc.execCommand('selectAll')) return; } catch (_) {}
+      const r = doc.createRange();
+      r.selectNodeContents(element);
+      selection.removeAllRanges();
+      selection.addRange(r);
+    };
+
+    // An attempt can append instead of replacing. That leaves the box
+    // holding the old text and the new text together, which is exactly
+    // what the user was complaining about, so undo it before trying again.
+    const repair = () => {
+      if (expect == null) return;
+      if (sameText(existingText(element), before)) return;
+      try {
+        if (doc.execCommand('selectAll')) {
+          doc.execCommand('insertText', false, before);
+        }
+      } catch (_) {}
+      if (!sameText(existingText(element), before)) {
+        element.textContent = before;
+      }
+    };
+
+    // 1. A paste, which Lexical, Draft and ProseMirror all route through
+    //    their own model.
+    if (!only || only === 'paste') try {
+      const data = new DataTransfer();
+      data.setData('text/plain', text);
+      element.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData: data,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        })
+      );
+      if (ok()) return true;
+    } catch (_) {}
+
+    // 2. The browser's own editing engine. Right for plain editable boxes,
+    //    and the only thing Gemini's Quill editor keeps.
+    if (!only || only === 'command') try {
+      if (!only) { repair(); coverAll(); }
+      doc.execCommand('insertText', false, text);
+      if (ok()) return true;
+    } catch (_) {}
+
+    // Last resort. Touches the DOM directly, so a framework editor may
+    // discard it on the next render.
+    if (!only || only === 'range') try {
+      if (!only) { repair(); coverAll(); }
+      const r = selection.getRangeAt(0);
+      r.deleteContents();
+      const node = doc.createTextNode(text);
+      r.insertNode(node);
+      r.setStartAfter(node);
+      r.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(r);
+
+      element.dispatchEvent(
+        new InputEvent('input', {
+          bubbles: true,
+          composed: true,
+          inputType: 'insertText',
+          data: text
+        })
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function insertText(element, text) {
+    if (!element || !element.isConnected) return false;
+
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      return insertIntoNative(element, text);
+    }
+    return insertIntoEditable(element, text);
+  }
+
+  function existingText(element) {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      return element.value;
+    }
+    // Rich editors pad their contents with zero-width marks and a
+    // trailing newline of their own. Those are not the user's text.
+    return (element.innerText || '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/\n+$/, '');
+  }
+
+  const sameText = (a, b) =>
+    a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
+
+  const nextTurn = ms =>
+    new Promise(resolve =>
+      requestAnimationFrame(() => setTimeout(resolve, ms))
+    );
+
+  // Replacing everything in a rich editor is not the same as typing into
+  // it. The editor keeps its own idea of where the selection is, and only
+  // updates it some time after the browser says the selection moved. Ask
+  // it to replace before it has caught up and it puts the new text at the
+  // old caret instead, which is how a translation ended up sitting beside
+  // the original rather than replacing it.
+  //
+  // How long "some time" is differs by editor and by how busy the page is,
+  // so waiting a fixed moment and hoping is a race. Instead: try, check
+  // what actually ended up in the box, and if it is wrong, put the box
+  // back and try again with more room to breathe.
+  // Whether the current selection covers everything the box holds. The
+  // comparison ignores the zero-width marks rich editors pad their content
+  // with, and the difference between one space and several.
+  function everythingSelected(element, doc) {
+    const whole = existingText(element);
+    if (!whole) return true;
+    const selection = doc.getSelection();
+    if (!selection || !selection.rangeCount) return false;
+    const range = selection.getRangeAt(0);
+    if (!element.contains(range.commonAncestorContainer)) return false;
+    const picked = range.toString().replace(/[​-‍﻿]/g, '');
+    return sameText(picked, whole);
+  }
+
+  async function replaceAll(element, text) {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      element.focus();
+      element.setSelectionRange(0, element.value.length);
+      return insertIntoNative(element, text);
+    }
+
+    const doc = element.ownerDocument;
+    const original = existingText(element);
+
+    const selectEverything = () => {
+      element.focus({ preventScroll: true });
+      let picked = false;
+      const active = deepActiveElement();
+      if (active === element || element.contains(active)) {
+        try { picked = doc.execCommand('selectAll'); } catch (_) {}
+      }
+      if (!picked) {
+        const selection = doc.getSelection();
+        const range = doc.createRange();
+        range.selectNodeContents(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    };
+
+    const putBackOriginal = () => {
+      if (sameText(existingText(element), original)) return;
+      try {
+        if (doc.execCommand('selectAll')) {
+          doc.execCommand('insertText', false, original);
+        }
+      } catch (_) {}
+      if (!sameText(existingText(element), original)) {
+        element.textContent = original;
+      }
+    };
+
+    // One attempt per strategy rather than three of the same. Retrying the
+    // way that just lost is how a box on Gemini stayed in Banglish through
+    // all three tries: the paste landed, the editor rewrote it from its
+    // model, and the next attempt pasted again.
+    for (const how of ['paste', 'command', 'range']) {
+      if (!element.isConnected) return false;
+      putBackOriginal();
+      // Twice, with a turn in between. The first select-all can land while
+      // the editor is still digesting the typing that came before it, and
+      // then it reads a selection that is already out of date. The second
+      // one is made against a settled editor, and the wait after it is what
+      // lets the editor read it. Nothing may touch the selection after that
+      // point, or we are racing it again.
+      selectEverything();
+      await nextTurn(35);
+      if (!element.isConnected) return false;
+      selectEverything();
+      await nextTurn(35);
+      if (!element.isConnected) return false;
+
+      // Do not write unless the whole box really is selected. A paste into
+      // an unselected box lands beside the old text instead of over it, and
+      // the user is left holding the sentence twice, which is worse than a
+      // button that did nothing. Better to run out of attempts and say so.
+      if (!everythingSelected(element, doc)) continue;
+
+      if (!insertIntoEditable(element, text, text, how)) continue;
+
+      // An editor that owns its DOM does not argue at the moment of the
+      // write: it lets the change land and reverts it on a later task. A
+      // check taken straight after the write therefore sees text the editor
+      // is about to throw away. Look again once the page has had a turn,
+      // and only then call it done.
+      await nextTurn(140);
+      if (!element.isConnected) return false;
+      if (sameText(existingText(element), text)) return true;
+    }
+
+    putBackOriginal();
+    return false;
+  }
+
+  function selectedText(element) {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      const start = element.selectionStart ?? 0;
+      const end = element.selectionEnd ?? 0;
+      return start === end ? '' : element.value.slice(start, end);
+    }
+    const selection = element.ownerDocument.getSelection();
+    if (!selection || selection.isCollapsed) return '';
+    if (!element.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+      return '';
+    }
+    return selection.toString();
+  }
+
+  function submitBox(element) {
+    const init = {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true,
+      composed: true
+    };
+    element.dispatchEvent(new KeyboardEvent('keydown', init));
+    element.dispatchEvent(new KeyboardEvent('keypress', init));
+    element.dispatchEvent(new KeyboardEvent('keyup', init));
+  }
+
+  // ------------------------------------------------------------- indicator
+
+  let hideTimer = null;
+
+  // ---------------------------------------------------------- live preview
+
+  let doneSpan = null;
+  let liveSpan = null;
+  let lastWords = [];
+
+  function ensurePreviewParts() {
+    buildBar();
+    if (doneSpan) return;
+    doneSpan = document.createElement('span');
+    doneSpan.className = 'done';
+    liveSpan = document.createElement('span');
+    liveSpan.className = 'live';
+    const caret = document.createElement('span');
+    caret.className = 'caret';
+    preview.append(doneSpan, liveSpan, caret);
+  }
+
+  let coach = null;
+
+  // The preview and the welcome card both hang above the bar, so they have
+  // to be measured against it rather than pinned to a corner. The bar now
+  // moves to sit beside the active box, which would otherwise strand them.
+  function placePreview() {
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    if (!rect.height) return;
+    const gap = 12;
+    const bottom = Math.round(window.innerHeight - rect.top + gap) + 'px';
+    const right = Math.round(window.innerWidth - rect.right) + 'px';
+
+    if (preview) {
+      preview.style.bottom = bottom;
+      preview.style.right = right;
+    }
+    if (coach) {
+      coach.style.bottom = bottom;
+      coach.style.right = right;
+    }
+  }
+
+  function showPreview() {
+    ensurePreviewParts();
+    if (coach) {
+      coach.classList.remove('on');
+      settings.coachDone = true;
+      chrome.storage.local.set({ coachDone: true }).catch(() => {});
+    }
+    placePreview();
+    preview.classList.add('on');
+  }
+
+  function resetPreview() {
+    if (!doneSpan) return;
+    doneSpan.textContent = '';
+    liveSpan.textContent = '';
+    lastWords = [];
+  }
+
+  function hidePreview() {
+    if (preview) preview.classList.remove('on');
+    resetPreview();
+  }
+
+  // Interim transcripts arrive as a growing, sometimes rewritten string.
+  // Only the words that are genuinely new get re-created, so settled words
+  // do not flicker and re-animate on every update.
+  function renderInterim(text) {
+    ensurePreviewParts();
+    placePreview();
+    const words = text.trim().split(/\s+/).filter(Boolean);
+
+    let same = 0;
+    while (
+      same < words.length &&
+      same < lastWords.length &&
+      words[same] === lastWords[same]
+    ) same++;
+
+    while (liveSpan.children.length > same) liveSpan.lastChild.remove();
+    for (let i = same; i < words.length; i++) {
+      const w = document.createElement('w');
+      w.textContent = words[i];
+      liveSpan.appendChild(w);
+    }
+
+    lastWords = words;
+    preview.scrollTop = preview.scrollHeight;
+  }
+
+  function commitToPreview(text) {
+    ensurePreviewParts();
+    doneSpan.textContent += (doneSpan.textContent ? ' ' : '') + text;
+    liveSpan.textContent = '';
+    lastWords = [];
+    preview.scrollTop = preview.scrollHeight;
+  }
+
+  const DOTS = '<span class="dots"><i></i><i></i><i></i></span>';
+
+  function showIndicator(label, tone, dots) {
+    buildBar();
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'toast';
+      indicator.setAttribute('data-ukti-toast', '');
+      shadow.appendChild(indicator);
+    }
+    clearTimeout(hideTimer);
+    indicator.textContent = label;
+    if (dots) indicator.insertAdjacentHTML('beforeend', DOTS);
+    indicator.className =
+      'toast on' + (tone === 'error' ? ' err' : tone === 'busy' ? ' busy' : '');
+  }
+
+  function hideIndicator(delay = 1200) {
+    if (!indicator) return;
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      if (indicator) indicator.classList.remove('on');
+    }, delay);
+  }
+
+  // Ukti is not wanted on every site. One switch turns it off everywhere,
+  // another turns it off just here, which is what people actually reach for.
+  function siteKey() {
+    try { return location.hostname.replace(/^www\./, ''); } catch (_) { return ''; }
+  }
+
+  function isOff() {
+    if (settings.enabled === false) return true;
+    const list = settings.disabledSites;
+    return Array.isArray(list) && list.includes(siteKey());
+  }
+
+  function applyEnabled() {
+    if (!bar) return;
+    if (isOff()) {
+      if (listening) stopDictation();
+      bar.classList.remove('on');
+      hidePreview();
+      if (indicator) indicator.classList.remove('on');
+      if (coach) coach.classList.remove('on');
+    } else if (resolveTarget()) {
+      bar.classList.add('on');
+    }
+  }
+
+  // --------------------------------------------------------------- actions
+
+  async function loadSettings() {
+    try {
+      const reply = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
+      if (reply) settings = reply;
+    } catch (_) {}
+  }
+
+  async function startDictation() {
+    const box = resolveTarget();
+    if (!box) {
+      showIndicator(t('noBox'), 'error');
+      hideIndicator();
+      return;
+    }
+
+    await loadSettings();
+    target = box;
+
+    let reply;
+    try {
+      reply = await chrome.runtime.sendMessage({
+        type: 'START_DICTATION',
+        sessionId
+      });
+    } catch (_) {
+      // Happens when the extension was reloaded but this page was not.
+      showIndicator(t('reload'), 'error');
+      hideIndicator(4000);
+      return;
+    }
+
+    if (!reply?.ok) {
+      showIndicator('চালু করা গেল না: ' + (reply?.error || 'unknown'), 'error');
+      hideIndicator(2500);
+      return;
+    }
+
+    countUse();
+    listening = true;
+    paintMic();
+    resetPreview();
+    showPreview();
+    showIndicator(t('listening'), null, true);
+  }
+
+  async function stopDictation() {
+    listening = false;
+    paintMic();
+    hidePreview();
+    showIndicator(t('stopped'));
+    hideIndicator();
+    try {
+      await chrome.runtime.sendMessage({ type: 'STOP_DICTATION' });
+    } catch (_) {}
+  }
+
+  function pushUndo(element) {
+    undoStack.push(snapshot(element));
+    // Long dictation would otherwise grow this forever.
+    if (undoStack.length > 20) undoStack.shift();
+  }
+
+  // Returns { box, selected, source }, or null after telling the user why.
+  function grabText() {
+    const box = resolveTarget();
+    if (!box) {
+      showIndicator(t('noBox'), 'error');
+      hideIndicator();
+      return null;
+    }
+    const selected = selectedText(box);
+    const source = selected || existingText(box);
+    if (!source.trim()) {
+      showIndicator(t('noText'), 'error');
+      hideIndicator();
+      return null;
+    }
+    return { box, selected, source };
+  }
+
+  async function putBack(box, selected, text) {
+    pushUndo(box);
+    const before = existingText(box);
+    if (selected) insertText(box, text);
+    else await replaceAll(box, text);
+
+    // Some editors refuse an edit they did not originate, and a few take it
+    // in the wrong place. This check used to ask only whether anything had
+    // changed, so a box that ended up holding both the old sentence and the
+    // new one counted as a success and the user got no warning at all.
+    // Ask the real question instead: does the box now hold what it should.
+    await nextTurn(60);
+    if (!box.isConnected) return false;
+
+    const after = existingText(box);
+    if (sameText(after, text)) return true;
+    if (selected && after !== before) return true;   // a partial replace
+
+    // A box left holding the text twice is worse than one that did not
+    // change, so put the original back before owning up.
+    if (!sameText(after, before)) {
+      await replaceAll(box, before);
+    }
+    showIndicator(t('putBackFailed'), 'error');
+    hideIndicator(5000);
+    return false;
+  }
+
+  // Only three conversions make sense. Anything else is refused with a
+  // reason, because silently doing the wrong thing is worse than doing
+  // nothing:
+  //
+  //            অ (to Bangla)              EN (to English)
+  //   banglish transliterate              transliterate, then bn to en
+  //   bangla   refuse, already Bangla     translate bn to en
+  //   english  translate en to bn         refuse, already English
+
+  async function ask(text, from, to) {
+    try {
+      return await chrome.runtime.sendMessage({
+        type: 'TRANSLATE', text, from, to
+      });
+    } catch (_) {
+      return { ok: false, error: 'DISCONNECTED' };
+    }
+  }
+
+  function translateProblem(reply) {
+    if (reply?.error === 'DISCONNECTED') return t('reload');
+    if (reply?.error === 'NotAllowedError' ||
+        reply?.error === 'PAIR_UNAVAILABLE' ||
+        reply?.error === 'NO_TRANSLATOR_API') return t('needPack');
+    return t('transFail');
+  }
+
+  // অ button: whatever is in the box ends up in Bangla.
+  async function convertBanglish() {
+    const grabbed = grabText();
+    if (!grabbed) return;
+
+    const { box, selected, source } = grabbed;
+    const kind = self.UktiBanglish.classify(source);
+
+    if (kind === 'bangla') {
+      showIndicator(t('alreadyBangla'), 'error');
+      hideIndicator(2500);
+      return;
+    }
+
+    if (kind === 'banglish') {
+      countUse();
+      if (!(await putBack(box, selected, self.UktiBanglish.convert(source)))) return;
+      showIndicator(t('doneBangla'));
+      hideIndicator();
+      return;
+    }
+
+    // Real English: translate it rather than mangling it letter by letter.
+    showIndicator(t('workingBangla'), 'busy', true);
+    const reply = await ask(source, 'en', 'bn');
+    if (!reply?.ok) {
+      showIndicator(translateProblem(reply), 'error');
+      hideIndicator(3500);
+      return;
+    }
+    if (sameText(reply.text, source)) {
+      showIndicator(t('transNoop'), 'error');
+      hideIndicator(5000);
+      return;
+    }
+
+    countUse();
+    if (!(await putBack(box, selected, reply.text))) return;
+    showIndicator(t('doneBangla'));
+    hideIndicator();
+  }
+
+  // EN button: whatever is in the box ends up in English. Banglish goes
+  // through Bangla script first, because the translator reads Bangla, not
+  // romanised Bangla, and the two-step result is much better.
+  async function convertToEnglish() {
+    const grabbed = grabText();
+    if (!grabbed) return;
+
+    const { box, selected, source } = grabbed;
+    const kind = self.UktiBanglish.classify(source);
+
+    if (kind === 'english') {
+      showIndicator(t('alreadyEnglish'), 'error');
+      hideIndicator(2500);
+      return;
+    }
+
+    const bangla = kind === 'banglish'
+      ? self.UktiBanglish.convert(source)
+      : source;
+
+    showIndicator(t('working'), 'busy', true);
+    const reply = await ask(bangla, 'bn', 'en');
+
+    if (!reply?.ok) {
+      // The Bangla step already succeeded, so hand that over rather than
+      // leaving the user with nothing.
+      if (kind === 'banglish') await putBack(box, selected, bangla);  // best effort
+      showIndicator(translateProblem(reply), 'error');
+      hideIndicator(3500);
+      return;
+    }
+
+    // A translator with no language pack can hand the text straight back.
+    // Writing that into the box put the same sentence in twice and looked
+    // like the button was broken, so stop here and say what is wrong.
+    if (sameText(reply.text, bangla)) {
+      showIndicator(t('transNoop'), 'error');
+      hideIndicator(5000);
+      return;
+    }
+
+    countUse();
+    if (!(await putBack(box, selected, reply.text))) return;
+    showIndicator(t('doneEnglish'));
+    hideIndicator();
+  }
+
+  async function undoLast() {
+    const entry = undoStack.pop();
+    if (!entry || !entry.element.isConnected) {
+      showIndicator(t('nothingUndo'), 'error');
+      hideIndicator();
+      return;
+    }
+
+    if (entry.kind === 'value') {
+      await replaceAll(entry.element, entry.snapshot);
+      try {
+        entry.element.setSelectionRange(entry.start, entry.end);
+      } catch (_) {}
+    } else {
+      // Same path as an insert: select everything, then ask the editing
+      // engine to replace it. That keeps ProseMirror and friends in step.
+      await replaceAll(entry.element, entry.snapshot ?? '');
+    }
+
+    showIndicator(t('undone'));
+    hideIndicator();
+  }
+
+  // -------------------------------------------------------- floating buttons
+
+  let bar = null;
+  let micButton = null;
+  let shadow = null;
+  let preview = null;
+  let hostEl = null;
+
+  const svg = (size, body) =>
+    `<svg viewBox="0 0 24 24" style="width:${size}em;height:${size}em" fill="none" ` +
+    `stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ` +
+    `stroke-linejoin="round">${body}</svg>`;
+
+  const ICONS = {
+    mic: svg(
+      1.45,
+      '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>' +
+        '<path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/>'
+    ),
+    stop: svg(1.3, '<rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/>'),
+    undo: svg(1.2, '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H10"/>'),
+    more: svg(1.2, '<path d="M5 15l7-7 7 7"/>'),
+    less: svg(1.2, '<path d="M19 9l-7 7-7-7"/>'),
+    grip: svg(
+      1.15,
+      '<circle cx="9" cy="6" r="1.35" fill="currentColor" stroke="none"/>' +
+        '<circle cx="15" cy="6" r="1.35" fill="currentColor" stroke="none"/>' +
+        '<circle cx="9" cy="12" r="1.35" fill="currentColor" stroke="none"/>' +
+        '<circle cx="15" cy="12" r="1.35" fill="currentColor" stroke="none"/>' +
+        '<circle cx="9" cy="18" r="1.35" fill="currentColor" stroke="none"/>' +
+        '<circle cx="15" cy="18" r="1.35" fill="currentColor" stroke="none"/>'
+    )
+  };
+
+  // The browser only knows pixels, never how big the screen physically is,
+  // so this is a sensible default that the user can override in settings.
+  function autoScale() {
+    const w = window.innerWidth;
+    if (w >= 2800) return 1.75;
+    if (w >= 2200) return 1.5;
+    if (w >= 1750) return 1.25;
+    if (w >= 1400) return 1.1;
+    return 1;
+  }
+
+  const SIZE_FACTOR = { small: 0.85, medium: 1, large: 1.3 };
+
+  function applyTheme() {
+    if (!hostEl) return;
+    const theme = settings.theme || 'glass';
+    if (theme === 'glass') hostEl.removeAttribute('data-theme');
+    else hostEl.setAttribute('data-theme', theme);
+  }
+
+  function applyScale() {
+    if (!hostEl) return;
+    const factor = SIZE_FACTOR[settings.uiSize] ?? 1;
+    hostEl.style.setProperty('--s', (autoScale() * factor).toFixed(3));
+    requestAnimationFrame(placePreview);
+  }
+
+  // Everything lives in a shadow root so no site's CSS can restyle it and
+  // our styles cannot leak onto the page.
+  // One scale variable drives every size, so the whole control grows
+  // together on a large screen instead of needing a dozen breakpoints.
+  const STYLE = `
+    :host {
+      all: initial;
+      --s: 1;
+      --unit: calc(16px * var(--s));
+      --spring: cubic-bezier(.34, 1.4, .5, 1);
+
+      /* Glass: see-through, blurred. The default. */
+      --ink: #f4f4f5;
+      --glass: rgba(22, 24, 30, .93);
+      --edge: rgba(255, 255, 255, .12);
+      --blur: none;
+      /* Only the speech preview blurs, and only while it is on screen. */
+      --blur-panel: blur(12px) saturate(1.25);
+      --drop: rgba(0, 0, 0, .3);
+      --hover: rgba(38, 41, 50, .92);
+      --hover-edge: rgba(255, 255, 255, .2);
+    }
+    /* Solid dark: no blur, so it stays readable over busy pages. */
+    :host([data-theme="dark"]) {
+      --blur-panel: none;
+      --ink: #f4f4f5;
+      --glass: #1b1d23;
+      --edge: rgba(255, 255, 255, .09);
+      --blur: none;
+      --drop: rgba(0, 0, 0, .45);
+      --hover: #272a32;
+      --hover-edge: rgba(255, 255, 255, .18);
+    }
+    /* Light, for pale pages and anyone who dislikes dark controls. */
+    :host([data-theme="light"]) {
+      --blur-panel: none;
+      --ink: #1d2230;
+      --glass: #ffffff;
+      --edge: rgba(0, 0, 0, .1);
+      --blur: none;
+      --drop: rgba(15, 23, 42, .18);
+      --hover: #eef1f6;
+      --hover-edge: rgba(0, 0, 0, .18);
+    }
+    .bar {
+      position: fixed;
+      right: calc(var(--unit) * 1.4);
+      bottom: calc(var(--unit) * 5);
+      display: flex; flex-direction: column-reverse; align-items: center;
+      gap: calc(var(--unit) * .8);
+      font-family: system-ui, "Noto Sans Bengali", sans-serif;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    .bar.on { opacity: 1; pointer-events: auto; }
+
+    button {
+      all: unset; box-sizing: border-box; cursor: pointer;
+      position: relative;
+      display: grid; place-items: center;
+      border-radius: 999px;
+      background: var(--glass);
+      border: 1px solid var(--edge);
+      color: var(--ink);
+      box-shadow: 0 calc(var(--unit) * .3) calc(var(--unit) * .9) var(--drop);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      transition: background .18s ease, transform .22s var(--spring),
+                  border-color .18s ease, opacity .25s ease;
+      transform: scale(.4); opacity: 0;
+    }
+    .bar.on button { transform: scale(1); opacity: 1; }
+    /* The small buttons fan out after the mic, which reads as one motion. */
+    .bar.on .row:nth-of-type(2) button { transition-delay: .05s; }
+    .bar.on .row:nth-of-type(3) button { transition-delay: .10s; }
+    .bar.on .row:nth-of-type(4) button { transition-delay: .15s; }
+
+    button:hover {
+      background: var(--hover);
+      border-color: var(--hover-edge);
+      transform: scale(1.09);
+    }
+    button:active { transform: scale(.93); }
+    button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 3px; }
+
+    /* The min sizes are a floor, not decoration. Accessibility guidance
+       puts the smallest safe pointer target at 24px and a comfortable one
+       at 44px, and the "small" size preset used to scale these below that,
+       which produced misclicks on exactly the hardware that needs them
+       biggest. The floor wins over the preset. */
+    .main {
+      width: calc(var(--unit) * 3.5); height: calc(var(--unit) * 3.5);
+      min-width: 48px; min-height: 48px;
+      font-size: calc(var(--unit) * 1);
+    }
+    .small {
+      width: calc(var(--unit) * 2.75); height: calc(var(--unit) * 2.75);
+      min-width: 40px; min-height: 40px;
+      font-size: calc(var(--unit) * .78);
+      opacity: .82;
+    }
+    .small:hover { opacity: 1; }
+    .en { font-size: calc(var(--unit) * .66); font-weight: 650; letter-spacing: .04em; }
+    .row[hidden] { display: none; }
+    /* Compact: only the mic and the toggle, until the toggle is pressed. */
+    /* Only the collapsed state is written, so the open state is simply the
+       bar's normal layout. Two competing rules here meant the open one had
+       to out-rank the closed one, and that is a fight worth not having. */
+    /* The buttons sit on a curve, not in a straight line. The column only
+       sets how far apart they are; the sideways offset that bends them
+       into an arc is written on each row by paintArc(), because it has to
+       know which way there is room to bend. */
+    .row { transition: transform .34s var(--spring); }
+    .row:not([data-name="mic"]):not([data-name="toggle"]) {
+      transition: opacity .18s ease, transform .34s var(--spring),
+                  max-height .3s var(--spring),
+                  margin-top .3s var(--spring), margin-bottom .3s var(--spring);
+    }
+    .bar.compact:not(.open) .row:not([data-name="mic"]):not([data-name="toggle"]) {
+      max-height: 0; opacity: 0; pointer-events: none;
+      margin-top: calc(var(--unit) * -.275);
+      margin-bottom: calc(var(--unit) * -.275);
+      /* They fold back into the microphone rather than just fading, so
+         opening looks like the buttons coming out of it. */
+      transform: translateY(calc(var(--unit) * 1.1)) scale(.4);
+    }
+    .bar.compact.open .row:nth-of-type(2) { transition-delay: .04s; }
+    .bar.compact.open .row:nth-of-type(3) { transition-delay: .08s; }
+    .bar.compact.open .row:nth-of-type(4) { transition-delay: .12s; }
+    .bar.compact.open .row:nth-of-type(5) { transition-delay: .16s; }
+    .bar.compact:not(.open) .row:not([data-name="mic"]):not([data-name="toggle"]) {
+      overflow: hidden;   /* clip only while they are tucked away */
+    }
+    .row:has(.noTip) .tip { display: none; }
+    .toggle { opacity: .55; }
+    .bar:hover .toggle { opacity: .9; }
+    .grip { cursor: grab; opacity: .32; }
+    .bar:hover .grip { opacity: .85; }
+    .grip:active, .bar.dragging .grip { cursor: grabbing; opacity: 1; }
+    .main { cursor: grab; }
+    .bar.dragging .main { cursor: grabbing; }
+    .bar.dragging, .bar.dragging button { transition: none; }
+
+    /* Listening. The halo tracks how loud the voice actually is, so the
+       button reacts to speech instead of pulsing on a fixed timer. */
+    .main.live {
+      --lvl: 0;
+      background: linear-gradient(145deg, #ef4444, #b91c1c);
+      border-color: rgba(255,255,255,.28);
+      color: #fff;
+      box-shadow:
+        0 0 0 calc(var(--unit) * .18 * var(--lvl)) rgba(239,68,68,.34),
+        0 0 calc(var(--unit) * (.6 + 1.5 * var(--lvl))) rgba(239,68,68,.55);
+      transform: scale(calc(1 + .06 * var(--lvl)));
+      transition: box-shadow .09s linear, transform .09s linear;
+    }
+    .main.live::before {
+      content: ''; position: absolute;
+      width: 100%; height: 100%; border-radius: 999px;
+      border: 2px solid rgba(239, 68, 68, .5);
+      transform: scale(calc(1 + .55 * var(--lvl)));
+      opacity: calc(.15 + .6 * var(--lvl));
+      transition: transform .12s ease-out, opacity .12s ease-out;
+    }
+    /* A slow breath so it still looks alive during silence. */
+    .main.live::after {
+      content: ''; position: absolute;
+      width: 100%; height: 100%; border-radius: 999px;
+      border: 2px solid rgba(239, 68, 68, .4);
+      animation: ring 2.4s cubic-bezier(.25,.6,.3,1) infinite;
+    }
+    @keyframes ring {
+      0%   { transform: scale(1);    opacity: .6; }
+      100% { transform: scale(1.95); opacity: 0; }
+    }
+
+    .bar.dragging { transition: none; }
+    .bar.dragging button { cursor: grabbing; }
+
+    /* First-run coach mark. */
+    .coach {
+      position: fixed;
+      max-width: min(30rem, 48vw);
+      padding: calc(var(--unit) * 1) calc(var(--unit) * 1.2);
+      border-radius: calc(var(--unit) * 1.1);
+      background: rgba(37, 99, 235, .95);
+      color: #fff;
+      font-size: calc(var(--unit) * .92);
+      line-height: 1.6;
+      box-shadow: 0 calc(var(--unit) * .5) calc(var(--unit) * 1.4) rgba(0,0,0,.4);
+      opacity: 0; transform: translateY(calc(var(--unit) * .6));
+      transition: opacity .3s ease, transform .35s var(--spring);
+      pointer-events: auto;
+    }
+    .coach.on { opacity: 1; transform: none; }
+    .coach b { display: block; margin-bottom: .35em; font-size: 1.05em; }
+    .coach button {
+      all: unset; cursor: pointer; margin-top: .7em;
+      padding: .35em 1em; border-radius: 999px;
+      background: rgba(255,255,255,.2); font-size: .92em;
+      transform: none; opacity: 1;
+    }
+    .coach button:hover { background: rgba(255,255,255,.32); transform: none; }
+
+    /* Live preview of what is being said, above the buttons. */
+    .preview {
+      position: fixed;
+      right: calc(var(--unit) * 1.4);
+      bottom: calc(var(--unit) * 9.2); /* replaced at runtime by placePreview */
+      width: min(34rem, 42vw);
+      max-height: calc(var(--unit) * 11);
+      overflow-y: auto;
+      padding: calc(var(--unit) * .85) calc(var(--unit) * 1.1);
+      border-radius: calc(var(--unit) * 1.1);
+      background: var(--glass);
+      border: 1px solid var(--edge);
+      color: var(--ink);
+      font-size: calc(var(--unit) * 1.02);
+      line-height: 1.65;
+      box-shadow: 0 calc(var(--unit) * .4) calc(var(--unit) * 1.2) var(--drop);
+      opacity: 0; transform: translateY(calc(var(--unit) * .7)) scale(.98);
+      transition: opacity .25s ease, transform .3s var(--spring);
+      pointer-events: none;
+      scrollbar-width: thin;
+    }
+    .preview.on {
+      backdrop-filter: var(--blur-panel);
+      -webkit-backdrop-filter: var(--blur-panel); opacity: 1; transform: none; }
+    .preview .done { opacity: .5; }
+    .preview .live { opacity: .97; }
+    .preview w {
+      display: inline-block;
+      animation: rise .32s var(--spring) both;
+      margin-right: .22em;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(.5em) scale(.9); filter: blur(2px); }
+      to   { opacity: 1; transform: none; filter: none; }
+    }
+    .caret {
+      display: inline-block; width: .09em; height: 1.05em;
+      background: #f87171; vertical-align: text-bottom;
+      animation: caret 1.1s steps(1) infinite;
+    }
+    @keyframes caret { 0%,50% { opacity: 1 } 50.01%,100% { opacity: 0 } }
+
+    /* Label chips that explain each button. */
+    .row { position: relative; display: flex; align-items: center; }
+    .tip {
+      position: absolute;
+      right: calc(100% + var(--unit) * .5);
+      top: 50%;
+      margin-top: calc(var(--unit) * -.85);
+      white-space: nowrap;
+      padding: calc(var(--unit) * .3) calc(var(--unit) * .65);
+      border-radius: calc(var(--unit) * .8);
+      background: var(--glass);
+      border: 1px solid var(--edge);
+      color: var(--ink);
+      font-size: calc(var(--unit) * .74);
+      box-shadow: 0 calc(var(--unit) * .2) calc(var(--unit) * .6) var(--drop);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      opacity: 0; transform: translateX(calc(var(--unit) * .5));
+      transition: opacity .2s ease, transform .26s var(--spring);
+      pointer-events: none;
+    }
+    .tip b { font-weight: 600; }
+    .tip span {
+      opacity: .6; margin-left: .45em;
+      font-family: ui-monospace, monospace; font-size: .92em;
+    }
+    .bar.hints .tip,
+    .row:hover .tip,
+    .row:focus-within .tip { opacity: 1; transform: none; }
+    .bar.on.hints .row:nth-of-type(1) .tip { transition-delay: .10s; }
+    .bar.on.hints .row:nth-of-type(2) .tip { transition-delay: .16s; }
+    .bar.on.hints .row:nth-of-type(3) .tip { transition-delay: .22s; }
+    .bar.on.hints .row:nth-of-type(4) .tip { transition-delay: .28s; }
+
+    .toast {
+      position: fixed;
+      right: calc(var(--unit) * 1.4);
+      bottom: calc(var(--unit) * 1.6);
+      max-width: min(46ch, 76vw);
+      padding: calc(var(--unit) * .6) calc(var(--unit) * 1.05);
+      border-radius: calc(var(--unit) * 1.2);
+      background: var(--glass);
+      border: 1px solid var(--edge);
+      color: var(--ink);
+      font-size: calc(var(--unit) * .88);
+      line-height: 1.5;
+      box-shadow: 0 calc(var(--unit) * .3) calc(var(--unit) * .9) var(--drop);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      opacity: 0; transform: translateY(calc(var(--unit) * .5)) scale(.97);
+      transition: opacity .22s ease, transform .28s var(--spring);
+      pointer-events: none;
+      /* These used to be one clipped line, so the sentence that tells the
+         user what to do next was cut off at an ellipsis and the advice
+         never arrived. A message is worth more than a tidy single line. */
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+    .toast.on { opacity: 1; transform: none; }
+    .toast.err  { background: rgba(185, 28, 28, .95); color: #fff; }
+    .toast.busy { background: rgba(180, 83, 9, .95); color: #fff; }
+
+    /* Three dots that march while the engine is hearing speech. */
+    .dots { display: inline-flex; gap: .22em; margin-left: .45em; vertical-align: middle; }
+    .dots i {
+      width: .3em; height: .3em; border-radius: 999px;
+      background: currentColor; opacity: .35;
+      animation: blink 1.3s ease-in-out infinite;
+    }
+    .dots i:nth-child(2) { animation-delay: .18s; }
+    .dots i:nth-child(3) { animation-delay: .36s; }
+    @keyframes blink {
+      0%, 60%, 100% { opacity: .3;  transform: translateY(0); }
+      30%           { opacity: 1;   transform: translateY(-.16em); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      button, .toast { transition-duration: .01ms; }
+      .main.live::before, .main.live::after, .dots i { animation: none; }
+    }
+  `;
+
+  let suppressClick = false;
+
+  function row(button, label, keys, name) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row';
+    if (name) wrap.dataset.name = name;
+    const tip = document.createElement('div');
+    tip.className = 'tip';
+    tip.innerHTML = '<b></b><span></span>';
+    tip.querySelector('b').textContent = label;
+    tip.querySelector('span').textContent = keys;
+    wrap.append(button, tip);
+    return wrap;
+  }
+
+  function makeButton(html, title, cls, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = cls;
+    button.innerHTML = html;
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    // Keep focus in the text box: a blur would lose the insertion target.
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (suppressClick) return;
+      onClick();
+    });
+    return button;
+  }
+
+  function buildBar() {
+    if (bar) return;
+
+    const host = document.createElement('div');
+    hostEl = host;
+    host.setAttribute('data-ukti', 'bar');
+    // No contain:layout here. It would make this host the containing block
+    // for the fixed-position bar and panels inside, so their right/bottom
+    // offsets would stop meaning "from the window edge".
+    host.style.cssText =
+      'position:fixed;top:0;left:0;z-index:2147483646;pointer-events:none';
+    shadow = host.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = STYLE;
+
+    bar = document.createElement('div');
+    bar.className = 'bar';
+
+    micButton = makeButton(ICONS.mic, t('startSpeak'), 'main', () => {
+      listening ? stopDictation() : startDictation();
+    });
+    const banglish = makeButton('অ', t('toBangla'), 'small', convertBanglish);
+    const english = makeButton('EN', t('toEnglish'), 'small en', convertToEnglish);
+    const undo = makeButton(ICONS.undo, t('undo'), 'small', undoLast);
+
+    const grip = makeButton(ICONS.grip, t('move'), 'small grip', () => {});
+    const toggle = makeButton(ICONS.more, t('more'), 'small toggle noTip', () => {
+      expanded = !expanded;
+      paintLayout();
+    });
+
+    bar.append(
+      row(micButton, t('speak'), 'Ctrl+Shift+Space', 'mic'),
+      row(banglish, t('toBangla'), 'Ctrl+Shift+B', 'banglish'),
+      row(english, t('toEnglish'), 'Ctrl+Shift+E', 'english'),
+      row(undo, t('undo'), 'Ctrl+Shift+Z', 'undo'),
+      row(grip, t('move'), '', 'grip'),
+      row(toggle, '', '', 'toggle')
+    );
+
+    // Both work: the handle is the obvious one, the microphone is the
+    // shortcut for anyone who finds it.
+    makeDraggable(grip);
+    makeDraggable(micButton);
+
+    preview = document.createElement('div');
+    preview.className = 'preview';
+    preview.setAttribute('data-ukti-preview', '');
+
+    shadow.append(style, preview, bar);
+    (document.body || document.documentElement).appendChild(host);
+
+    applyScale();
+    applyTheme();
+    applyPosition();
+    paintLayout();
+    paintHints();
+    window.addEventListener('resize', () => {
+      applyScale();
+      // A smaller window can strand a saved position off the edge, and the
+      // anchor needs recomputing against the box's new rect.
+      applyPosition();
+      placePreview();
+      paintArc();
+    }, { passive: true });
+  }
+
+  // Keep the whole bar on screen. A position saved on a wide monitor would
+  // otherwise sit off the edge in a narrow window, where it cannot be
+  // reached or dragged back.
+  function clampToViewport(right, bottom) {
+    const rect = bar.getBoundingClientRect();
+    const w = rect.width || 60;
+    const h = rect.height || 60;
+    return {
+      right: Math.max(4, Math.min(right, window.innerWidth - w - 4)),
+      bottom: Math.max(4, Math.min(bottom, window.innerHeight - h - 4))
+    };
+  }
+
+  // The bottom-right corner of a page is the most crowded real estate on
+  // the web: Gmail's compose row, WhatsApp's send button, Intercom's chat
+  // bubble, the reCAPTCHA badge and Grammarly's icon all live there. So
+  // when the user has not chosen a spot, sit next to the box being typed
+  // in instead, which is both out of the way and easier to connect to the
+  // text it acts on.
+  const ANCHOR_GAP = 8;
+  let anchored = null;
+
+  function anchorToField(box) {
+    if (!bar || settings.barPos) return false;   // a dragged spot always wins
+    if ((settings.barCorner || 'auto') !== 'auto') return false;
+    if (!box || !box.isConnected) return false;
+
+    const field = box.getBoundingClientRect();
+    if (!field.width || !field.height) return false;
+
+    // A full-page editor (Docs, a chat canvas) gives a rect the size of the
+    // window. Anchoring to that is meaningless, so fall back to the corner.
+    if (field.height > window.innerHeight * 0.6) return false;
+
+    const self = bar.getBoundingClientRect();
+    const w = self.width || 60;
+    const h = self.height || 60;
+
+    const right = window.innerWidth - field.right;
+    let bottom = window.innerHeight - field.bottom + field.height + ANCHOR_GAP;
+
+    // No room above the box? Drop below it.
+    if (bottom + h > window.innerHeight - 4) {
+      bottom = window.innerHeight - field.top + ANCHOR_GAP;
+    }
+    // Still no room, or the box fills the screen: let the corner have it.
+    if (bottom + h > window.innerHeight - 4 || right + w > window.innerWidth - 4) {
+      return false;
+    }
+
+    const safe = clampToViewport(right, bottom);
+    bar.style.right = safe.right + 'px';
+    bar.style.bottom = safe.bottom + 'px';
+    anchored = box;
+    placePreview();
+    return true;
+  }
+
+  // Dragging writes right/bottom offsets in pixels, which then win over
+  // both the anchor and the stylesheet's scaled defaults.
+  function applyPosition() {
+    if (!bar) return;
+
+    if (settings.barPos) {
+      const safe = clampToViewport(settings.barPos.right, settings.barPos.bottom);
+      bar.style.right = safe.right + 'px';
+      bar.style.bottom = safe.bottom + 'px';
+      anchored = null;
+      placePreview();
+      return;
+    }
+
+    // Clear the inline styles so the stylesheet's corner applies again.
+    bar.style.right = '';
+    bar.style.bottom = '';
+    anchored = null;
+
+    const corner = settings.barCorner || 'auto';
+
+    // Bottom-left is the escape hatch for the sites where bottom-right is
+    // hopeless, and it is set from the popup, so the control can always be
+    // moved without dragging it.
+    if (corner === 'bl') {
+      const w = bar.getBoundingClientRect().width || 60;
+      bar.style.right = Math.max(4, window.innerWidth - w - 22) + 'px';
+      placePreview();
+      return;
+    }
+    if (corner === 'br') {
+      placePreview();
+      return;
+    }
+
+    if (!anchorToField(resolveTarget())) placePreview();
+  }
+
+  // The mic button doubles as the drag handle. A press that moves more
+  // than a few pixels is a drag; anything else stays a plain click, so
+  // there is no extra chrome hanging off the control.
+  const DRAG_THRESHOLD = 5;
+
+  function makeDraggable(handle) {
+    let startX = 0, startY = 0, startRight = 0, startBottom = 0;
+    let dragging = false;
+
+    const onMove = event => {
+      if (!dragging) {
+        if (
+          Math.abs(event.clientX - startX) < DRAG_THRESHOLD &&
+          Math.abs(event.clientY - startY) < DRAG_THRESHOLD
+        ) return;
+        dragging = true;
+        bar.classList.add('dragging');
+      }
+      const right = startRight - (event.clientX - startX);
+      const bottom = startBottom - (event.clientY - startY);
+      bar.style.right =
+        Math.max(4, Math.min(right, window.innerWidth - 70)) + 'px';
+      bar.style.bottom =
+        Math.max(4, Math.min(bottom, window.innerHeight - 70)) + 'px';
+      placePreview();
+    };
+
+    const onUp = event => {
+      document.removeEventListener('pointermove', onMove, true);
+      document.removeEventListener('pointerup', onUp, true);
+      if (!dragging) return;
+
+      // Swallow the click that would otherwise follow the drag.
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+
+      bar.classList.remove('dragging');
+      dragging = false;
+      const rect = bar.getBoundingClientRect();
+      chrome.storage.local.set({
+        barPos: {
+          right: Math.round(window.innerWidth - rect.right),
+          bottom: Math.round(window.innerHeight - rect.bottom)
+        }
+      }).catch(() => {});
+    };
+
+    handle.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      const rect = bar.getBoundingClientRect();
+      startX = event.clientX;
+      startY = event.clientY;
+      startRight = window.innerWidth - rect.right;
+      startBottom = window.innerHeight - rect.bottom;
+      dragging = false;
+      document.addEventListener('pointermove', onMove, true);
+      document.addEventListener('pointerup', onUp, true);
+    });
+  }
+
+  // Which optional buttons the user wants, and whether they live behind a
+  // single toggle instead of being on screen all the time.
+  let expanded = false;
+
+  function paintLayout() {
+    if (!bar) return;
+    const want = settings.buttons || {};
+    const compact = settings.layout === 'compact';
+
+    bar.classList.toggle('compact', compact);
+    bar.classList.toggle('open', expanded);
+    requestAnimationFrame(paintArc);
+
+    for (const row of bar.querySelectorAll('.row')) {
+      const name = row.dataset.name;
+      if (name === 'mic' || name === 'toggle') continue;
+      row.hidden = want[name] === false;
+    }
+
+    const toggleRow = bar.querySelector('[data-name="toggle"]');
+    if (toggleRow) {
+      // The toggle is pointless if nothing is hidden behind it.
+      const hasAny = ['banglish', 'english', 'undo', 'grip']
+        .some(n => want[n] !== false);
+      toggleRow.hidden = !compact || !hasAny;
+      const button = toggleRow.querySelector('button');
+      button.innerHTML = expanded ? ICONS.less : ICONS.more;
+      button.title = expanded ? t('less') : t('more');
+    }
+
+    requestAnimationFrame(placePreview);
+  }
+
+  // Labels are built once, so switching language has to rewrite them in
+  // place rather than waiting for a page reload.
+  const LABELS = {
+    mic: ['speak', 'Ctrl+Shift+Space'],
+    banglish: ['toBangla', 'Ctrl+Shift+B'],
+    english: ['toEnglish', 'Ctrl+Shift+E'],
+    undo: ['undo', 'Ctrl+Shift+Z'],
+    grip: ['move', ''],
+    toggle: [null, '']
+  };
+
+  function paintLabels() {
+    if (!bar) return;
+    for (const row of bar.querySelectorAll('.row')) {
+      const entry = LABELS[row.dataset.name];
+      if (!entry) continue;
+      const [key, keys] = entry;
+      if (!key) continue;
+      const text = t(key);
+      row.querySelector('.tip b').textContent = text;
+      row.querySelector('.tip span').textContent = keys;
+      row.querySelector('button').title = text;
+    }
+    if (micButton) {
+      micButton.title = listening ? t('stopSpeak') : t('startSpeak');
+    }
+  }
+
+  // Labels stay until the user turns them off in the popup. They used to
+  // vanish after six uses, which was a bad idea: six uses of one button
+  // teaches nothing about the other three, and anyone coming back after a
+  // few weeks found a row of unexplained circles.
+  // The buttons follow a quarter-circle sweeping away from the microphone
+  // rather than standing in a straight tower. The offset is written here
+  // and not in the stylesheet because the direction depends on which side
+  // of the window the control is sitting on, and the collapsed state must
+  // flatten the curve so the arrow sits squarely on the microphone's head.
+  function paintArc() {
+    if (!bar) return;
+
+    const rows = [...bar.querySelectorAll('.row')].filter(r => !r.hidden);
+    const n = rows.length;
+    if (n < 2) return;
+
+    const unit = parseFloat(getComputedStyle(bar).getPropertyValue('--unit')) || 16;
+    const open = !bar.classList.contains('compact') || bar.classList.contains('open');
+
+    if (!open) {
+      // Flat while closed, so the arrow sits squarely on the mic's head.
+      rows.forEach(r => { r.style.transform = ''; });
+      return;
+    }
+
+    // The curve leans towards the nearer edge, so the stack looks like it
+    // is growing out of that corner rather than away from it.
+    const here = bar.getBoundingClientRect();
+    const midX = here.left + here.width / 2;
+    const toRight = midX > window.innerWidth / 2;
+    const sign = toRight ? 1 : -1;
+    const room = (toRight ? window.innerWidth - midX : midX) - unit * 1.9;
+
+    // Where the column itself puts each button, measured from the mic
+    // upwards. offsetTop is the layout position, so unlike a screen rect
+    // it is not polluted by the offset this function set last time. That
+    // feedback was flattening the curve a little more on every repaint.
+    const nat = rows.map(r => rows[0].offsetTop - r.offsetTop);
+    const span = Math.abs(nat[n - 1]) || unit * 3.3 * (n - 1);
+
+    // lean 0 is a straight line, 1 is a full quarter circle. Pick the
+    // roundest curve whose widest point still fits beside the window edge.
+    function widthAt(lean) {
+      if (lean <= 0.001) return 0;
+      const sweep = (Math.PI / 2) * lean;
+      const R = span / sweep;
+      return R * (1 - Math.cos(sweep));
+    }
+    let lean = 1;
+    if (widthAt(1) > room) {
+      let lo = 0, hi = 1;
+      for (let k = 0; k < 18; k++) {
+        const mid = (lo + hi) / 2;
+        if (widthAt(mid) > room) hi = mid; else lo = mid;
+      }
+      lean = lo;
+    }
+
+    if (lean <= 0.001) {
+      rows.forEach(r => { r.style.transform = ''; });
+      return;
+    }
+
+    const sweep = (Math.PI / 2) * lean;
+    const R = span / sweep;
+
+    rows.forEach((row, i) => {
+      const a = sweep * (i / (n - 1));
+      // Where the button should sit on the circle, against where the
+      // column already put it.
+      const x = sign * R * (1 - Math.cos(a));
+      const y = Math.abs(nat[i]) - R * Math.sin(a);
+      row.style.transform =
+        'translate(' + Math.round(x) + 'px, ' + Math.round(y) + 'px)';
+    });
+  }
+
+  function paintHints() {
+    if (!bar) return;
+    bar.classList.toggle('hints', settings.showHints !== false);
+    requestAnimationFrame(placePreview);
+  }
+
+  function countUse() {
+    const next = (settings.useCount ?? 0) + 1;
+    settings.useCount = next;
+    chrome.storage.local.set({ useCount: next }).catch(() => {});
+    paintHints();
+  }
+
+  // One short card, the first time the user lands in a text box. It points
+  // at the control rather than explaining every button, because the labels
+  // beside the buttons already do that.
+  function maybeCoach() {
+    if (coach || settings.coachDone) return;
+
+    coach = document.createElement('div');
+    coach.className = 'coach';
+    coach.innerHTML =
+      '<b></b><span class="c1"></span><br><span class="c2"></span>' +
+      '<br><button type="button"></button>';
+    coach.querySelector('b').textContent = t('coachTitle');
+    coach.querySelector('.c1').textContent = t('coachBody');
+    coach.querySelector('.c2').textContent = t('coachNote');
+    coach.querySelector('button').textContent = t('coachOk');
+
+    coach.querySelector('button').addEventListener('click', () => {
+      coach.classList.remove('on');
+      settings.coachDone = true;
+      chrome.storage.local.set({ coachDone: true }).catch(() => {});
+      setTimeout(() => { coach?.remove(); coach = null; }, 400);
+    });
+
+    shadow.appendChild(coach);
+    requestAnimationFrame(() => {
+      const rect = bar.getBoundingClientRect();
+      coach.style.right =
+        Math.round(window.innerWidth - rect.right) + 'px';
+      coach.style.bottom =
+        Math.round(window.innerHeight - rect.top + 14) + 'px';
+      coach.classList.add('on');
+    });
+
+    // Never nag: it goes away on its own too.
+    setTimeout(() => coach?.classList.remove('on'), 14000);
+  }
+
+  function showButtons() {
+    if (isOff()) return;
+    buildBar();
+    applyScale();
+    bar.classList.add('on');
+    maybeCoach();
+  }
+
+  function paintMic() {
+    if (!micButton) return;
+    micButton.classList.toggle('live', listening);
+    if (!listening) micButton.style.setProperty('--lvl', 0);
+    micButton.innerHTML = listening ? ICONS.stop : ICONS.mic;
+    micButton.title = listening ? t('stopSpeak') : t('startSpeak');
+  }
+
+  // --------------------------------------------------------------- hotkeys
+
+  function handleHotkey(event) {
+    if (isOff()) return;
+
+    // Escape stops dictation and puts the caret back in the box. It only
+    // acts when our own UI is doing something, so a site's own Escape
+    // handling (closing its dialogs) is never swallowed.
+    if (event.key === 'Escape') {
+      if (!listening) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      stopDictation();
+      const box = resolveTarget();
+      if (box?.isConnected) box.focus({ preventScroll: true });
+      return;
+    }
+
+    // Alt+Z is the fallback for machines where Windows eats Ctrl+Shift to
+    // switch keyboard layout.
+    const combo = event.ctrlKey && event.shiftKey && !event.altKey;
+    const altCombo = event.altKey && !event.ctrlKey && !event.shiftKey;
+
+    if (altCombo && event.code === 'KeyZ') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      listening ? stopDictation() : startDictation();
+      return;
+    }
+
+    if (!combo) return;
+
+    // Space: start or stop dictation.
+    if (event.code === 'Space') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      listening ? stopDictation() : startDictation();
+      return;
+    }
+
+    // B: convert Banglish already in the box.
+    if (event.code === 'KeyB') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      convertBanglish();
+      return;
+    }
+
+    // E: turn the text in the box into English.
+    if (event.code === 'KeyE') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      convertToEnglish();
+      return;
+    }
+
+    // Z: undo the last thing Ukti put in.
+    if (event.code === 'KeyZ') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      undoLast();
+    }
+  }
+
+  // On window, in the capture phase, so sites with their own global
+  // shortcut handlers (claude.ai, chatgpt.com) do not take the key first.
+  window.addEventListener('keydown', handleHotkey, true);
+
+  // A chat site usually focuses its composer as the page settles, and on a
+  // fast load that happens before this script exists. No focusin ever fires
+  // after that, so the control used to stay hidden until the user clicked
+  // away and back. Check once for a box that is already focused.
+  function adoptFocusedBox() {
+    const found = currentEditable();
+    if (!found) return;
+    lastEditable = found;
+    showButtons();
+    requestAnimationFrame(() => anchorToField(found));
+  }
+
+  loadSettings().then(() => {
+    applyScale();
+    paintHints();
+    adoptFocusedBox();
+  });
+
+  chrome.storage.onChanged.addListener(changes => {
+    for (const key of Object.keys(changes)) {
+      settings[key] = changes[key].newValue;
+    }
+    applyScale();
+    applyTheme();
+    applyPosition();
+    paintLabels();
+    paintLayout();
+    paintHints();
+    applyEnabled();
+  });
+
+  // -------------------------------------------------------- engine replies
+
+  // The popup needs the current site's hostname for its per-site switch.
+  // Reading tab.url would force a host permission on the whole extension,
+  // which is the scariest line in the install dialog and the biggest
+  // review risk. The page can simply tell us its own hostname instead.
+  chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+    if (message.source !== 'ukti-popup' || message.type !== 'GET_HOST') {
+      return false;
+    }
+    if (window.top !== window) return false;  // top frame answers, not iframes
+    respond({ host: location.hostname.replace(/^www\./, '') });
+    return false;
+  });
+
+  chrome.runtime.onMessage.addListener(message => {
+    if (message.source !== 'ukti-background') return false;
+    if (message.sessionId && message.sessionId !== sessionId) return false;
+
+    switch (message.type) {
+      case 'LISTENING':
+        listening = true;
+        paintMic();
+        showPreview();
+        showIndicator(t('listening'), null, true);
+        break;
+
+      case 'INTERIM_RESULT':
+        if (message.text) {
+          showPreview();
+          renderInterim(message.text);
+        }
+        break;
+
+      case 'FINAL_RESULT': {
+        if (!message.text) break;
+
+        // Show it first. Even if the box has gone, the user can still see
+        // and copy what they said instead of losing it.
+        commitToPreview(message.text);
+
+        if (!target || !target.isConnected) {
+          showIndicator(t('boxGone'), 'error');
+          hideIndicator(3000);
+          break;
+        }
+
+        pushUndo(target);
+
+        const before = existingText(target);
+        const needsSpace = before.length > 0 && !/\s$/.test(before);
+        insertText(target, (needsSpace ? ' ' : '') + message.text);
+
+        showIndicator(t('listening'), null, true);
+
+        if (settings.autoSubmit) {
+          stopDictation();
+          setTimeout(() => submitBox(target), 120);
+        }
+        break;
+      }
+
+      case 'LEVEL':
+        if (micButton && listening) {
+          micButton.style.setProperty('--lvl', message.level ?? 0);
+        }
+        break;
+
+      case 'THROTTLED':
+        showIndicator(t('throttled', message.seconds), 'busy');
+        hideIndicator(6000);
+        break;
+
+      case 'STUCK':
+        listening = false;
+        paintMic();
+        hidePreview();
+        showIndicator(t('stuck'), 'error');
+        hideIndicator(8000);
+        break;
+
+      case 'TRANSLATE_FAILED':
+        showIndicator(t('transFail'), 'error');
+        break;
+
+      case 'RESTARTING':
+        showIndicator('আবার যুক্ত হচ্ছি…', 'busy');
+        break;
+
+      case 'RECOGNITION_ERROR':
+        // Transient. The engine restarts itself; no need to alarm the user.
+        break;
+
+      case 'FATAL':
+        listening = false;
+        paintMic();
+        hidePreview();
+        showIndicator(fatalMessage(message.error), 'error');
+        hideIndicator(4000);
+        break;
+
+      case 'STOPPED':
+        listening = false;
+        paintMic();
+        hidePreview();
+        hideIndicator(600);
+        break;
+    }
+    return false;
+  });
+
+  function fatalMessage(code) {
+    switch (code) {
+      case 'not-allowed':
+        return 'মাইক্রোফোনের অনুমতি নাই। উক্তি সেটআপ খুলুন';
+      case 'audio-capture':
+        return 'মাইক্রোফোন পাওয়া যাচ্ছে না';
+      case 'service-not-allowed':
+        return 'ভয়েস সার্ভিস চালু হলো না';
+      case 'language-not-supported':
+        return 'এই ব্রাউজারে বাংলা ভয়েস নাই';
+      case 'network-retry-limit':
+        return 'ইন্টারনেট সমস্যা, বারবার চেষ্টা করেও হলো না';
+      default:
+        return 'সমস্যা: ' + code;
+    }
+  }
+})();

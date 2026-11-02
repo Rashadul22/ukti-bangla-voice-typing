@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    color-scheme: dark;
+    --bg:     #0a0c11;
+    --panel:  #11141b;
+    --raise:  #171b24;
+    --ink:    #eceef3;
+    --dim:    #8d94a4;
+    --faint:  #5c6476;
+    --line:   #222733;
+    --brand:  #7c6cf0;
+    --brand2: #4aa8ff;
+    --r-lg:   20px;
+    --r-md:   14px;
+    --r-sm:   11px;
+    --ease:   cubic-bezier(.22, 1, .36, 1);
+  }
+
+  body {
+    width: 352px;
+    margin: 0;
+    padding: 0 0 14px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.55 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* One soft light behind the header so the panel has a top rather than
+     just being a dark rectangle with rows in it. */
+  body::before {
+    content: ''; position: absolute; z-index: 0;
+    top: -150px; left: -70px; width: 330px; height: 330px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,108,240,.26), transparent 68%);
+    filter: blur(50px); pointer-events: none;
+  }
+  body > * { position: relative; z-index: 1; }
+
+  /* ---------------------------------------------------------- header */
+
+  header {
+    display: flex; align-items: center; gap: 11px;
+    padding: 15px 16px 13px;
+  }
+  .mark svg { width: 20px; height: 20px; color: #fff; display: block; }
+  .mark {
+    width: 36px; height: 36px; flex: none;
+    display: grid; place-items: center;
+    border-radius: var(--r-sm);
+    background: linear-gradient(145deg, var(--brand), #5b4ae0 55%, var(--brand2));
+    box-shadow: 0 6px 18px rgba(124,108,240,.38), inset 0 1px 0 rgba(255,255,255,.3);
+    font-size: 17px; font-weight: 700; color: #fff; line-height: 1;
+  }
+  .brand {
+    flex: 1; font-size: 16px; font-weight: 650; letter-spacing: -.01em;
+    line-height: 1.25;
+  }
+  .brand small {
+    display: block; font-size: 11.5px; font-weight: 400; color: var(--dim);
+  }
+
+  /* --------------------------------------------------- rounded cards */
+
+  .site, .group, .tabs {
+    margin: 0 12px;
+    border-radius: var(--r-lg);
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  .site {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; margin-bottom: 12px;
+  }
+  .who { flex: 1; min-width: 0; }
+  .who b {
+    display: block; font-size: 13.5px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .who span { font-size: 11.5px; color: var(--dim); }
+
+  /* ------------------------------------------------------------ tabs */
+
+  .tabs {
+    display: flex; gap: 3px; padding: 4px;
+    margin-bottom: 12px; background: var(--raise);
+  }
+  .tabs button {
+    all: unset;
+    flex: 1; text-align: center; cursor: pointer;
+    padding: 8px 0; border-radius: var(--r-md);
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--dim);
+    transition: color .22s var(--ease), background .22s var(--ease);
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.on {
+    color: #fff;
+    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    box-shadow: 0 4px 14px rgba(124,108,240,.34);
+  }
+  .tabs button:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
+
+  /* ----------------------------------------------------------- panes */
+
+  .pane { display: none; }
+  .pane.on { display: block; animation: rise .3s var(--ease); }
+  @keyframes rise { from { opacity: 0; transform: translateY(5px); } }
+
+  .group { padding: 13px 14px; margin-bottom: 10px; }
+  .label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 10px;
+  }
+
+  .field {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; min-height: 36px;
+  }
+  .field + .field { margin-top: 8px; }
+  .field > span { font-size: 13px; color: var(--ink); }
+
+  /* --------------------------------------------- segmented controls */
+
+  .seg {
+    position: relative; display: flex; gap: 2px; padding: 3px;
+    border-radius: var(--r-md); background: var(--raise);
+    border: 1px solid var(--line);
+  }
+  .seg .pill {
+    position: absolute; top: 3px; bottom: 3px; left: 0;
+    border-radius: 10px;
+    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    box-shadow: 0 3px 10px rgba(124,108,240,.4);
+    transition: transform .34s var(--ease), width .34s var(--ease);
+  }
+  .seg button {
+    all: unset;
+    position: relative; z-index: 1;
+    cursor: pointer; padding: 5px 12px; border-radius: 10px;
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--dim);
+    transition: color .22s var(--ease);
+  }
+  .seg button.on { color: #fff; }
+  .seg button:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
+
+  /* ---------------------------------------------------------- themes */
+
+  .themes { display: flex; gap: 8px; }
+  .theme {
+    all: unset;
+    flex: 1; cursor: pointer; text-align: center;
+    padding: 9px 0 7px; border-radius: var(--r-md);
+    border: 1px solid var(--line); background: var(--raise);
+    font: inherit; font-size: 11.5px; color: var(--dim);
+    transition: border-color .22s, color .22s, background .22s;
+  }
+  .theme:hover { border-color: #333a49; color: var(--ink); }
+  .theme.on {
+    border-color: var(--brand); color: #fff;
+    background: rgba(124,108,240,.14);
+  }
+  .theme:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
+  .chip {
+    width: 26px; height: 26px; margin: 0 auto 6px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.16);
+  }
+  .chip.glass { background: linear-gradient(145deg, rgba(120,130,160,.55), rgba(40,45,60,.5)); backdrop-filter: blur(4px); }
+  .chip.dark  { background: #1b1d23; }
+  .chip.light { background: #f2f4f8; }
+
+  /* --------------------------------------------------------- switches */
+
+  .sw { display: inline-flex; align-items: center; cursor: pointer; }
+  .sw input { position: absolute; opacity: 0; pointer-events: none; }
+  .sw > span {
+    flex: 1; font-size: 13px; color: var(--ink); margin-right: 10px;
+  }
+  .group .sw { display: flex; width: 100%; min-height: 34px; }
+  .group .sw + .sw { border-top: 1px solid var(--line); }
+  .track {
+    position: relative; flex: none;
+    width: 42px; height: 24px; border-radius: 999px;
+    background: #272d3a; border: 1px solid var(--line);
+    transition: background .28s var(--ease);
+  }
+  .track::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #9aa2b4;
+    transition: transform .32s var(--ease), background .28s var(--ease);
+  }
+  .sw input:checked + .track {
+    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    border-color: transparent;
+  }
+  .sw input:checked + .track::after { transform: translateX(18px); background: #fff; }
+  .sw input:focus-visible + .track { outline: 2px solid var(--brand2); outline-offset: 2px; }
+
+  /* ------------------------------------------------------- shortcuts */
+
+  .keys { display: grid; gap: 7px; }
+  .key { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .key > span { font-size: 12.5px; color: var(--dim); }
+  .combo { display: flex; gap: 3px; }
+  kbd {
+    font: 600 10px/1 ui-monospace, monospace;
+    padding: 5px 7px; border-radius: 7px;
+    background: var(--raise); border: 1px solid var(--line);
+    border-bottom-width: 2px; color: var(--ink);
+  }
+
+  /* ------------------------------------------------------------ misc */
+
+  .by {
+    margin: 11px 12px 0; text-align: center;
+    font-size: 11.5px; color: var(--faint);
+  }
+  .by a { color: var(--dim); text-decoration: none; }
+  .by a:hover { color: var(--ink); }
+
+  .hint { margin: 9px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
+
+  textarea {
+    width: 100%; height: 86px; resize: vertical;
+    padding: 10px 12px; border-radius: var(--r-md);
+    background: var(--raise); border: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 13px;
+  }
+  textarea:focus { outline: 2px solid var(--brand2); outline-offset: 1px; }
+
+  .cta {
+    display: block; margin: 0 12px; padding: 11px 0;
+    border-radius: var(--r-lg); text-align: center; text-decoration: none;
+    font-size: 13.5px; font-weight: 650; color: #fff;
+    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    box-shadow: 0 7px 20px rgba(124,108,240,.32);
+    transition: filter .2s, transform .2s var(--ease);
+  }
+  .cta:hover { filter: brightness(1.14); }
+  .cta:active { transform: scale(.985); }
+
+  /* Everything below the master switch dims when Ukti is switched off. */
+  body.off .dimmable { opacity: .38; pointer-events: none; filter: saturate(.5); }
+  .dimmable { transition: opacity .3s var(--ease), filter .3s var(--ease); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M3.7 4h5.9v12.9a6.4 6.4 0 0 0 12.8 0V4h5.9v12.9a12.3 12.3 0 0 1-24.6 0z"/><path d="M12.3 7.4h7.4v4.9c0 3.1-1.8 5.4-4.9 6.6l-1.6-3c1.25-.62 1.95-1.35 2.1-2.3H12.3z"/></svg></div>
+  <div class="brand">উক্তি<small id="masterLabel">সব জায়গায় চালু</small></div>
+  <label class="sw" title="সব জায়গায় চালু বা বন্ধ">
+    <input type="checkbox" id="master"><div class="track"></div>
+  </label>
+</header>
+
+<div class="site dimmable">
+  <div class="who"><b id="siteName">এই সাইট</b><span id="siteState">চালু আছে</span></div>
+  <label class="sw" title="শুধু এই সাইটে চালু বা বন্ধ">
+    <input type="checkbox" id="siteOn"><div class="track"></div>
+  </label>
+</div>
+
+<div class="tabs dimmable">
+  <button data-p="main" class="on">প্রধান</button>
+  <button data-p="look">চেহারা</button>
+  <button data-p="words">শব্দ</button>
+</div>
+
+<div class="pane on dimmable" id="main">
+  <div class="group">
+    <div class="label">আউটপুট</div>
+    <div class="field">
+      <span>কথা যেভাবে বসবে</span>
+      <div class="seg" id="modeSeg">
+        <div class="pill"></div>
+        <button data-v="bangla">বাংলা</button>
+        <button data-v="english">English</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>লেখাগুলোর ভাষা</span>
+      <div class="seg" id="langSeg">
+        <div class="pill"></div>
+        <button data-v="bn">বাংলা</button>
+        <button data-v="en">English</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="label">শর্টকাট</div>
+    <div class="keys">
+      <div class="key"><span>বলা শুরু বা বন্ধ</span>
+        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div></div>
+      <div class="key"><span>বাংলিশ → বাংলা</span>
+        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>B</kbd></div></div>
+      <div class="key"><span>লেখাটা ইংরেজি</span>
+        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></div></div>
+      <div class="key"><span>ফেরত নিন</span>
+        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></div></div>
+    </div>
+  </div>
+
+  <a href="#" class="cta" id="openSetup">সেটআপ খুলুন</a>
+  <p class="by">বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a></p>
+</div>
+
+<div class="pane dimmable" id="look">
+  <div class="group">
+    <div class="label">থিম</div>
+    <div class="themes" id="themes">
+      <button class="theme" data-v="glass"><div class="chip glass"></div><span>স্বচ্ছ</span></button>
+      <button class="theme" data-v="dark"><div class="chip dark"></div><span>কালো</span></button>
+      <button class="theme" data-v="light"><div class="chip light"></div><span>সাদা</span></button>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <span>আকার</span>
+      <div class="seg" id="sizeSeg">
+        <div class="pill"></div>
+        <button data-v="small">ছোট</button>
+        <button data-v="medium">মাঝারি</button>
+        <button data-v="large">বড়</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>সাজানো</span>
+      <div class="seg" id="layoutSeg">
+        <div class="pill"></div>
+        <button data-v="full">সব</button>
+        <button data-v="compact">গুটিয়ে</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>কোথায় বসবে</span>
+      <div class="seg" id="posSeg">
+        <div class="pill"></div>
+        <button data-v="auto">নিজে থেকে</button>
+        <button data-v="br">ডানে নিচে</button>
+        <button data-v="bl">বাঁয়ে নিচে</button>
+      </div>
+    </div>
+    <p class="hint">"নিজে থেকে" মানে যে বক্সে লিখছেন তার পাশে এসে বসবে।
+      মাইকের বাটনটা ধরে টেনেও সরানো যায়, আর এখান থেকে আবার আগের জায়গায়
+      ফেরানো যায়।</p>
+  </div>
+
+  <div class="group">
+    <div class="label">কোন বাটনগুলো থাকবে</div>
+    <label class="sw"><span>বাংলিশ → বাংলা (অ)</span>
+      <input type="checkbox" id="btnBanglish"><div class="track"></div></label>
+    <label class="sw"><span>ইংরেজি করা (EN)</span>
+      <input type="checkbox" id="btnEnglish"><div class="track"></div></label>
+    <label class="sw"><span>ফেরত নেওয়া</span>
+      <input type="checkbox" id="btnUndo"><div class="track"></div></label>
+    <label class="sw"><span>সরানোর হাতল</span>
+      <input type="checkbox" id="btnGrip"><div class="track"></div></label>
+    <label class="sw"><span>বাটনের নাম সবসময় দেখাও</span>
+      <input type="checkbox" id="showHints"><div class="track"></div></label>
+  </div>
+</div>
+
+<div class="pane dimmable" id="words">
+  <div class="group">
+    <div class="label">নিজের শব্দ ঠিক করা</div>
+    <p class="hint">প্রতি লাইনে: যা শোনে = যা হবে</p>
+    <textarea id="replacements" placeholder="রাসাদুল = রাশাদুল" spellcheck="false"></textarea>
+  </div>
+
+  <div class="group">
+    <div class="label">আচরণ</div>
+    <label class="sw"><span>বাড়তি শব্দ বাদ দাও</span>
+      <input type="checkbox" id="cleanFillers"><div class="track"></div></label>
+    <label class="sw"><span>বলা শেষে পাঠিয়ে দাও</span>
+      <input type="checkbox" id="autoSubmit"><div class="track"></div></label>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

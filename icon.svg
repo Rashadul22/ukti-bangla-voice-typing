@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Ukti. The letter U as a cup holding an utterance: a quotation mark
+       resting inside the vessel, knocked white out of a glossy violet tile.
+       Gloss is built from gradients rather than a bitmap, so it stays clean
+       when the browser scales it down. Used for 32px and up.
+       icon-small.svg drops the quote for the 16px slot, where it turns to mud. -->
+  <defs>
+    <linearGradient id="u-body" x1="0.1" y1="1" x2="0.9" y2="0">
+      <stop offset="0"   stop-color="#3f1d93"/>
+      <stop offset="0.5" stop-color="#5340dc"/>
+      <stop offset="1"   stop-color="#8d84f8"/>
+    </linearGradient>
+    <radialGradient id="u-sheen" cx="0.3" cy="0.08" r="0.95">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.42"/>
+      <stop offset="0.38" stop-color="#ffffff" stop-opacity="0.13"/>
+      <stop offset="0.72" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="u-foot" cx="0.7" cy="1.02" r="0.68">
+      <stop offset="0" stop-color="#2a1070" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#2a1070" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="u-rim" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0"    stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1"    stop-color="#ffffff" stop-opacity="0.20"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="124" height="124" rx="30" fill="url(#u-body)"/>
+  <rect x="2" y="2" width="124" height="124" rx="30" fill="url(#u-foot)"/>
+  <rect x="2" y="2" width="124" height="124" rx="30" fill="url(#u-sheen)"/>
+  <rect x="3" y="3" width="122" height="122" rx="29"
+        fill="none" stroke="url(#u-rim)" stroke-width="1.6"/>
+
+  <g transform="translate(64 66) scale(2.78) translate(-16 -16)" fill="#ffffff">
+    <path d="M3.7 4h5.9v12.9a6.4 6.4 0 0 0 12.8 0V4h5.9v12.9a12.3 12.3 0 0 1-24.6 0z"/>
+    <path d="M12.3 7.4h7.4v4.9c0 3.1-1.8 5.4-4.9 6.6l-1.6-3c1.25-.62 1.95-1.35 2.1-2.3H12.3z"/>
+  </g>
+</svg>

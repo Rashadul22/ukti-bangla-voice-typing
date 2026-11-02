@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>উক্তি সেটআপ</title>
+<style>
+  @layer base, shell, cards, bits;
+
+  @layer base {
+    :root {
+      color-scheme: dark;
+      --bg:      #07080c;
+      --ink:     #eceef3;
+      --dim:     #8e95a5;
+      --faint:   #5d6577;
+      --line:    #1d212b;
+      --card:    #0e1117;
+      --raise:   #141924;
+      --brand:   #7c6cf0;
+      --brand-2: #4aa8ff;
+      --good:    #34d399;
+      --bad:     #f87171;
+      --r:       18px;
+      --ease:    cubic-bezier(.22, 1, .36, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif;
+      overflow: hidden;              /* everything fits; nothing to scroll */
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    /* Two soft lights behind the glass, so the page has depth instead of
+       being a flat sheet with boxes drawn on it. */
+    body::before, body::after {
+      content: ''; position: fixed; border-radius: 50%;
+      filter: blur(90px); pointer-events: none; z-index: 0;
+    }
+    body::before {
+      width: 620px; height: 620px; top: -280px; left: -180px;
+      background: radial-gradient(circle, rgba(124,108,240,.30), transparent 68%);
+    }
+    body::after {
+      width: 560px; height: 560px; bottom: -260px; right: -160px;
+      background: radial-gradient(circle, rgba(74,168,255,.22), transparent 68%);
+    }
+  }
+
+  @layer shell {
+    .page {
+      position: relative; z-index: 1;
+      width: min(1120px, 100%);
+      max-height: 100%;
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      grid-template-rows: auto 1fr;
+      gap: 18px 20px;
+      align-content: center;
+    }
+
+    header { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; }
+
+    .mark svg { width: 27px; height: 27px; color: #fff; display: block; }
+    .mark {
+      width: 50px; height: 50px; flex: none;
+      display: grid; place-items: center;
+      border-radius: 15px;
+      background: linear-gradient(145deg, var(--brand), #5b4ae0 55%, var(--brand-2));
+      box-shadow:
+        0 10px 28px rgba(124,108,240,.35),
+        inset 0 1px 0 rgba(255,255,255,.3);
+      font-size: 24px; font-weight: 700; color: #fff;
+      line-height: 1;
+    }
+    h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+    header p { color: var(--dim); font-size: 13.5px; }
+
+    .col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  }
+
+  @layer cards {
+    .card {
+      position: relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.035), transparent 42%),
+        var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 18px 20px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 16px 34px -24px #000;
+      transition: border-color .4s var(--ease);
+    }
+
+    /* A quiet gradient hairline along the top edge: the one flourish that
+       makes a card look made rather than generated. */
+    .card::before {
+      content: ''; position: absolute; inset: 0 0 auto; height: 1px;
+      border-radius: var(--r) var(--r) 0 0;
+      background: linear-gradient(90deg, transparent, rgba(124,108,240,.55), transparent);
+      opacity: .7;
+    }
+    .card.done { border-color: rgba(52,211,153,.4); }
+    .card.done::before { background: linear-gradient(90deg, transparent, rgba(52,211,153,.6), transparent); }
+
+    .head { display: flex; align-items: center; gap: 11px; margin-bottom: 7px; }
+    .num {
+      width: 25px; height: 25px; flex: none;
+      display: grid; place-items: center;
+      border-radius: 9px;
+      background: var(--raise); border: 1px solid var(--line);
+      color: var(--dim); font-size: 13px; font-weight: 700;
+      transition: background .35s var(--ease), color .35s var(--ease), border-color .35s;
+    }
+    .card.done .num {
+      background: rgba(52,211,153,.14);
+      border-color: rgba(52,211,153,.4);
+      color: var(--good);
+    }
+    .head h2 { font-size: 16.5px; font-weight: 650; letter-spacing: -.01em; }
+    .card > p { color: var(--dim); font-size: 13.5px; }
+
+    .soft { background: #0b0e14; }
+    .soft::before { display: none; }
+    .soft .label {
+      color: var(--faint); font-size: 11px; font-weight: 600;
+      letter-spacing: .09em; text-transform: uppercase; margin-bottom: 11px;
+    }
+  }
+
+  @layer bits {
+    button {
+      font: inherit; font-weight: 600; font-size: 13.5px;
+      color: #fff; cursor: pointer;
+      padding: 9px 17px; border-radius: 11px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, #312a6e, #241f55);
+      transition: transform .18s var(--ease), filter .18s, opacity .18s;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.22); }
+    button:active:not(:disabled) { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: default; }
+    button:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 3px; }
+
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+    .pair { font-size: 13px; color: var(--ink); font-weight: 600; min-width: 108px; }
+
+    .status {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12.5px; color: var(--dim);
+      opacity: 0; transform: translateY(-2px);
+      transition: opacity .3s, transform .3s var(--ease);
+    }
+    .status.show { opacity: 1; transform: none; }
+    .status.ok  { color: var(--good); }
+    .status.bad { color: var(--bad); }
+
+    .tick {
+      width: 15px; height: 15px; flex: none; border-radius: 50%;
+      background: var(--good); position: relative;
+    }
+    .tick::after {
+      content: ''; position: absolute; left: 5px; top: 2.5px;
+      width: 4px; height: 8px; border: solid #04120c;
+      border-width: 0 2px 2px 0; transform: rotate(42deg);
+    }
+
+    .bar {
+      height: 4px; border-radius: 99px; background: var(--line);
+      overflow: hidden; margin-top: 9px;
+      max-height: 0; opacity: 0;
+      transition: max-height .3s var(--ease), opacity .3s, margin-top .3s;
+    }
+    .bar.show { max-height: 4px; opacity: 1; }
+    .bar i {
+      display: block; height: 100%; width: 0;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      transition: width .25s var(--ease);
+    }
+
+    hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+
+    .note { display: flex; gap: 11px; align-items: flex-start; }
+    .note + .note { margin-top: 13px; }
+    .note .chip {
+      flex: none; width: 30px; height: 30px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--raise); border: 1px solid var(--line);
+      font-size: 11px; font-weight: 700; color: var(--dim);
+    }
+    .note b { display: block; font-size: 13.5px; font-weight: 650; margin-bottom: 1px; }
+    .note span { font-size: 12.5px; color: var(--dim); line-height: 1.5; }
+
+    .keys { display: grid; gap: 8px; }
+    .key { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .key > span { font-size: 13px; color: var(--dim); }
+    .combo { display: flex; gap: 4px; }
+    kbd {
+      font: 600 10.5px/1 ui-monospace, monospace;
+      padding: 5px 7px; border-radius: 6px;
+      background: var(--raise); border: 1px solid var(--line);
+      border-bottom-width: 2px; color: var(--ink);
+    }
+
+    .done-line {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: 9px;
+      color: var(--faint); font-size: 12.5px;
+    }
+    .done-line::before, .done-line::after {
+      content: ''; flex: 1; height: 1px; background: var(--line);
+    }
+
+    footer {
+      grid-column: 1 / -1;
+      text-align: center; font-size: 12px; color: var(--faint);
+      display: flex; gap: 7px; justify-content: center; align-items: center;
+    }
+    footer a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
+    footer a:hover { color: var(--ink); border-color: var(--dim); }
+    footer .ver { font-variant-numeric: tabular-nums; }
+
+    @media (max-height: 700px) {
+      body { padding: 14px; }
+      .card { padding: 14px 16px; }
+      h1 { font-size: 22px; }
+      .mark { width: 42px; height: 42px; font-size: 20px; }
+    }
+    @media (max-width: 880px) {
+      body { overflow: auto; }
+      .page { grid-template-columns: 1fr; }
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header>
+    <div class="mark"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M3.7 4h5.9v12.9a6.4 6.4 0 0 0 12.8 0V4h5.9v12.9a12.3 12.3 0 0 1-24.6 0z"/><path d="M12.3 7.4h7.4v4.9c0 3.1-1.8 5.4-4.9 6.6l-1.6-3c1.25-.62 1.95-1.35 2.1-2.3H12.3z"/></svg></div>
+    <div>
+      <h1>উক্তি সেটআপ</h1>
+      <p>দুইটা ধাপ, একবারই করতে হবে।</p>
+    </div>
+  </header>
+
+  <div class="col">
+
+    <section class="card" id="micStep">
+      <div class="head"><div class="num">১</div><h2>মাইক্রোফোন চালু করুন</h2></div>
+      <p>বাংলায় বলার জন্য মাইক্রোফোনের অনুমতি দরকার। বাটনে চাপলে Chrome
+         অনুমতি চাইবে, "Allow" দিন।</p>
+      <div class="row">
+        <button id="mic">মাইক্রোফোন চালু করুন</button>
+        <div class="status" id="micStatus"></div>
+      </div>
+    </section>
+
+    <section class="card" id="packStep">
+      <div class="head"><div class="num">২</div><h2>বাংলা ভাষা প্যাক নামান</h2></div>
+      <p>অনুবাদের জন্য দুই দিকের প্যাক লাগে। একবার নামলে আর লাগবে না, আর
+         অনুবাদ আপনার কম্পিউটারেই হবে।</p>
+
+      <div class="row">
+        <div class="pair">বাংলা → ইংরেজি</div>
+        <button id="packBnEn">নামান</button>
+        <div class="status" id="stBnEn"></div>
+      </div>
+      <div class="bar" id="barBnEn"><i></i></div>
+
+      <hr>
+
+      <div class="row">
+        <div class="pair">ইংরেজি → বাংলা</div>
+        <button id="packEnBn">নামান</button>
+        <div class="status" id="stEnBn"></div>
+      </div>
+      <div class="bar" id="barEnBn"><i></i></div>
+    </section>
+
+  </div>
+
+  <div class="col">
+
+    <section class="card soft">
+      <div class="label">মনে রাখার মতো দুইটা কথা</div>
+      <div class="note">
+        <div class="chip">F5</div>
+        <div>
+          <b>খোলা পেজে কাজ করবে না</b>
+          <span>উক্তি ইনস্টল করার আগে যে ট্যাবগুলো খোলা ছিল, সেগুলোতে একবার
+            F5 চেপে রিফ্রেশ করে নিন। এরপর থেকে সব পেজে এমনিতেই চলবে।</span>
+        </div>
+      </div>
+      <div class="note">
+        <div class="chip">৮</div>
+        <div>
+          <b>অনেকক্ষণ বললে থেমে যেতে পারে</b>
+          <span>Google এর ফ্রি ভয়েস সার্ভিসের সীমা আছে, তাই লম্বা কথার পর ওটা
+            সাড়া দেওয়া বন্ধ করে দিতে পারে। মাইকে চেপে বন্ধ করে আবার চালু করলেই
+            ঠিক হয়ে যায়। অনুচ্ছেদ ধরে বললে এটা কম হয়।</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card soft">
+      <div class="label">শর্টকাট</div>
+      <div class="keys">
+        <div class="key"><span>বলা শুরু বা বন্ধ</span>
+          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div></div>
+        <div class="key"><span>বাংলিশ লেখা বাংলা করুন</span>
+          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>B</kbd></div></div>
+        <div class="key"><span>লেখাটা ইংরেজি করুন</span>
+          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></div></div>
+        <div class="key"><span>ফেরত নিন</span>
+          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="done-line">দুইটা ধাপ সবুজ হলে পেজটা বন্ধ করে দিন, উক্তি তৈরি</div>
+
+  <footer>
+    বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a>
+    <span>·</span> <span class="ver">v1.0.1</span>
+  </footer>
+
+</div>
+
+<script src="i18n.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>
