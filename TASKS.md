@@ -41,3 +41,53 @@ starting the next.
 7. **Read the whole thing as a store reviewer would** and list anything that
    would draw a rejection.
 
+
+## 8. Research what Ukti should become, then build only what earns its place
+
+The first seven tasks are about making what exists correct. This one is about
+what to add. Do the research before writing any code.
+
+**Research brief.** Use web search. Find out:
+
+- What Bengali speakers actually complain about when they try to type Bangla.
+  Search in both English and Bengali. Forums, Reddit, Chrome Web Store reviews
+  of Avro, Ridmik, Google Input Tools, and any Bangla voice typing extension.
+  Reviews of competitors are the most honest feature list you will find.
+- What the existing Bangla input tools do and do not do, and where Ukti is
+  genuinely different. Ukti's difference today is that it is voice first and
+  works inside any box on any site, with on-device translation.
+- Which Chrome extension APIs would let Ukti do something it cannot do now.
+  Check what is actually shipping, not what is proposed, and check the minimum
+  Chrome version each needs. The manifest currently requires 138.
+- Which of Chrome's on-device model APIs are available and stable, and whether
+  any of them would improve transliteration, punctuation or correction without
+  a network call.
+
+**The bar a feature has to clear.** Propose nothing that fails all of these:
+
+1. It solves a problem a real user has stated, not one you imagined.
+2. It works without adding a permission and without a network call. A feature
+   that would reintroduce `host_permissions` is not worth it, whatever it does.
+3. It does not make the floating control more complicated to look at. The
+   control was already redesigned once because it had grown too tall and too
+   busy. Anything new either hides inside the popup or earns its place on the
+   bar by being used constantly.
+4. Someone who installed Ukti to speak Bangla into a text box would still
+   understand the extension after the feature exists.
+
+**How to report.** Write `RESEARCH.md` with what you found, each claim carrying
+the source you found it in. Then list the candidate features in a table: what it
+does, the evidence that someone wants it, what it costs to build, what it risks.
+Rank them. Say which ones you recommend and which you recommend against, and why.
+
+**Then build.** Start with the single highest-ranked feature, build it properly
+with tests, and report. Do not build the whole list. A half-finished feature is
+worse than an absent one, and five mediocre features are worse than one good
+one. If you run out of time or budget, having one feature done well and the rest
+written up as a plan is the better outcome.
+
+Some directions worth checking during the research, not a list to implement:
+spoken punctuation while dictating, Bijoy to Unicode conversion, Bengali versus
+English numerals, growing the correction dictionary from what the user undoes,
+remembering the preferred output language per site, and graceful behaviour when
+Google's speech service rate-limits a long session.
