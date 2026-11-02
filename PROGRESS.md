@@ -453,3 +453,29 @@ which I reworded). Suite: 170 tests, all pass.
 **Could not do from here.** Host the policy at a public URL (both listings
 carry a `[privacy policy URL]` placeholder), take screenshots, and fill in
 the dashboard.
+
+---
+
+## Task 7: read as a store reviewer
+
+Written up in `store/reviewer-notes.md`, most serious first.
+
+**New finding, measured.** The hotkeys take over Ctrl+Shift+Z, B, E and
+Space on every page where Ukti is on, focused box or not: a page's own
+keydown listener received none of the four (only the Shift key itself).
+Ctrl+Shift+Z is redo in Google Docs, Figma and most web editors; Ctrl+Shift+B
+is Chrome's bookmarks bar. **Recommended, not changed:** move to the
+`chrome.commands` API (no permission, rebindable by the user), or at least
+let the keys through when focus is not in a box Ukti handles and there is
+nothing to undo. It changes how the product is used, so it is yours to
+decide.
+
+**Other rejection risks listed:** broad host access from the content script
+(state it, or switch to `activeTab`); the dashboard's data-usage form
+versus the speech path; four that were real tonight and are now fixed
+(page-triggered microphone, false privacy claims, mic left on after the
+page closed, field-filter gaps); and smaller items (`author` as a string,
+screenshots, `homepage_url`, desktop only).
+
+**Measured for the record.** Suite after tasks 5 and 7: 170 tests, 170 pass
+(the count I gave under task 5 was by addition; this run confirms it).
