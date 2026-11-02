@@ -36,7 +36,18 @@
       coachBody: 'ডানদিকের মাইকে চাপুন, তারপর বাংলায় বলুন। লেখা এখানেই বসে যাবে।',
       coachNote: 'নতুন কোনো পেজে কাজ না করলে একবার F5 চেপে নিন।',
       coachOk: 'বুঝেছি',
-      elsewhere: 'অন্য ট্যাবে বলা শুরু হয়েছে, এখানে থামানো হলো'
+      elsewhere: 'অন্য ট্যাবে বলা শুরু হয়েছে, এখানে থামানো হলো',
+      startFail: e => `চালু করা গেল না: ${e}`,
+      reconnecting: 'আবার যুক্ত হচ্ছি…',
+      offline: 'ইন্টারনেট নাই। বলা কথা লেখায় বদলাতে ইন্টারনেট লাগে, বাংলিশ আর অনুবাদ ইন্টারনেট ছাড়াই চলে।',
+      noTranslator: 'এই Chrome এ অনুবাদ নাই। Chrome 138 বা নতুন ভার্সন লাগবে।',
+      fatalNotAllowed: 'মাইক্রোফোনের অনুমতি নাই। উক্তি সেটআপ খুলুন',
+      fatalNoMic: 'মাইক্রোফোন পাওয়া যাচ্ছে না',
+      fatalService: 'ভয়েস সার্ভিস চালু হলো না, একটু পরে আবার চেষ্টা করুন',
+      fatalLang: 'এই ব্রাউজারে বাংলা ভয়েস নাই',
+      fatalNetwork: 'ইন্টারনেট সমস্যা, বারবার চেষ্টা করেও হলো না। ইন্টারনেট ফিরলে মাইকে আবার চাপুন',
+      fatalNoAudio: 'অনেকক্ষণ কিছু শোনা যায়নি, তাই থামানো হলো',
+      fatalOther: code => `সমস্যা হয়েছে (${code})। মাইকে চেপে আবার চেষ্টা করুন`
     },
     en: {
       speak: 'Speak to type', stopSpeak: 'Stop listening', startSpeak: 'Start listening',
@@ -63,7 +74,18 @@
       coachBody: 'Press the mic on the right, then speak. Your words land right here.',
       coachNote: 'If it does not work on a page, press F5 once.',
       coachOk: 'Got it',
-      elsewhere: 'Dictation moved to another tab, stopped here'
+      elsewhere: 'Dictation moved to another tab, stopped here',
+      startFail: e => `Could not start: ${e}`,
+      reconnecting: 'Reconnecting…',
+      offline: 'No internet. Speech needs a connection; Banglish and translation work without one.',
+      noTranslator: 'This Chrome cannot translate. Chrome 138 or newer is needed.',
+      fatalNotAllowed: 'Microphone access is blocked. Open Ukti setup to allow it.',
+      fatalNoMic: 'No microphone was found. Check that one is connected.',
+      fatalService: 'The speech service would not start. Try again in a moment.',
+      fatalLang: 'This browser has no Bangla speech recognition.',
+      fatalNetwork: 'No internet, and retrying did not help. Press the mic again once you are back online.',
+      fatalNoAudio: 'Nothing was heard for a long time, so listening stopped.',
+      fatalOther: code => `Something went wrong (${code}). Press the mic to try again.`
     }
   };
 
@@ -765,7 +787,7 @@
     }
 
     if (!reply?.ok) {
-      showIndicator('চালু করা গেল না: ' + (reply?.error || 'unknown'), 'error');
+      showIndicator(t('startFail', reply?.error || 'unknown'), 'error');
       hideIndicator(2500);
       return;
     }
@@ -886,9 +908,11 @@
 
   function translateProblem(reply) {
     if (reply?.error === 'DISCONNECTED') return t('reload');
+    // No API at all is an old Chrome, which no language pack will fix.
+    if (reply?.error === 'NO_TRANSLATOR_API') return t('noTranslator');
     if (reply?.error === 'NotAllowedError' ||
         reply?.error === 'PAIR_UNAVAILABLE' ||
-        reply?.error === 'NO_TRANSLATOR_API') return t('needPack');
+        reply?.error === 'NEEDS_DOWNLOAD') return t('needPack');
     return t('transFail');
   }
 
@@ -2057,11 +2081,18 @@
         break;
 
       case 'RESTARTING':
-        showIndicator('আবার যুক্ত হচ্ছি…', 'busy');
+        showIndicator(t('reconnecting'), 'busy');
         break;
 
       case 'RECOGNITION_ERROR':
-        // Transient. The engine restarts itself; no need to alarm the user.
+        // Transient. The engine restarts itself; no need to alarm the user,
+        // except when the cause is that there is no internet. Then nothing
+        // will be heard however long they speak, and they should know now,
+        // not after eight failed retries.
+        if (message.error === 'network') {
+          showIndicator(t('offline'), 'busy');
+          hideIndicator(5000);
+        }
         break;
 
       case 'FATAL':
@@ -2093,18 +2124,13 @@
 
   function fatalMessage(code) {
     switch (code) {
-      case 'not-allowed':
-        return 'মাইক্রোফোনের অনুমতি নাই। উক্তি সেটআপ খুলুন';
-      case 'audio-capture':
-        return 'মাইক্রোফোন পাওয়া যাচ্ছে না';
-      case 'service-not-allowed':
-        return 'ভয়েস সার্ভিস চালু হলো না';
-      case 'language-not-supported':
-        return 'এই ব্রাউজারে বাংলা ভয়েস নাই';
-      case 'network-retry-limit':
-        return 'ইন্টারনেট সমস্যা, বারবার চেষ্টা করেও হলো না';
-      default:
-        return 'সমস্যা: ' + code;
+      case 'not-allowed': return t('fatalNotAllowed');
+      case 'audio-capture': return t('fatalNoMic');
+      case 'service-not-allowed': return t('fatalService');
+      case 'language-not-supported': return t('fatalLang');
+      case 'network-retry-limit': return t('fatalNetwork');
+      case 'no-audio': return t('fatalNoAudio');
+      default: return t('fatalOther', code);
     }
   }
 })();

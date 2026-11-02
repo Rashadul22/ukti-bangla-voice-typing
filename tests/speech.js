@@ -89,7 +89,9 @@ async function connect(port, match) {
           const reply = new Promise(r => waiting.set(n, r));
           ws.send(JSON.stringify({ id: n, method: 'Runtime.evaluate',
             params: { expression, returnByValue: true, awaitPromise: true } }));
-          const msg = await reply;
+          // A closed document never answers; fail rather than hang the file.
+          const msg = await Promise.race([reply, new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('offscreen eval timed out: ' + expression.slice(0, 60))), 10000))]);
           if (msg.result?.exceptionDetails) throw new Error(JSON.stringify(msg.result.exceptionDetails));
           return msg.result?.result?.value;
         },

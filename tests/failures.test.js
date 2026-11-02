@@ -1,7 +1,11 @@
 // Task 10: every failure path ends with a message the user can act on, in
 // the language they chose, and never with the control stuck.
 
-const { test, before, after, beforeEach } = require('node:test');
+const nodeTest = require('node:test');
+const { before, after, beforeEach } = nodeTest;
+// Every test here waits on a failure, so each gets its own ceiling rather
+// than hanging the file.
+const test = (name, fn) => nodeTest.test(name, { timeout: 30000 }, fn);
 const assert = require('node:assert/strict');
 const { serve, launch, storage, waitFor, boxState, toast } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
@@ -18,7 +22,9 @@ after(async () => { off?.close(); await ext?.close().catch(() => {}); server?.cl
 beforeEach(async () => {
   off?.close();
   off = await fakeSpeech(ext, cdpPort);
-  await off.eval('__fake.dieInstantly(false); stopDictation(), true');
+  // Throttle history belongs to one test. Two throttles in a row inside one
+  // offscreen document escalate to STUCK by design, which closes it.
+  await off.eval('__fake.dieInstantly(false); state.cooldowns = 0; state.cooldownUntil = 0; stopDictation(), true');
   await waitFor(() => off.eval('__fake.live().length === 0'));
 });
 

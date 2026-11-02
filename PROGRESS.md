@@ -231,3 +231,60 @@ moved 62px to 322px).
 **Could not verify from here.** Real sites; pages that patch DOM prototypes.
 
 **Tests.** Suite: 124 tests, 121 pass, 0 fail, 3 todo.
+
+---
+
+## Task 10: failure paths
+
+Tests: `tests/failures.test.js`, 17 tests, both languages where a message is
+involved. Before the fixes 11 of 17 failed (first run hung; see below).
+
+| Failure | What happened | What happens now | Fixed? |
+|---|---|---|---|
+| Mic permission never granted, or revoked later | Bengali message only, even in English mode | "Microphone access is blocked. Open Ukti setup to allow it." in the chosen language; mic off, engine stopped | yes |
+| No microphone | Bengali only | "No microphone was found..." in either language | yes |
+| Speech service refuses to start | Bengali only | translated, says to try again in a moment | yes |
+| Chrome older than 138 | cannot install (`minimum_chrome_version`) | unchanged | n/a |
+| Translator API missing | said "language pack needed", which no pack fixes | "This Chrome cannot translate. Chrome 138 or newer is needed." | yes |
+| Language pack missing (either direction) | **"Translating..." forever**: `Translator.create()` on a `downloadable` pair never settled, and the hung promise blocked every later request for that pair | "The language pack is needed, open Setup", at once; any translation now has a 20 s ceiling | yes |
+| Pack errors in general | the error codes arrived as `"Error"` (thrown as `new Error(code)`, replied as `error.name`), so the page never recognised them and always said "translation failed" | codes carried as the name, mapped to the right message | yes |
+| Offline | nothing for up to eight failed retries, then a Bengali-only message | at the first network error: "No internet. Speech needs a connection; Banglish and translation work without one." Keeps retrying and recovers when words arrive (tested); after the retry limit a final message in either language and the mic off | yes |
+| Rate-limited | message shown, cooldown, restart queued | unchanged and verified: message in both languages, `desired` stays on, a restart timer is queued for when the cooldown ends | held |
+| Service worker terminated mid-dictation | results still arrive, stop works | unchanged (task 3 test) | held |
+| Offscreen document fails to create | "চালু করা গেল না" plus the raw error, Bengali only | "Could not start: ..." in either language, mic not left lit | yes |
+| Offscreen document torn down mid-result | result lost silently; next press recovers | unchanged, written up in task 4 | no |
+| Navigation or box removed mid-dictation | engine kept listening | fixed in task 3 | yes (task 3) |
+| Two tabs at once | first tab kept a lit mic | fixed in task 4 | yes (task 4) |
+| Extension reloaded with a page open | mic: "refresh (F5)" shown; Banglish button died silently | fixed in task 3; message verified to appear | yes (task 3) |
+| "Reconnecting" notice | Bengali only | translated | yes |
+| Nothing heard for a long time (`no-audio`) | "সমস্যা: no-audio" | "Nothing was heard for a long time, so listening stopped." | yes |
+
+**Changed.** `content.js`: 12 new `STRINGS` keys, each in both languages;
+`fatalMessage()`, the start failure and "reconnecting" use them; the first
+network error raises the offline notice. `offscreen.js`: no `create()` unless
+the pair is `available`; a 20 s ceiling on translation; error codes carried as
+`error.name`. The task 1 todo "no Bengali messages outside STRINGS" is now a
+real, passing test.
+
+**Decided for you.**
+- Two throttles inside one offscreen document's lifetime escalate to STUCK
+  even when they are hours apart, because `cooldowns` only resets on a
+  result, not on a fresh start. I left that alone: the rate-limit logic was
+  tuned against Google's real behaviour, which I cannot reach. Worth a look:
+  resetting `cooldowns` in `startDictation` is a one-line change.
+- The "pack missing" behaviour now fails at once instead of trying
+  `create()`. If a future Chrome makes `create()` on a `downloadable` pair
+  start a silent download from the offscreen document, this would skip it;
+  the setup page remains the place downloads start, as the code already
+  intended.
+
+**Harness notes.** The first run hung for over 15 minutes: a test closed the
+offscreen document (by design, via STUCK) and my CDP `eval` waited forever on
+the dead target. `eval` now times out after 10 s, and each test here has a
+30 s ceiling.
+
+**Could not verify from here.** Real offline behaviour of Chrome's speech
+service (the fake raises `network` the way Chrome documents it); real
+revocation of the microphone permission mid-session.
+
+**Tests.** Suite: 141 tests, 139 pass, 0 fail, 2 todo.

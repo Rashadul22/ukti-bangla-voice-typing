@@ -102,20 +102,33 @@ function scheduleRelease() {
   }, 120000);
 }
 
+// The reply to the page carries error.name, so these codes must be the
+// name. As plain new Error(code) they arrived as "Error", and the page never
+// recognised them: a missing pack said "translation failed", not "open setup".
+function coded(code) {
+  const error = new Error(code);
+  error.name = code;
+  return error;
+}
+
 async function getTranslator(from, to) {
   const key = from + '>' + to;
   if (translators.has(key)) return translators.get(key);
   if (pending.has(key)) return pending.get(key);
 
-  if (!('Translator' in self)) throw new Error('NO_TRANSLATOR_API');
+  if (!('Translator' in self)) throw coded('NO_TRANSLATOR_API');
 
   const task = (async () => {
     const opts = { sourceLanguage: from, targetLanguage: to };
     const status = await Translator.availability(opts);
-    if (status === 'unavailable') throw new Error('PAIR_UNAVAILABLE');
+    if (status === 'unavailable') throw coded('PAIR_UNAVAILABLE');
     // 'downloadable' means this pack was never fetched from an extension
-    // page, and create() without user activation throws NotAllowedError.
+    // page. create() was expected to throw NotAllowedError here without user
+    // activation; measured in Chromium 153 it never settles at all, so the
+    // page showed "translating" for good and every later request for the
+    // pair queued behind it. Do not call it unless the pack is present.
     // The setup page is responsible for the first download of each pair.
+    if (status !== 'available') throw coded('NEEDS_DOWNLOAD');
     const made = await Translator.create(opts);
     translators.set(key, made);
     return made;
@@ -180,7 +193,27 @@ function chunkText(text, maxLen = 900) {
   return parts;
 }
 
+// A translation that has not answered in this long is not going to. Better
+// to tell the user than to leave "translating" on screen.
+const TRANSLATE_TIMEOUT_MS = 20000;
+
+function withTimeout(promise) {
+  let timer;
+  const late = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error('Translation took too long');
+      error.name = 'TIMEOUT';
+      reject(error);
+    }, TRANSLATE_TIMEOUT_MS);
+  });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
 async function translateText(text, from, to) {
+  return withTimeout(translateNow(text, from, to));
+}
+
+async function translateNow(text, from, to) {
   const t = await getTranslator(from, to);
   const chunks = chunkText(text);
   const out = [];

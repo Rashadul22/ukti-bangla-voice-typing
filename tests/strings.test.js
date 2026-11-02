@@ -56,10 +56,9 @@ test('manifest asks for storage and offscreen only, and no host permissions', ()
 
 // Every Bengali literal in content.js outside STRINGS is a message the
 // English setting cannot reach. Listed by line so they can be moved in.
-// KNOWN GAP: eight messages (the start failure, "reconnecting" and every
-// fatalMessage() case) are hard-coded Bengali and ignore the English setting.
-test('content.js has no Bengali messages outside STRINGS',
-  { todo: '8 hard-coded Bengali messages, lines listed in the failure' }, () => {
+// Was a todo until task 10 moved the start failure, "reconnecting" and every
+// fatalMessage() case into STRINGS.
+test('content.js has no Bengali messages outside STRINGS', () => {
   const start = content.indexOf('const STRINGS = {');
   const end = content.indexOf('\n  };', start);
   const outside = content.slice(0, start) + ' '.repeat(end - start) + content.slice(end);
