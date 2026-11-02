@@ -189,3 +189,49 @@ Tasks 1 to 7 make what exists correct. 9 to 12 make it hold up once strangers
 are using it. 8, new features, comes last on purpose. If the budget runs out
 before task 8, that is the right outcome, not a failure: a reliable extension
 with a written plan for features beats an extension with half-built features.
+
+## 13. Privacy: say exactly what is true, and make the product match it
+
+Read this one before task 5, because task 5's privacy policy depends on it.
+
+**A false claim has already been caught once in this repo.** The README said
+"nothing sent to a server". That was wrong: speech recognition uses the Web
+Speech API, and Chrome sends the audio to Google to be transcribed. It has been
+corrected. Check every other place the same claim may have been repeated,
+including any marketing copy, the store description, the setup page and the
+popup, and correct them too. A privacy claim that cannot be defended is grounds
+for removal from the Chrome Web Store, and it is the kind of thing that destroys
+trust in a free tool from an unknown author.
+
+**Establish the facts before writing a word of policy.** For each of these,
+verify in the code what actually happens, and cite the file and line:
+
+- The audio path. Where does `webkitSpeechRecognition` send it, is it continuous
+  or per-utterance, and is anything retained locally
+- The translation path. Confirm the Translator API is on-device and that no text
+  is sent anywhere, including when a pack is missing and it has to fall back
+- Everything written to `chrome.storage.local`. List every key, what it holds,
+  and whether any of it is content the user dictated rather than a setting. The
+  custom word replacements are user content and need saying so
+- Whether any dictated text is ever written to a log, the console, or the
+  undo stack in a way that outlives the page
+- Whether the extension can be made to read a page it was not meant to read
+- What the extension can see that it does not need to see, and whether that can
+  be narrowed
+
+**Then write the policy.** Plain Bengali and plain English, no legal padding.
+It must say, in the user's own terms: speech goes to Google and why, translation
+and Banglish conversion stay on the machine, Ukti has no server and no
+analytics, what is stored locally, that password and payment fields are skipped,
+and how to delete everything. If something is a limitation rather than a
+feature, say it is a limitation.
+
+**Then check the product matches.** If the policy says password fields are
+skipped, task 11 has to have proved it. If the policy says nothing is retained,
+confirm nothing is retained. Write the policy last, from what you verified, not
+from what the README says.
+
+**Also decide the honest answer to the obvious question.** A user will ask why a
+free Bangla voice extension needs no account and no payment. The answer is that
+it costs the author nothing to run, because the heavy lifting is Chrome's. Put
+that in the FAQ. An unexplained free tool reads as suspicious.
