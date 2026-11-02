@@ -7,7 +7,7 @@ const OFFSCREEN_PATH = 'offscreen.html';
 
 let creatingOffscreen = null;
 
-const ENDINGS = new Set(['STOPPED', 'FATAL', 'STUCK']);
+const ENDINGS = new Set(['STOPPED', 'FATAL', 'STUCK', 'TAKEN_OVER']);
 
 // Stops dictation if the offscreen document is running the session named.
 // The offscreen side ignores a stop for any other session or tab.
@@ -139,6 +139,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           tabId: sender.tab.id,
           frameId: sender.frameId,
           sessionId: message.sessionId,
+          epoch: message.epoch,
           settings
         });
 
@@ -157,7 +158,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await chrome.runtime.sendMessage({
             target: 'offscreen',
             type: 'STOP_DICTATION',
-            sessionId: message.sessionId
+            sessionId: message.sessionId,
+            epoch: message.epoch
           });
         }
         sendResponse({ ok: true });
@@ -224,6 +226,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       source: 'ukti-background',
       type: message.type,
       sessionId: message.sessionId,
+      epoch: message.epoch,
       text: message.text,
       error: message.error,
       detail: message.detail

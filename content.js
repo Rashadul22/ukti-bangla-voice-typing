@@ -35,7 +35,8 @@
       coachTitle: 'উক্তি তৈরি',
       coachBody: 'ডানদিকের মাইকে চাপুন, তারপর বাংলায় বলুন। লেখা এখানেই বসে যাবে।',
       coachNote: 'নতুন কোনো পেজে কাজ না করলে একবার F5 চেপে নিন।',
-      coachOk: 'বুঝেছি'
+      coachOk: 'বুঝেছি',
+      elsewhere: 'অন্য ট্যাবে বলা শুরু হয়েছে, এখানে থামানো হলো'
     },
     en: {
       speak: 'Speak to type', stopSpeak: 'Stop listening', startSpeak: 'Start listening',
@@ -61,7 +62,8 @@
       coachTitle: 'Ukti is ready',
       coachBody: 'Press the mic on the right, then speak. Your words land right here.',
       coachNote: 'If it does not work on a page, press F5 once.',
-      coachOk: 'Got it'
+      coachOk: 'Got it',
+      elsewhere: 'Dictation moved to another tab, stopped here'
     }
   };
 
@@ -81,6 +83,13 @@
   }
 
   const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  // Every start and stop from this frame gets the next number. Both travel
+  // through the service worker as separate async handlers, so they can
+  // arrive out of order; the offscreen side drops a command older than one
+  // it has already obeyed, and replies carry the number of the start they
+  // belong to, so a late STOPPED from an earlier round is ignored here.
+  let epoch = 0;
+  let liveEpoch = 0;
 
   let listening = false;
   let target = null;          // the box dictation was started in
@@ -679,6 +688,21 @@
     } catch (_) {}
   }
 
+  // A start takes a round trip to the service worker and the offscreen
+  // document, and `listening` only turns true at the end of it. A second
+  // press inside that gap used to start again rather than stop, and its
+  // stop could overtake the start, leaving the microphone on after the user
+  // had pressed it off. Presses during a start now only flip what is
+  // wanted, and the start honours the last word when its reply lands.
+  let starting = false;
+  let wanted = false;
+  let stopping = null;
+
+  function toggleDictation() {
+    if (starting) { wanted = !wanted; return; }
+    listening ? stopDictation() : startDictation();
+  }
+
   async function startDictation() {
     const box = resolveTarget();
     if (!box) {
@@ -687,6 +711,17 @@
       return;
     }
 
+    starting = true;
+    wanted = true;
+    try {
+      await beginDictation(box);
+    } finally {
+      starting = false;
+    }
+  }
+
+  async function beginDictation(box) {
+    if (stopping) await stopping;
     await loadSettings();
     target = box;
 
@@ -694,7 +729,8 @@
     try {
       reply = await chrome.runtime.sendMessage({
         type: 'START_DICTATION',
-        sessionId
+        sessionId,
+        epoch: (liveEpoch = ++epoch)
       });
     } catch (_) {
       // Happens when the extension was reloaded but this page was not.
@@ -706,6 +742,14 @@
     if (!reply?.ok) {
       showIndicator('চালু করা গেল না: ' + (reply?.error || 'unknown'), 'error');
       hideIndicator(2500);
+      return;
+    }
+
+    // Pressed off again while the start was on its way.
+    if (!wanted) {
+      listening = false;
+      paintMic();
+      try { await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId, epoch: ++epoch }); } catch (_) {}
       return;
     }
 
@@ -723,11 +767,16 @@
     hidePreview();
     showIndicator(t('stopped'));
     hideIndicator();
-    try {
-      // Scoped to this frame's session, so stopping here can never stop a
-      // dictation another tab has since started.
-      await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId });
-    } catch (_) {}
+    // Scoped to this frame's session, so stopping here can never stop a
+    // dictation another tab has since started. Kept as a promise because a
+    // start must not overtake it: both go through the service worker as
+    // separate async handlers, and a STOP that lands after the next START
+    // switched the new session straight off.
+    const sent = stopping = (async () => {
+      try { await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId, epoch: ++epoch }); } catch (_) {}
+    })();
+    await sent;
+    if (stopping === sent) stopping = null;
   }
 
   // A page that goes away mid-dictation used to leave the microphone
@@ -736,7 +785,7 @@
   window.addEventListener('pagehide', () => {
     if (!listening) return;
     listening = false;
-    try { chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId }).catch(() => {}); } catch (_) {}
+    try { chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId, epoch: ++epoch }).catch(() => {}); } catch (_) {}
   });
 
   function pushUndo(element) {
@@ -1375,7 +1424,7 @@
     bar.className = 'bar';
 
     micButton = makeButton(ICONS.mic, t('startSpeak'), 'main', () => {
-      listening ? stopDictation() : startDictation();
+      toggleDictation();
     });
     const banglish = makeButton('অ', t('toBangla'), 'small', convertBanglish);
     const english = makeButton('EN', t('toEnglish'), 'small en', convertToEnglish);
@@ -1815,7 +1864,7 @@
     if (altCombo && event.code === 'KeyZ') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      listening ? stopDictation() : startDictation();
+      toggleDictation();
       return;
     }
 
@@ -1825,7 +1874,7 @@
     if (event.code === 'Space') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      listening ? stopDictation() : startDictation();
+      toggleDictation();
       return;
     }
 
@@ -1906,9 +1955,11 @@
   chrome.runtime.onMessage.addListener(message => {
     if (message.source !== 'ukti-background') return false;
     if (message.sessionId && message.sessionId !== sessionId) return false;
+    if (typeof message.epoch === 'number' && message.epoch < liveEpoch) return false;
 
     switch (message.type) {
       case 'LISTENING':
+        if (starting && !wanted) break;   // already pressed off again
         listening = true;
         paintMic();
         showPreview();
@@ -1987,6 +2038,15 @@
         hidePreview();
         showIndicator(fatalMessage(message.error), 'error');
         hideIndicator(4000);
+        break;
+
+      // Another tab started dictating, and there is only one microphone.
+      case 'TAKEN_OVER':
+        listening = false;
+        paintMic();
+        hidePreview();
+        showIndicator(t('elsewhere'));
+        hideIndicator(3000);
         break;
 
       case 'STOPPED':

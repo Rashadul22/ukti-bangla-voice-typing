@@ -34,6 +34,20 @@ const FAKE = `(() => {
     r.onresult && r.onresult({ resultIndex: r.__results.length - 1, results: r.__results });
     return true;
   };
+  // Real stop() lets the service hand back what it already heard before
+  // onend. This delivers to the newest instance even while it is ending.
+  fake.sayLast = text => {
+    const r = fake.instances.at(-1);
+    if (!r) return false;
+    const item = [{ transcript: text, confidence: 0.9 }];
+    item.isFinal = true;
+    r.__results.push(item);
+    r.onresult && r.onresult({ resultIndex: r.__results.length - 1, results: r.__results });
+    return true;
+  };
+  // Slow the end of a session down, so a result can arrive in between.
+  fake.slowEnd = ms => { P.stop = function () { fake.stops++; const me = this;
+    setTimeout(() => { if (!me.__live) return; me.__live = false; me.onend && me.onend(); }, ms); }; };
   // The service ends a session on its own, as it does after a pause.
   fake.drop = () => { const r = fake.live().at(-1); if (r) end.call(r); };
   return 'installed';

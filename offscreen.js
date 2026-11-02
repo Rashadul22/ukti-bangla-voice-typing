@@ -63,6 +63,7 @@ const state = {
   tabId: null,
   frameId: null,
   sessionId: null,
+  epoch: 0,              // newest start or stop obeyed for this session
   settings: null,
   sessionStart: 0,
   lastActivity: 0,
@@ -78,6 +79,7 @@ function emit(type, data = {}) {
     tabId: state.tabId,
     frameId: state.frameId,
     sessionId: state.sessionId,
+    epoch: state.epoch,
     ...data
   }).catch(() => {});
 }
@@ -595,7 +597,13 @@ function startAttempt() {
   }
 }
 
-function startDictation({ tabId, frameId, sessionId, settings }) {
+function startDictation({ tabId, frameId, sessionId, epoch, settings }) {
+  // There is one microphone. If another frame was dictating, tell it before
+  // switching, or its button stays lit with nothing behind it.
+  if (state.desired && state.sessionId && state.sessionId !== sessionId) {
+    emit('TAKEN_OVER');
+  }
+
   // A new start always targets the newest box, so cancel any old session.
   if (state.current) {
     state.generation++;
@@ -609,6 +617,7 @@ function startDictation({ tabId, frameId, sessionId, settings }) {
   state.tabId = tabId;
   state.frameId = frameId;
   state.sessionId = sessionId;
+  state.epoch = epoch || 0;
   state.settings = settings;
   state.faultAttempts = 0;
   state.calmRestarts = 0;
@@ -643,10 +652,19 @@ function stopDictation() {
 
 // ----------------------------------------------------------------- listener
 
+// Starts and stops from one frame are numbered. One older than the newest
+// already obeyed for the same session arrived out of order and is dropped.
+function stale(message) {
+  return typeof message.epoch === 'number' &&
+    message.sessionId === state.sessionId &&
+    message.epoch < state.epoch;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target !== 'offscreen') return false;
 
   if (message.type === 'START_DICTATION') {
+    if (stale(message)) return false;   // a stop from after it already ran
     startDictation(message);
     return false;
   }
@@ -656,6 +674,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // stale: a page that was dictating before another tab took over.
     if (message.sessionId && message.sessionId !== state.sessionId) return false;
     if (message.tabId != null && message.tabId !== state.tabId) return false;
+    if (stale(message)) return false;
+    if (typeof message.epoch === 'number') state.epoch = message.epoch;
     // Already stopped: say nothing, so a stop sent for a dead page cannot
     // set off another round of messages to it.
     if (!state.desired && !state.current) return false;
