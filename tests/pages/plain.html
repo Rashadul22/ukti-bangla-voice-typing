@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>plain contenteditable</title>
+<script src="mimic.js"></script>
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  window.mimic = {
+    el, kind: 'plain',
+    model: () => el.innerText.replace(/\n+$/, ''),
+    setText(s) { el.textContent = s; el.focus(); placeCaret(el, s.length); }
+  };
+</script>

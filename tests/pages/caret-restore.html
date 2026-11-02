@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>editor that restores its own caret</title>
+<script src="mimic.js"></script>
+<!-- A controlled contenteditable, the shape of many React editors. After
+     every input it re-renders its DOM from state, which destroys the
+     browser's selection, and puts the caret back where it thinks it was.
+     It also puts its remembered caret back a task after it regains focus,
+     which collapses any selection made straight after focusing it. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  let caret = 0;
+  document.addEventListener('selectionchange', () => {
+    const s = getSelection();
+    if (s.rangeCount && el.contains(s.getRangeAt(0).commonAncestorContainer)) {
+      caret = offsetsIn(el, s.getRangeAt(0))[1];
+    }
+  });
+  el.addEventListener('input', () => {
+    model = el.innerText.replace(/\n+$/, '');
+    const at = liveOffsets(el, model.length)[1];
+    el.textContent = model;
+    placeCaret(el, at);
+  });
+  el.addEventListener('focus', () => {
+    setTimeout(() => placeCaret(el, Math.min(caret, model.length)), 0);
+  });
+
+  window.mimic = {
+    el, kind: 'caret-restore',
+    model: () => model,
+    setText(s) { model = s; el.textContent = s; el.focus(); placeCaret(el, s.length); caret = s.length; }
+  };
+</script>

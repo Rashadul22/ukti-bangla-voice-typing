@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><title>editor that reads the selection a task late</title>
+<script src="mimic.js"></script>
+<!-- Owns its model like the paste-only editor, but learns about the
+     selection from selectionchange and only stores it on a later task.
+     A paste is applied at the stored selection, so a paste made in the
+     same task as a select-all lands at the old caret. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  let stored = [0, 0];
+  const render = caret => { el.textContent = model; if (caret != null) placeCaret(el, caret); };
+
+  document.addEventListener('selectionchange', () => {
+    setTimeout(() => {
+      const s = getSelection();
+      if (s.rangeCount && el.contains(s.getRangeAt(0).commonAncestorContainer)) {
+        stored = offsetsIn(el, s.getRangeAt(0));
+      }
+    }, 0);
+  });
+  el.addEventListener('beforeinput', e => {
+    const out = applyTyping(e, model, liveOffsets(el, model.length));
+    if (!out) return;
+    e.preventDefault();
+    model = out.model;
+    render(out.caret);
+    stored = [out.caret, out.caret];   // its own edits it knows at once
+  });
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    const [s, en] = stored;
+    model = model.slice(0, s) + text + model.slice(en);
+    render(s + text.length);
+    stored = [s + text.length, s + text.length];
+  });
+  el.addEventListener('input', () => {
+    setTimeout(() => { if (el.textContent !== model) render(model.length); }, 0);
+  });
+
+  window.mimic = {
+    el, kind: 'late-selection',
+    model: () => model,
+    setText(s) { model = s; el.focus(); render(s.length); stored = [s.length, s.length]; }
+  };
+</script>

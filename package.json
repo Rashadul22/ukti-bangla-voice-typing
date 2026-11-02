@@ -1,0 +1,13 @@
+{
+  "name": "ukti",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Ukti, Bangla voice typing for Chrome. This file only exists to run the tests.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 'tests/*.test.js'",
+    "test:mutants": "node tests/mutants.js"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
