@@ -33,18 +33,29 @@ API, which downloads the language packs once and then works on-device.
 **Banglish conversion does not leave the machine.** It is a dictionary and a set
 of rules inside the extension.
 
-**Ukti itself sends nothing anywhere.** It has no server, no analytics, no
-account, and no network permission of its own. Your settings and your custom
-word replacements are stored by Chrome on your own computer.
+**Ukti itself sends nothing anywhere.** It has no server, no analytics and no
+account, and its own code makes no network requests (a test in `tests/`
+checks this). Your settings and your custom word replacements are stored by
+Chrome on your own computer.
+
+**What the install dialog says, and why.** Chrome warns that Ukti can "Read
+and change all your data on all websites". That is true of what Chrome
+allows it: the control has to be able to appear in any text box on any site,
+so its script runs on every page. What it actually does with that access is
+narrow. It reads the text of the box you are in, when you dictate into it or
+press one of its buttons; the type, name and autocomplete hints of a box you
+focus, to recognise a password or card field and stay out of it; where the box
+sits on the screen, to put the control beside it; and the site's name, for the
+per-site switch. Nothing else on the page is read.
 
 **Password fields are skipped.** Password, OTP, PIN, CVV and card number fields
 are excluded, so the control does not appear on them.
 
 ## How it is built
 
-- Manifest V3. Two permissions only, `storage` and `offscreen`. No host
-  permissions, so the install dialog does not ask to read your data on every
-  site.
+- Manifest V3. Two permissions only, `storage` and `offscreen`, and no
+  `host_permissions`. The content script still runs on every site, so Chrome's
+  install dialog does show "Read and change all your data on all websites".
 - Translation runs through Chrome's on-device Translator API. The language packs
   download once and the text never leaves the machine.
 - Speech recognition uses the Web Speech API.

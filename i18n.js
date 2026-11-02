@@ -100,6 +100,10 @@ const UKTI_EN = {
     '"Automatic" means it comes and sits beside the box you are writing in. '
     + 'You can also drag it by the microphone button, and bring it back from here.',
 
+  'কথা লেখায় বদলাতে Chrome আপনার কণ্ঠ Google এর সার্ভারে পাঠায়। উক্তি নিজে কোনো কথা জমা রাখে না, কোথাও পাঠায়ও না।':
+    "To turn speech into text, Chrome sends your voice to Google's servers. "
+    + 'Ukti itself saves none of what you say and sends nothing anywhere.',
+
   // ---- setup page, status messages
   'অনুমতি দেওয়া আছে।': 'Permission granted.',
   'অনুমতি চাওয়া হচ্ছে…': 'Asking for permission…',

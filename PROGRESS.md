@@ -126,3 +126,64 @@ Total after: 72 of 72 race-test results across 8 consecutive runs.
 session 15 ms after `stop()`, and the real service can take longer.
 
 **Tests.** Suite: 105 tests, 102 pass, 0 fail, 3 todo.
+
+---
+
+## Task 13: privacy, facts first
+
+**The finding to read.** Chrome's install dialog for Ukti, as shipped, says
+**"Read and change all your data on all websites"**. Measured by asking Chrome
+(`chrome.management.getPermissionWarningsByManifest`) about four manifests:
+
+| Manifest | Warning Chrome returns |
+|---|---|
+| As shipped | Read and change all your data on all websites |
+| Content script limited to localhost | Read and change your data on localhost |
+| No content script | (none) |
+| Plus `host_permissions: <all_urls>` | Read and change all your data on all websites |
+
+So the content script's `matches` alone produce the warning. CLAUDE.md item 6
+and the README both said the opposite. Corrected in both (CLAUDE.md gets a
+dated correction under item 6; the rule itself stays, since not reading
+`tab.url` still avoids the `tabs` permission). `tests/privacy.test.js` pins
+the warning list so it cannot change unnoticed.
+
+**Verified, with file and line, in `PRIVACY-FACTS.md`:** the audio path
+(continuous Web Speech sessions, restarted while the mic is red), the
+loudness-only second stream, the on-device translation path and its
+no-fallback behaviour when a pack is missing, all 19 storage keys (two of
+them user content: `replacements` and `disabledSites`), the undo stack and
+preview as the only places dictated text lives (page memory, cleared on
+stop and page close), and exactly what the content script reads.
+
+**Tests.** `tests/privacy.test.js`, 6 tests, all pass: warning list pinned;
+no network API anywhere in the code; no `console.*`; pages load nothing
+remote; a dictated sentence is not in storage, the console, or the preview
+after stop; every storage key is one the facts sheet lists. These verify
+claims rather than fix bugs, so they passed first time; the one that failed
+first was my own check counting the author's `<a href>` link as a remote load.
+
+**Changed.**
+- README: the install-dialog claim corrected; "no network permission of its
+  own" replaced with the checkable "its own code makes no network requests";
+  what the script reads stated exactly.
+- Setup page, microphone step: one new sentence, in both languages, saying
+  Chrome sends the voice to Google's servers and Ukti saves none of it. This
+  is the point of consent, so the disclosure belongs there.
+- CLAUDE.md item 6: correction appended, nothing removed.
+
+**Decided for you.**
+- Task 13 says to write the policy, and also to write it last, from what was
+  verified, after task 11 proves the field filter. I read that as: facts now
+  (`PRIVACY-FACTS.md`), policy text in task 5, after task 11. Task 5 writes
+  it from the facts sheet.
+- **Recommendation, not done:** if the install warning matters more than the
+  control appearing on its own, the way out is `activeTab` + `scripting` with
+  injection on a toolbar click or shortcut. That removes the warning and
+  changes the product's core gesture. Your call.
+
+**Could not verify from here.** What Google does with the audio, and whether
+Chrome's Translator ever sends text anywhere. Both rest on Chrome's and
+Google's documentation; the facts sheet says so.
+
+**Tests.** Suite: 111 tests, 108 pass, 0 fail, 3 todo.
