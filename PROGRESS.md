@@ -187,3 +187,47 @@ Chrome's Translator ever sends text anywhere. Both rest on Chrome's and
 Google's documentation; the facts sheet says so.
 
 **Tests.** Suite: 111 tests, 108 pass, 0 fail, 3 todo.
+
+---
+
+## Task 11: hostile page audit
+
+Full write-up in `SECURITY.md`. Tests in `tests/security.test.js` (13 tests),
+attack page `tests/pages/hostile.html`.
+
+**Measured.** Before the fixes, 11 of 13 failed. **The serious one: any web
+page could switch on the microphone** with a synthetic Ctrl+Shift+Space or
+`button.click()` through the open shadow root, because nothing checked
+`event.isTrusted`. The transcript then landed in the page's own box.
+Also failing: six field-filter bypasses (`autocomplete="one-time-code"`,
+`cc-number`, `cc-csc`, a CSS-masked `type="text"`, two `contenteditable`
+PIN/card widgets) and a field made sensitive after focus. Held before and
+after: a password inside a cross-origin iframe; no route from a page to
+`chrome.storage` or to the extension's messaging.
+
+**Changed** (`content.js`, outside the insertion engine): `isTrusted`
+required on the hotkey, every button click and the drag handle; one
+`sensitive()` check for inputs, textareas and `contenteditable`, covering the
+standard autocomplete tokens, `aria-label`, `placeholder` and
+`-webkit-text-security`; the remembered box re-filtered at the moment of use.
+CLAUDE.md item 9 says to widen the filter when more cases turn up, so I did.
+
+Three new mutants (9 updated, 11, 12) put each bug back; all killed. The task 3
+drag test now uses a real mouse press, since a synthetic `pointerdown` is
+ignored; checked that it still fails without the `pointercancel` fix (control
+moved 62px to 322px).
+
+**Decided for you.**
+- **Closed shadow root: recommended against, not changed.** After
+  `isTrusted`, the open root only exposes interim words the page receives a
+  moment later anyway, and closing it does not hide the host element. Costs:
+  the test suite loses its way in. Reasoning in `SECURITY.md`; a one-line
+  change if you want it.
+- The wider filter will refuse a few harmless boxes whose label mentions a
+  password or a PIN (a support form saying "forgot your password? describe
+  the problem"). I chose that direction on purpose: a missed box is a small
+  annoyance, a dictated password is not.
+
+**Could not verify from here.** Real sites; pages that patch DOM prototypes.
+
+**Tests.** Suite: 124 tests, 121 pass, 0 fail, 3 todo.

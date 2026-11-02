@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>hostile page</title>
+<!-- Fields that try to get past the sensitive-field filter, and a page
+     script that tries to drive the control without the user. -->
+<input id="otpAuto" type="text" autocomplete="one-time-code">
+<input id="ccAuto" type="text" autocomplete="cc-number">
+<input id="cscAuto" type="text" autocomplete="cc-csc">
+<input id="masked" type="text" style="-webkit-text-security: disc">
+<input id="lateName" type="text">
+<div id="cePin" contenteditable="true" aria-label="Enter your PIN" style="border:1px solid">x</div>
+<div id="ceCard" contenteditable="true" data-field="card" autocomplete="cc-number" style="border:1px solid">x</div>
+<textarea id="ok" rows="2"></textarea>
+<button id="elsewhere">elsewhere</button>
+<script>
+  window.mimic = { el: document.getElementById('ok'), kind: 'textarea', model: () => document.getElementById('ok').value };
+  // The sensitive hint arrives only once the field is focused.
+  document.getElementById('lateName').addEventListener('focus', e => {
+    setTimeout(() => e.target.setAttribute('autocomplete', 'current-password'), 50);
+  });
+  window.attack = {
+    host: () => document.querySelector('[data-ukti="bar"]'),
+    root: () => attack.host()?.shadowRoot,
+    clickMic() { attack.root().querySelector('.main').click(); },
+    clickBangla() { attack.root().querySelector('button[aria-label="বাংলা করুন"]').click(); },
+    key(code) {
+      for (const t of [window, document, document.activeElement]) {
+        t.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code, ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }));
+      }
+    },
+    readPreview() { return attack.root()?.querySelector('.preview')?.textContent ?? null; }
+  };
+</script>

@@ -167,20 +167,26 @@ test('a cancelled drag does not leave the control following the pointer', async 
     await page.waitForFunction(() => window.mimic);
     await page.click('#ed');
     assert.ok(await waitFor(() => barShown(page)));
-    const moved = await page.evaluate(async () => {
-      const root = document.querySelector('[data-ukti="bar"]').shadowRoot;
-      const bar = root.querySelector('.bar');
-      const mic = root.querySelector('.main');
-      const r = mic.getBoundingClientRect();
-      const at = (type, x, y, target = document) => target.dispatchEvent(new PointerEvent(type,
-        { bubbles: true, composed: true, button: 0, clientX: x, clientY: y, pointerId: 1 }));
-      at('pointerdown', r.x + 5, r.y + 5, mic);
-      at('pointermove', r.x + 30, r.y + 5);          // a real drag starts
-      at('pointercancel', r.x + 30, r.y + 5);        // and the browser cancels it
-      const before = bar.style.right;
-      at('pointermove', r.x - 200, r.y - 200);       // no button held now
-      return { before, after: bar.style.right };
+    // A real press and real moves; only the cancel is synthetic, since a
+    // trusted pointercancel needs a touch screen. Ending a drag on any
+    // cancel is safe, so the handler does not ask whether it is trusted.
+    const mic = await page.evaluate(() => {
+      const r = document.querySelector('[data-ukti="bar"]').shadowRoot.querySelector('.main').getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     });
+    const right = () => page.evaluate(() =>
+      document.querySelector('[data-ukti="bar"]').shadowRoot.querySelector('.bar').style.right);
+    await page.mouse.move(mic.x, mic.y);
+    await page.mouse.down();
+    await page.mouse.move(mic.x - 40, mic.y, { steps: 4 });     // a real drag starts
+    await page.evaluate(() => document.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 })));
+    const before = await right();
+    // After a cancel there is no pointerup, only more movement. Movement is
+    // sent as plain events, since a real mouse would also send its up.
+    await page.evaluate(({ x, y }) => document.dispatchEvent(new PointerEvent('pointermove',
+      { bubbles: true, clientX: x, clientY: y, pointerId: 1 })), { x: mic.x - 300, y: mic.y - 200 });
+    const moved = { before, after: await right() };
+    await page.mouse.up();
     assert.equal(moved.after, moved.before, `control moved from ${moved.before} to ${moved.after} after the drag was cancelled`);
   } finally { await page.close(); }
 });

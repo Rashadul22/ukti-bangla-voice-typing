@@ -105,10 +105,31 @@
 
   // ------------------------------------------------------- target detection
 
+  // Words that mark a field as a secret: a password, a one-time code, a
+  // PIN, or any part of a payment card. Matched against the hints a site
+  // gives its own password manager and its screen reader users. The cc-
+  // tokens and one-time-code are the standard autocomplete values, which
+  // the older list missed (it only knew "cardnumber" and "otp").
+  const SENSITIVE =
+    /password|passwd|passcode|\bpin\b|\botp\b|one-time-code|\bcc-|cvv|cvc|\bcsc\b|security.?code|cardnumber|card.?number|creditcard|credit.?card/i;
+
+  function sensitive(node) {
+    const attr = name => node.getAttribute(name) || '';
+    const hint = [attr('autocomplete'), attr('name'), node.id || '', attr('aria-label'),
+      attr('placeholder'), attr('aria-placeholder')].join(' ');
+    if (SENSITIVE.test(hint)) return true;
+    // A password drawn as dots by CSS rather than by type="password".
+    try {
+      const mask = getComputedStyle(node).webkitTextSecurity;
+      if (mask && mask !== 'none') return true;
+    } catch (_) {}
+    return false;
+  }
+
   function editableFrom(node) {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
 
-    if (node instanceof HTMLTextAreaElement) return node;
+    if (node instanceof HTMLTextAreaElement) return sensitive(node) ? null : node;
 
     if (node instanceof HTMLInputElement) {
       // Password fields are deliberately absent. Dictation there would
@@ -118,15 +139,16 @@
       if (!ok.includes(node.type)) return null;
       // Sites that hide a password behind type="text" still mark it up for
       // their own password managers, so honour those hints too.
-      const hint = `${node.autocomplete || ''} ${node.name || ''} ${node.id || ''}`;
-      if (/password|passwd|\bpin\b|\botp\b|cvv|cardnumber|creditcard/i.test(hint)) {
-        return null;
-      }
+      if (sensitive(node)) return null;
       return node;
     }
 
     if (node.isContentEditable) {
-      return node.closest('[contenteditable=""],[contenteditable="true"]') || node;
+      const root = node.closest('[contenteditable=""],[contenteditable="true"]') || node;
+      // Custom PIN and card widgets are often contenteditable, and carry
+      // their meaning only in aria-label or autocomplete.
+      if (sensitive(root) || (root !== node && sensitive(node))) return null;
+      return root;
     }
 
     return null;
@@ -163,8 +185,11 @@
     true
   );
 
+  // The remembered box is checked again at the moment of use. A page can
+  // mark a field as a password after it was focused, and the old fallback
+  // handed that field over without asking.
   function resolveTarget() {
-    return currentEditable() || (lastEditable?.isConnected ? lastEditable : null);
+    return currentEditable() || (lastEditable?.isConnected ? editableFrom(lastEditable) : null);
   }
 
   // ------------------------------------------------------ insertion engine
@@ -1398,6 +1423,9 @@
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
+      // The shadow root is open, so page script can call button.click().
+      // That is not the user, and the mic button must not obey it.
+      if (!event.isTrusted) return;
       if (suppressClick) return;
       onClick();
     });
@@ -1619,7 +1647,7 @@
     };
 
     handle.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || !event.isTrusted) return;
       const rect = bar.getBoundingClientRect();
       startX = event.clientX;
       startY = event.clientY;
@@ -1841,6 +1869,10 @@
   // --------------------------------------------------------------- hotkeys
 
   function handleHotkey(event) {
+    // Only the user's own keys. A page can dispatch a KeyboardEvent with
+    // ctrlKey and shiftKey set, and without this check that switched on a
+    // microphone the user had granted, with no gesture from the user.
+    if (!event.isTrusted) return;
     if (isOff()) return;
 
     // Escape stops dictation and puts the caret back in the box. It only
