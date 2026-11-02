@@ -70,3 +70,31 @@ test('content.js has no Bengali messages outside STRINGS', () => {
   });
   assert.deepEqual(hits, []);
 });
+
+const DOCS = ['README.md', 'PRIVACY-FACTS.md', 'SECURITY.md', 'PERF.md', 'CHANGELOG.md', 'RELEASING.md',
+  'store/privacy-policy.html', 'store/listing-en.md', 'store/listing-bn.md', 'store/checklist.md'];
+
+test('no em dashes in the documents and store copy', () => {
+  const hits = [];
+  for (const f of DOCS) {
+    if (!fs.existsSync(path.join(ROOT, f))) continue;
+    read(f).split('\n').forEach((line, i) => { if (line.includes('—')) hits.push(`${f}:${i + 1}`); });
+  }
+  assert.deepEqual(hits, []);
+});
+
+// The README once said "nothing sent to a server", which was false: Chrome
+// sends speech to Google. It must not come back anywhere a user reads.
+test('no user-facing text claims nothing leaves the machine', () => {
+  const files = [...DOCS, 'setup.html', 'popup.html', 'i18n.js', 'manifest.json'];
+  const hits = [];
+  for (const f of files) {
+    if (!fs.existsSync(path.join(ROOT, f))) continue;
+    read(f).split('\n').forEach((line, i) => {
+      if (/nothing (is )?sent to (a|any) server|never leaves your (computer|device|machine)|works (fully|completely) offline|100% offline/i.test(line)) {
+        hits.push(`${f}:${i + 1}: ${line.trim()}`);
+      }
+    });
+  }
+  assert.deepEqual(hits, []);
+});

@@ -413,3 +413,43 @@ there is no loop. `dist/` is ignored by git.
 packager on Windows (written for it: Node only, `npm.cmd` on win32).
 
 **Tests.** Suite: 168 tests, 168 pass, 0 fail, 0 todo.
+
+---
+
+## Task 5: store submission material
+
+**Added, in `store/`.**
+- `privacy-policy.html`: one self-contained page, English and Bengali, light
+  and dark, no external loads. Written from `PRIVACY-FACTS.md` and from what
+  task 11 proved about the field filter, not from the README. It says speech
+  goes to Google and why, that translation and Banglish stay on the machine,
+  that Ukti has no server, analytics, account or ads, exactly what is stored
+  (and that the word fixes and the off-sites list are the user's own
+  content), what the install warning means and what the script really reads,
+  that password and payment fields are skipped **and that this is also a
+  limitation** (an unmarked password box cannot be recognised), how to delete
+  everything, and the "why is it free" answer.
+- `listing-en.md`, `listing-bn.md`: name, summary (the manifest's 103
+  characters in English; 89 in Bengali), full description, category.
+- `checklist.md`: package, listing, privacy-practices answers (single
+  purpose, a justification for `storage`, `offscreen` and the content
+  script's host access, remote code "No"), account items.
+
+**Tests.** Two new checks in `tests/strings.test.js`: no em dashes in any of
+the documents or store copy, and no user-facing sentence claiming speech
+never leaves the machine (it caught my own checklist quoting the old phrase,
+which I reworded). Suite: 170 tests, all pass.
+
+**Decided for you.**
+- **The store's data-usage form is a judgement call** I have left to you,
+  with my reading in the checklist. Ukti's own code sends nothing, but
+  dictation makes Chrome send audio to Google. I lean towards disclosing more,
+  not less.
+- The policy names you and links `rashadul.me` for contact, as the manifest
+  does. I did not put an email address in it.
+- Screenshots: not made. The only pages I can drive here are synthetic test
+  pages, and store screenshots must show the real product.
+
+**Could not do from here.** Host the policy at a public URL (both listings
+carry a `[privacy policy URL]` placeholder), take screenshots, and fill in
+the dashboard.
