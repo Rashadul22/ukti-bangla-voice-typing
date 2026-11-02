@@ -91,3 +91,101 @@ spoken punctuation while dictating, Bijoy to Unicode conversion, Bengali versus
 English numerals, growing the correction dictionary from what the user undoes,
 remembering the preferred output language per site, and graceful behaviour when
 Google's speech service rate-limits a long session.
+
+## 9. Give the extension a performance budget and hold it to one
+
+Ukti injects a content script into every frame of every page on the web. That is
+the most expensive thing an extension can do, and it is the thing that gets an
+extension uninstalled. Measure, do not assume.
+
+Measure, with numbers, and write them into `PERF.md`:
+
+- Parse and execute time of `banglish.js` plus `content.js` on a cold load. The
+  dictionary is large and it is parsed on every page in every frame.
+- Memory held per frame when the control has never been shown.
+- Whether anything runs while the control sits idle. The last measurement was
+  zero animation frames, zero timers and zero DOM mutations over three idle
+  seconds. Keep it there and put that check in the test suite.
+- Cost on a heavy real page. Use a saved copy of a complex page, since a cloud
+  session cannot reach live sites.
+- The size of the shadow DOM. It was 56 nodes. Watch that it does not creep.
+
+Then look for the obvious wins: the dictionary does not need to be parsed in a
+frame that never gets a focused editable, and an iframe too small to hold a text
+box does not need the control at all.
+
+Set a budget you can defend, write it in `PERF.md`, and add a test that fails
+when the budget is exceeded.
+
+## 10. Walk every failure path and fix what the user is told
+
+Each of these will happen to a real user. For each one, find out what currently
+happens, then make sure the user gets a message they understand and can act on,
+in both Bengali and English, and that the extension does not end up stuck.
+
+- Microphone permission never granted, and permission granted then revoked later
+- Chrome older than 138, where the Translator API does not exist
+- A language pack missing, or only one direction downloaded
+- The device is offline. Speech recognition needs the network, translation does not
+- Google's speech service rate-limits a long session. There is already a message
+  for this; check that it recovers on its own and does not need a reload
+- The service worker is terminated mid-dictation and the content script sends
+  into a dead port
+- The offscreen document fails to create, or is torn down while a result is in flight
+- The user navigates away, or the editor is removed from the DOM, mid-dictation
+- Two tabs dictating at the same time
+- The extension is reloaded or updated while a page is open. There is a message
+  for this (`reload`); verify it actually appears rather than the control dying silently
+
+Write the findings as a table: the failure, what happens today, what should
+happen, and whether you fixed it.
+
+## 11. Audit the extension as a hostile page would see it
+
+The content script runs in every frame of every site, and the control lives in an
+**open** shadow root, which means any page's own JavaScript can reach into it.
+Think like someone who wants to abuse that.
+
+- Can a page read the text the user dictated, or the contents of the preview panel?
+- Can a page click the extension's buttons, or dispatch events that make the
+  extension write attacker-chosen text into a box the user is about to submit?
+- Can a page learn which sites the user has turned Ukti off for, or anything else
+  from `chrome.storage`?
+- Does the field filter actually hold? `editableFrom()` excludes password, OTP,
+  PIN, CVV and card fields. Try to defeat it: a password behind `type="text"`,
+  a field whose sensitive name only appears after the user focuses it, a field
+  inside a cross-origin iframe, a custom element with `contenteditable`.
+- Does anything the extension writes to a page ever come from the page itself?
+- Would a closed shadow root be better here, and what would it cost?
+
+Write it up in `SECURITY.md` with what you tested, what held and what did not.
+Fix what did not. If a closed shadow root is the right call, say so and make the
+change behind a clear commit.
+
+## 12. Make releases boring and repeatable
+
+Right now the extension is packaged by hand into a zip, and the version appears
+in two places that can drift apart.
+
+- A `scripts/package.sh` that validates and builds the release zip: checks that
+  the manifest version matches the version shown in the setup page footer,
+  checks that every file the manifest references exists, checks that the icons
+  are the sizes they claim, refuses to build if the test suite fails, and
+  excludes development files from the zip.
+- A `CHANGELOG.md`, starting with 1.0.0 and 1.0.1. The 1.0.1 entry is the Gemini
+  insertion fix, the no-op translation guard, the toast that no longer gets
+  clipped, and the nasal cluster rules.
+- A release checklist in `RELEASING.md`: bump both version strings, raise
+  `SCHEMA` if a stored default changed, add the migration step, run the tests,
+  build, and verify the built zip loads as an unpacked extension.
+- A test that installs version N with settings saved, then loads version N+1
+  over it, and asserts the user's own choices survived while changed defaults
+  were migrated. This is the thing that quietly breaks for real users and that
+  nobody tests.
+
+## A note on order
+
+Tasks 1 to 7 make what exists correct. 9 to 12 make it hold up once strangers
+are using it. 8, new features, comes last on purpose. If the budget runs out
+before task 8, that is the right outcome, not a failure: a reliable extension
+with a written plan for features beats an extension with half-built features.
