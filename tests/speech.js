@@ -48,6 +48,22 @@ const FAKE = `(() => {
   // Slow the end of a session down, so a result can arrive in between.
   fake.slowEnd = ms => { P.stop = function () { fake.stops++; const me = this;
     setTimeout(() => { if (!me.__live) return; me.__live = false; me.onend && me.onend(); }, ms); }; };
+  // The service reports an error, then ends the session, as Chrome does.
+  fake.fail = error => {
+    const r = fake.live().at(-1);
+    if (!r) return false;
+    r.onerror && r.onerror({ error, message: '' });
+    end.call(r);
+    return true;
+  };
+  // Every new session ends at once having heard nothing: what being
+  // rate-limited looks like from outside.
+  fake.dieInstantly = on => { fake.instant = on; };
+  const start0 = P.start;
+  P.start = function () {
+    start0.call(this);
+    if (fake.instant) setTimeout(() => end.call(this), 40);
+  };
   // The service ends a session on its own, as it does after a pause.
   fake.drop = () => { const r = fake.live().at(-1); if (r) end.call(r); };
   return 'installed';
