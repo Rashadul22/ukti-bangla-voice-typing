@@ -52,7 +52,17 @@ const MUTANTS = [
     tests: ['switches'] },
   { id: 'S2', what: 'per-site key keeps the www. prefix',
     file: 'content.js', from: "try { return location.hostname.replace(/^www\\./, ''); }", to: 'try { return location.hostname; }',
-    tests: ['switches'] }
+    tests: ['switches'] },
+  { id: 'B1', what: 'normalise() collapses doubled consonants (bollo becomes bolo)',
+    file: 'banglish.js', from: ".replace(/([aeiou])\\1+/g, '$1')", to: ".replace(/([a-z])\\1+/g, '$1')",
+    tests: ['banglish'] },
+  { id: 'B2', what: '^th and ^sh treated as strong English signals',
+    file: 'banglish.js', from: "    /ea|oa|ie/,", to: "    /ea|oa|ie/, /^(?:th|sh)[aeiou]/,",
+    tests: ['banglish'] },
+  { id: 'B3', what: 'ss and ll counted as English doubled consonants',
+    file: 'banglish.js', from: "/([bdfgmprtz])\\1/,", to: "/([bdfglmprstz])\\1/,", tests: ['banglish'] },
+  { id: 'B4', what: 'nasal cluster rule for ng removed',
+    file: 'banglish.js', from: "if (pair === 'ng') {", to: "if (false) {", tests: ['banglish'] }
 ];
 
 const only = process.argv.slice(2);

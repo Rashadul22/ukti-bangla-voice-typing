@@ -101,6 +101,14 @@ produced several fixes that passed in isolation and failed in sequence.
 
 Do not report a fix you have not watched fail first.
 
+The suite lives in `tests/`. `npm test` runs the browser tests against the
+mimic editors plus the Banglish corpus floors. `npm run corpus` prints the
+corpus scores (`-- --failures` lists the dev misses). `npm run test:mutants`
+puts known bugs back one at a time and checks the suite notices each. Tune
+the Banglish engine against `tests/corpus/words.tsv` and `sentences.tsv`
+only; the `heldout-*` files and the English list after `HELD-OUT` are for
+reporting, and adding their words to the dictionary makes the number a lie.
+
 ## Rules
 
 - Do not add permissions, and do not add any network call.
