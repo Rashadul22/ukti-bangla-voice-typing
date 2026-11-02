@@ -2,8 +2,50 @@
 
 ## Read this first
 
-(Summary is written at the end of the night. If this line is still here, the
-run stopped early; the sections below are complete for every task listed.)
+**Finished, in the order you gave:** 3, 4, 13, 11, 10, 9, 6, 12, 5, 7, and the
+research half of 8 (`RESEARCH.md`, nothing built). Each has a section below
+with numbers. Everything is committed and pushed to
+`claude/serene-bohr-r7epda`. The suite is **170 tests, 170 passing, 0 todo**
+(it was 55 with 3 todo at the start of the night).
+
+**Not finished:** nothing on the list. Not done on purpose: the shadow root
+is still open (recommended against, `SECURITY.md`), the hotkeys still work
+the way they did (a decision for you, below), and no feature from task 8 was
+built.
+
+**The one thing to look at first: the install dialog.** Chrome warns
+**"Read and change all your data on all websites"** for Ukti as shipped.
+CLAUDE.md and the README said the opposite. I measured it by asking Chrome
+itself (`getPermissionWarningsByManifest`): the content script's `matches`
+cause it, not a permission. I corrected both files and the store copy says
+so honestly, but whether to accept it or move to `activeTab` (no warning,
+but the control no longer appears by itself) is a product decision only you
+can make. Task 13 has the measurements.
+
+**Close second, also yours to decide:** Ukti swallows Ctrl+Shift+Z, B, E and
+Space on every page, so redo breaks in Google Docs, Figma and most web
+editors, and Chrome's bookmarks-bar shortcut stops working. Measured in
+task 7. `RESEARCH.md` ranks moving to `chrome.commands` as the first thing to
+build.
+
+**Real bugs fixed tonight, each watched failing first:**
+- Any web page could switch the microphone on, with a synthetic keypress or
+  a script click (task 11).
+- The microphone kept listening after the tab closed or the page navigated
+  away (task 3).
+- A missing language pack left "translating" on screen for good (task 10).
+- Rapid presses could leave the mic on when the button said off (task 4).
+- The password-field filter missed the standard `one-time-code` and `cc-*`
+  markup (task 11).
+
+The insertion engine and everything CLAUDE.md lists as not to be regressed
+are untouched; the tests from task 1 that guard them still pass, and so do
+their mutants.
+
+**One thing to know when you test by hand:** after replacing an unpacked
+extension's files, press Reload in `chrome://extensions`. A Chrome restart
+alone can keep running the old `background.js` from cache while the manifest
+already shows the new version (measured in task 12).
 
 ## Readings taken on your behalf
 
@@ -479,3 +521,32 @@ screenshots, `homepage_url`, desktop only).
 
 **Measured for the record.** Suite after tasks 5 and 7: 170 tests, 170 pass
 (the count I gave under task 5 was by addition; this run confirms it).
+
+---
+
+## Task 8: research only
+
+Written up in `RESEARCH.md`, every claim with its source. No feature built,
+as you asked.
+
+**Limits, stated in the file.** This session's network policy blocked
+`developer.chrome.com` and `developer.mozilla.org`, so Chrome API claims come
+from search summaries and are marked "verify". To let a later session read
+them, add those two hosts under Network access, Allowed domains, in this
+environment's settings (cloud environment menu, Edit; steps at
+https://code.claude.com/docs/en/cloud-environments#network-access). Real
+review text for competitors was mostly not reachable; where demand is not
+evidenced, the table says "none found".
+
+**Ranking.**
+1. Shortcuts through `chrome.commands`: measured harm today (redo taken over
+   on every site), no change to the control.
+2. A spike on on-device speech (`processLocally`): if Chrome offers Bangla
+   locally, the privacy policy could say the voice stays on the computer.
+   Needs one line run on your machine to find out.
+3. Spoken punctuation, off by default; কমা is also an ordinary word, so it
+   needs native-speaker design.
+
+Recommended against for now: learning from undo, per-site output language,
+and Prompt API rewriting. Bijoy to Unicode has real demand but is a
+different product.
