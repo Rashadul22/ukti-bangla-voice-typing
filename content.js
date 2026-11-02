@@ -2,10 +2,24 @@
 // Watches for the hotkeys, remembers which box the user was in, and inserts
 // text the way each kind of editor expects.
 
-(function () {
+(function ukti() {
   'use strict';
 
   if (self.__uktiLoaded) return;
+
+  // A frame too small to hold a text box (tracking pixels, hidden iframes)
+  // does not need the control, so nothing is set up there until it grows.
+  // Only sub-frames: the top page is never skipped.
+  const TINY_W = 60, TINY_H = 24;
+  if (window.top !== window && (innerWidth < TINY_W || innerHeight < TINY_H)) {
+    const grow = () => {
+      if (innerWidth < TINY_W || innerHeight < TINY_H) return;
+      removeEventListener('resize', grow);
+      ukti();
+    };
+    addEventListener('resize', grow, { passive: true });
+    return;
+  }
   self.__uktiLoaded = true;
 
   // ------------------------------------------------------------- strings
@@ -117,13 +131,16 @@
   let target = null;          // the box dictation was started in
   let undoStack = [];         // {element, kind, snapshot}
   let indicator = null;
-  let settings = {
+  // Must agree with getSettings() in background.js for every key used here
+  // (tests/migration.test.js checks the popup's copy the same way).
+  const DEFAULTS = {
     outputMode: 'bangla', autoSubmit: false, uiSize: 'medium',
     showHints: false, useCount: 0, barPos: null, barCorner: 'auto', coachDone: false,
     theme: 'glass', uiLang: 'bn', layout: 'compact',
     buttons: { banglish: true, english: true, undo: true, grip: true },
     enabled: true, disabledSites: []
   };
+  let settings = { ...DEFAULTS };
 
   // ------------------------------------------------------- target detection
 
@@ -728,10 +745,13 @@
 
   // --------------------------------------------------------------- actions
 
+  // Read straight from storage. This used to ask the service worker, which
+  // meant every frame of every page woke the worker on load: a page with ten
+  // ad iframes sent eleven messages before the user had done anything.
   async function loadSettings() {
     try {
-      const reply = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
-      if (reply) settings = reply;
+      const stored = await chrome.storage.local.get(null);
+      settings = { ...DEFAULTS, ...stored };
     } catch (_) {}
   }
 

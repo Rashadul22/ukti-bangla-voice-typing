@@ -288,3 +288,37 @@ service (the fake raises `network` the way Chrome documents it); real
 revocation of the microphone permission mid-session.
 
 **Tests.** Suite: 141 tests, 139 pass, 0 fail, 2 todo.
+
+---
+
+## Task 9: performance budget
+
+Full numbers and the budget in `PERF.md`; held by `tests/perf.test.js`
+(9 tests). Harness in `tests/perf.js` (`node tests/perf.js` prints a report).
+
+**Measured.** Idle already cost nothing: 0 script, 0 layouts, 0 style
+recalcs, 0 mutations over 3 s, never shown or shown. The costs were per frame
+at load: 1 message to the service worker per frame (11 for a page with 10
+iframes) and 81 KB of heap per frame on top of Chrome's 179 KB isolated world.
+
+**Changed.**
+- Settings read from storage directly: messages on load 11 to **0**.
+- Banglish engine built on first use: `banglish.js` 1.2 to **0.5 ms** per frame;
+  heap per frame 259.6 to **235.9 KB** (Ukti's share 81 to 57 KB). Corpus
+  scores identical.
+- Sub-frames under 60x24 skip setup until they grow: tracking-pixel frames
+  **192.0 KB** (Ukti's share 13 KB).
+
+The tiny-frame test failed before the skip (235.3 KB against 235.9) and passes
+after; the "a frame that grows still gets the control" test passed before and
+after, which is the point of it.
+
+**Decided for you.** Thresholds: zeros held at zero, machine-dependent times
+at roughly 3x to 7x today's numbers, so a slower CI box does not fail them.
+`banglish.js` was wrapped in `build()` without re-indenting its body, to keep
+the diff and `git blame` readable; a comment says so.
+
+**Could not verify from here.** A real heavy site (used a synthetic 16,000
+element page) and a slow machine.
+
+**Tests.** Suite: 150 tests, 148 pass, 0 fail, 2 todo.

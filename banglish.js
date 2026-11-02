@@ -9,6 +9,13 @@
 (function () {
   'use strict';
 
+  // Everything below is built on first use, not on load. This file runs in
+  // every frame of every page, including ad iframes that never hold a text
+  // box, and building the dictionary there cost each of them heap for
+  // nothing. The body keeps its original indentation so its history stays
+  // readable; it is the inside of build().
+  function build() {
+
   const HASANTA = '্';
 
   // Banglish writers mix English in constantly ("amar computer e", "ekta
@@ -608,5 +615,13 @@
     return 'banglish';
   }
 
-  self.UktiBanglish = { convert: banglishToBangla, classify };
+  return { convert: banglishToBangla, classify };
+  }
+
+  let engine = null;
+  const ready = () => engine || (engine = build());
+  self.UktiBanglish = {
+    convert: text => ready().convert(text),
+    classify: text => ready().classify(text)
+  };
 })();
