@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 'tests/*.test.js'",
     "test:mutants": "node tests/mutants.js",
-    "corpus": "node tests/corpus/score.js"
+    "corpus": "node tests/corpus/score.js",
+    "package": "node scripts/package.js"
   },
   "devDependencies": {
     "playwright": "1.63.0"

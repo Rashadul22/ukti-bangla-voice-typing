@@ -360,3 +360,56 @@ ChromeVox). The checks are on the accessibility attributes and on what
 receives focus, not on what a screen reader actually says.
 
 **Tests.** Suite: 160 tests, 160 pass, 0 fail, 0 todo.
+
+---
+
+## Task 12: releases
+
+**Added.**
+- `scripts/package.js` (and `scripts/package.sh`, a thin wrapper; `npm run
+  package` also works). Written in Node rather than shell so it runs the same
+  on Windows, and it zips with Node's own `zlib`, so no `zip` binary and no
+  new dependency. Checks: both version strings match; every file the
+  manifest, the pages and the scripts refer to exists (followed through, so
+  `offscreen.html` and `i18n.js` are found); every icon is a PNG of its
+  claimed size; `npm test` passes. Builds `dist/ukti-X.Y.Z.zip` from exactly
+  the referenced files plus `LICENSE` (16 files, 87 KB today), then unzips it
+  and loads it as an unpacked extension to confirm it starts and reports the
+  right version. `unzip -t` accepts the archive.
+- `CHANGELOG.md`: 1.0.0, 1.0.1 (the four items you named) and an Unreleased
+  section summarising tonight.
+- `RELEASING.md`: the checklist.
+- `tests/release.test.js` (8 tests): the packager builds a clean tree and
+  refuses version drift, a missing file, a mis-sized icon and a failing test
+  suite, and keeps `tests/`, `scripts/`, `*.md` and `package.json` out of the
+  zip; plus two upgrade tests.
+
+**The upgrade tests.** Install version N into a real profile, save the user's
+choices (theme, language, output mode, corner, size, disabled sites, word
+replacements, button set), put N+1 at the same path, start again on the same
+profile:
+- Real 1.0.1 (commit `1afd7c7`) to this tree: every choice survives.
+- A schema 2 build to this tree: the user's choices survive and `layout` and
+  `showHints` move to the v3 defaults.
+
+**Found while writing them.** Restarting Chrome on the same profile with an
+unpacked extension whose files changed refreshes the manifest (the new
+version shows) but **keeps running the old `background.js` from Chrome's
+service worker cache**. Measured: the restarted worker still had `SCHEMA = 2`.
+The first version of the schema 2 test failed for exactly that reason. A store
+update installs afresh and is not affected; the test clears only the worker
+cache to model it, and asserts the new code is running before checking
+anything. For you this matters when testing by hand: after replacing an
+unpacked extension's files, press Reload in `chrome://extensions`. A Chrome
+restart alone can leave the old worker running, which fits CLAUDE.md's "a fix
+appears not to have worked". It is in `RELEASING.md`.
+
+**Decided for you.** `npm test` now includes the release tests, so it takes
+about 2 minutes longer. The packager runs the suite, and the suite's packager
+test runs the packager with the tests skipped (`UKTI_PACKAGE_SKIP_TESTS`), so
+there is no loop. `dist/` is ignored by git.
+
+**Could not verify from here.** A real Chrome Web Store update, and the
+packager on Windows (written for it: Node only, `npm.cmd` on win32).
+
+**Tests.** Suite: 168 tests, 168 pass, 0 fail, 0 todo.
