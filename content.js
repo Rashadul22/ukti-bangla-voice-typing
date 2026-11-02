@@ -693,6 +693,8 @@
       indicator = document.createElement('div');
       indicator.className = 'toast';
       indicator.setAttribute('data-ukti-toast', '');
+      indicator.setAttribute('role', 'status');
+      indicator.setAttribute('aria-live', 'polite');
       shadow.appendChild(indicator);
     }
     clearTimeout(hideTimer);
@@ -1164,9 +1166,13 @@
       gap: calc(var(--unit) * .8);
       font-family: system-ui, "Noto Sans Bengali", sans-serif;
       opacity: 0; pointer-events: none;
-      transition: opacity .25s ease;
+      /* visibility, not just opacity: a transparent button can still take
+         keyboard focus and still be read by a screen reader. It flips after
+         the fade on the way out and at once on the way in. */
+      visibility: hidden;
+      transition: opacity .25s ease, visibility 0s linear .25s;
     }
-    .bar.on { opacity: 1; pointer-events: auto; }
+    .bar.on { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity .25s ease; }
 
     button {
       all: unset; box-sizing: border-box; cursor: pointer;
@@ -1244,6 +1250,7 @@
     .bar.compact.open .row:nth-of-type(5) { transition-delay: .16s; }
     .bar.compact:not(.open) .row:not([data-name="mic"]):not([data-name="toggle"]) {
       overflow: hidden;   /* clip only while they are tucked away */
+      visibility: hidden; /* and out of the tab order while they are */
     }
     .row:has(.noTip) .tip { display: none; }
     .toggle { opacity: .55; }
@@ -1435,8 +1442,13 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      button, .toast { transition-duration: .01ms; }
-      .main.live::before, .main.live::after, .dots i { animation: none; }
+      /* Everything, not a chosen few: the rows, the tips, the preview and
+         the listening halo all moved before, measured. */
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        transition-delay: 0s !important;
+        animation: none !important;
+      }
     }
   `;
 
@@ -1481,6 +1493,8 @@
 
     const host = document.createElement('div');
     hostEl = host;
+    // So a screen reader pronounces the labels in the right language.
+    host.setAttribute('lang', settings.uiLang === 'en' ? 'en' : 'bn');
     host.setAttribute('data-ukti', 'bar');
     // No contain:layout here. It would make this host the containing block
     // for the fixed-position bar and panels inside, so their right/bottom
@@ -1498,11 +1512,17 @@
     micButton = makeButton(ICONS.mic, t('startSpeak'), 'main', () => {
       toggleDictation();
     });
+    micButton.setAttribute('aria-pressed', 'false');
     const banglish = makeButton('অ', t('toBangla'), 'small', convertBanglish);
     const english = makeButton('EN', t('toEnglish'), 'small en', convertToEnglish);
     const undo = makeButton(ICONS.undo, t('undo'), 'small', undoLast);
 
     const grip = makeButton(ICONS.grip, t('move'), 'small grip', () => {});
+    // Dragging is a pointer gesture with no keyboard meaning; the popup's
+    // "where it sits" setting is the keyboard way to move the control. A
+    // focusable button that does nothing is worse than none.
+    grip.tabIndex = -1;
+    grip.setAttribute('aria-hidden', 'true');
     const toggle = makeButton(ICONS.more, t('more'), 'small toggle noTip', () => {
       expanded = !expanded;
       paintLayout();
@@ -1525,6 +1545,10 @@
     preview = document.createElement('div');
     preview.className = 'preview';
     preview.setAttribute('data-ukti-preview', '');
+    // The words change many times a second while speaking, and they end up
+    // in the box anyway. Announcing every interim guess would drown a
+    // screen reader user.
+    preview.setAttribute('aria-hidden', 'true');
 
     shadow.append(style, preview, bar);
     (document.body || document.documentElement).appendChild(host);
@@ -1734,6 +1758,8 @@
       const button = toggleRow.querySelector('button');
       button.innerHTML = expanded ? ICONS.less : ICONS.more;
       button.title = expanded ? t('less') : t('more');
+      button.setAttribute('aria-label', button.title);
+      button.setAttribute('aria-expanded', String(expanded));
     }
 
     requestAnimationFrame(placePreview);
@@ -1760,11 +1786,15 @@
       const text = t(key);
       row.querySelector('.tip b').textContent = text;
       row.querySelector('.tip span').textContent = keys;
-      row.querySelector('button').title = text;
+      const button = row.querySelector('button');
+      button.title = text;
+      button.setAttribute('aria-label', text);
     }
     if (micButton) {
       micButton.title = listening ? t('stopSpeak') : t('startSpeak');
+      micButton.setAttribute('aria-label', micButton.title);
     }
+    if (hostEl) hostEl.setAttribute('lang', settings.uiLang === 'en' ? 'en' : 'bn');
   }
 
   // Labels stay until the user turns them off in the popup. They used to
@@ -1908,6 +1938,8 @@
     if (!listening) micButton.style.setProperty('--lvl', 0);
     micButton.innerHTML = listening ? ICONS.stop : ICONS.mic;
     micButton.title = listening ? t('stopSpeak') : t('startSpeak');
+    micButton.setAttribute('aria-label', micButton.title);
+    micButton.setAttribute('aria-pressed', String(listening));
   }
 
   // --------------------------------------------------------------- hotkeys

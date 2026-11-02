@@ -180,6 +180,11 @@ function applyLang(root, lang) {
     }
   }
 
+  // The tab title is what a screen reader announces for the page, and it
+  // stayed Bengali in English mode.
+  if (document.__bnTitle == null) document.__bnTitle = document.title;
+  document.title = lang === 'en' ? tr(document.__bnTitle, 'en') : document.__bnTitle;
+
   document.documentElement.lang = lang === 'en' ? 'en' : 'bn';
 }
 

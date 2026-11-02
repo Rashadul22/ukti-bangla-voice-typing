@@ -322,3 +322,41 @@ the diff and `git blame` readable; a comment says so.
 element page) and a slow machine.
 
 **Tests.** Suite: 150 tests, 148 pass, 0 fail, 2 todo.
+
+---
+
+## Task 6: accessibility
+
+Tests: `tests/a11y.test.js`, 10 tests. Before the fixes, 9 of 10 failed (focus
+was already visible: a 2 px outline on `:focus-visible`).
+
+| Check | Before | After |
+|---|---|---|
+| Tab order, collapsed | 6 stops, 4 of them invisible (folded rows) | mic, toggle |
+| Tab order, expanded from the keyboard | toggle had no state | mic, অ, EN, undo, toggle; toggle has `aria-expanded` |
+| Control hidden (site off) | all 6 buttons still took focus | no tab stops |
+| Mic from the keyboard | Enter worked, but the name stayed "start" and there was no state | name follows ("stop listening"), `aria-pressed` follows |
+| Drag grip | a focusable button that did nothing | `tabindex=-1`, `aria-hidden` (the popup's "where it sits" is the keyboard way) |
+| Messages | not announced | toast is `role=status`, `aria-live=polite` |
+| Preview while speaking | would be read word by word | `aria-hidden` (the words land in the box) |
+| Live language switch | `aria-label` stayed Bengali | follows; host carries `lang` |
+| Reduced motion | 6 elements still animated or transitioned (rows, tips, preview, halo) | nothing over 0.01 ms |
+| Setup tab title in English | stayed Bengali | translated |
+
+**Changed.** `content.js`: `visibility: hidden` on the hidden bar and on folded
+rows (after the fade, so the animation is kept); ARIA state and names kept in
+step in `paintMic`, `paintLayout`, `paintLabels`; grip removed from the tab
+order; toast and preview roles; reduced motion now covers every element.
+`i18n.js`: `document.title` translated. Both remaining todo tests from task 1
+are now real, passing tests, so the suite has no todos.
+
+**Decided for you.** The control sits at the end of the page's tab order
+(its host is appended to `<body>`). I left it there rather than adding a new
+shortcut to jump into it: the hotkeys already do every action from the box
+itself, and a new shortcut is a new feature.
+
+**Could not verify from here.** A real screen reader (NVDA, VoiceOver,
+ChromeVox). The checks are on the accessibility attributes and on what
+receives focus, not on what a screen reader actually says.
+
+**Tests.** Suite: 160 tests, 160 pass, 0 fail, 0 todo.

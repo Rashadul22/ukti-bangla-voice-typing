@@ -43,7 +43,7 @@ const EXEMPT = new Set(['replacements@placeholder']);
 // The tab title is checked on its own, below, as a known gap.
 const leftovers = items =>
   items.filter(([where, text]) =>
-    !EXEMPT.has(where) && where !== 'title' && BENGALI.test(text.replace(/\(অ\)|^অ$/g, '')));
+    !EXEMPT.has(where) && BENGALI.test(text.replace(/\(অ\)|^অ$/g, '')));
 
 const settle = page => page.waitForTimeout(400);
 
@@ -146,10 +146,8 @@ test('the on-page control in English', async () => {
   }
 });
 
-// KNOWN BUG: paintLabels() updates title and the tips but not aria-label,
-// so after a live switch a screen reader still reads the Bengali names.
-test('the on-page control follows a language change without a reload',
-  { todo: 'paintLabels() does not update aria-label' }, async () => {
+// Was a todo until task 6: paintLabels() now updates aria-label too.
+test('the on-page control follows a language change without a reload', async () => {
   await storage.set(ext.worker, { uiLang: 'bn', coachDone: true });
   const page = await ext.context.newPage();
   try {
@@ -167,10 +165,8 @@ test('the on-page control follows a language change without a reload',
   }
 });
 
-// KNOWN GAP: applyLang() translates text nodes and attributes, never
-// document.title, so the setup tab keeps its Bengali name in English mode.
-test('setup.html tab title is English in English mode',
-  { todo: 'applyLang() does not translate document.title' }, async () => {
+// Was a todo until task 6: applyLang() now translates document.title.
+test('setup.html tab title is English in English mode', async () => {
   await storage.set(ext.worker, { uiLang: 'en' });
   const page = await ext.context.newPage();
   try {
