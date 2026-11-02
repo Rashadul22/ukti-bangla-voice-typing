@@ -1,6 +1,6 @@
 # উক্তি (Ukti)
 
-Speak Bangla into any text box in Chrome. Free, no account, nothing sent to a server.
+Speak Bangla into any text box in Chrome. Free, no account, no tracking.
 
 Millions of Bangla speakers can speak the language fluently but cannot type its
 script. Ukti is for them. Press the mic, say what you mean, and the words land in
@@ -14,6 +14,31 @@ whatever box you were already using: a chat, a search bar, a form, an AI prompt.
 - **Banglish to Bangla.** Text typed the roman way (`ami banglay kotha boli`)
   becomes `আমি বাংলায় কথা বলি`.
 - **Undo.** One button puts back what was there before.
+
+## Where your words go
+
+Being straight about this matters more than sounding good.
+
+**Speech recognition goes to Google.** Ukti uses the Web Speech API, which is how
+Chrome offers free speech recognition, and Chrome sends the audio to Google's
+servers to be transcribed. This is Chrome's behaviour, not something Ukti adds,
+and it is the same thing that happens when you press the microphone in Google
+Search. There is no on-device alternative in Chrome today that recognises
+Bangla. If that is not acceptable for something you are about to dictate, type
+it instead.
+
+**Translation does not leave the machine.** It runs through Chrome's Translator
+API, which downloads the language packs once and then works on-device.
+
+**Banglish conversion does not leave the machine.** It is a dictionary and a set
+of rules inside the extension.
+
+**Ukti itself sends nothing anywhere.** It has no server, no analytics, no
+account, and no network permission of its own. Your settings and your custom
+word replacements are stored by Chrome on your own computer.
+
+**Password fields are skipped.** Password, OTP, PIN, CVV and card number fields
+are excluded, so the control does not appear on them.
 
 ## How it is built
 

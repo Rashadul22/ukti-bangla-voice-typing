@@ -41,3 +41,197 @@ starting the next.
 7. **Read the whole thing as a store reviewer would** and list anything that
    would draw a rejection.
 
+
+## 8. Research what Ukti should become, then build only what earns its place
+
+The first seven tasks are about making what exists correct. This one is about
+what to add. Do the research before writing any code.
+
+**Research brief.** Use web search. Find out:
+
+- What Bengali speakers actually complain about when they try to type Bangla.
+  Search in both English and Bengali. Forums, Reddit, Chrome Web Store reviews
+  of Avro, Ridmik, Google Input Tools, and any Bangla voice typing extension.
+  Reviews of competitors are the most honest feature list you will find.
+- What the existing Bangla input tools do and do not do, and where Ukti is
+  genuinely different. Ukti's difference today is that it is voice first and
+  works inside any box on any site, with on-device translation.
+- Which Chrome extension APIs would let Ukti do something it cannot do now.
+  Check what is actually shipping, not what is proposed, and check the minimum
+  Chrome version each needs. The manifest currently requires 138.
+- Which of Chrome's on-device model APIs are available and stable, and whether
+  any of them would improve transliteration, punctuation or correction without
+  a network call.
+
+**The bar a feature has to clear.** Propose nothing that fails all of these:
+
+1. It solves a problem a real user has stated, not one you imagined.
+2. It works without adding a permission and without a network call. A feature
+   that would reintroduce `host_permissions` is not worth it, whatever it does.
+3. It does not make the floating control more complicated to look at. The
+   control was already redesigned once because it had grown too tall and too
+   busy. Anything new either hides inside the popup or earns its place on the
+   bar by being used constantly.
+4. Someone who installed Ukti to speak Bangla into a text box would still
+   understand the extension after the feature exists.
+
+**How to report.** Write `RESEARCH.md` with what you found, each claim carrying
+the source you found it in. Then list the candidate features in a table: what it
+does, the evidence that someone wants it, what it costs to build, what it risks.
+Rank them. Say which ones you recommend and which you recommend against, and why.
+
+**Then build.** Start with the single highest-ranked feature, build it properly
+with tests, and report. Do not build the whole list. A half-finished feature is
+worse than an absent one, and five mediocre features are worse than one good
+one. If you run out of time or budget, having one feature done well and the rest
+written up as a plan is the better outcome.
+
+Some directions worth checking during the research, not a list to implement:
+spoken punctuation while dictating, Bijoy to Unicode conversion, Bengali versus
+English numerals, growing the correction dictionary from what the user undoes,
+remembering the preferred output language per site, and graceful behaviour when
+Google's speech service rate-limits a long session.
+
+## 9. Give the extension a performance budget and hold it to one
+
+Ukti injects a content script into every frame of every page on the web. That is
+the most expensive thing an extension can do, and it is the thing that gets an
+extension uninstalled. Measure, do not assume.
+
+Measure, with numbers, and write them into `PERF.md`:
+
+- Parse and execute time of `banglish.js` plus `content.js` on a cold load. The
+  dictionary is large and it is parsed on every page in every frame.
+- Memory held per frame when the control has never been shown.
+- Whether anything runs while the control sits idle. The last measurement was
+  zero animation frames, zero timers and zero DOM mutations over three idle
+  seconds. Keep it there and put that check in the test suite.
+- Cost on a heavy real page. Use a saved copy of a complex page, since a cloud
+  session cannot reach live sites.
+- The size of the shadow DOM. It was 56 nodes. Watch that it does not creep.
+
+Then look for the obvious wins: the dictionary does not need to be parsed in a
+frame that never gets a focused editable, and an iframe too small to hold a text
+box does not need the control at all.
+
+Set a budget you can defend, write it in `PERF.md`, and add a test that fails
+when the budget is exceeded.
+
+## 10. Walk every failure path and fix what the user is told
+
+Each of these will happen to a real user. For each one, find out what currently
+happens, then make sure the user gets a message they understand and can act on,
+in both Bengali and English, and that the extension does not end up stuck.
+
+- Microphone permission never granted, and permission granted then revoked later
+- Chrome older than 138, where the Translator API does not exist
+- A language pack missing, or only one direction downloaded
+- The device is offline. Speech recognition needs the network, translation does not
+- Google's speech service rate-limits a long session. There is already a message
+  for this; check that it recovers on its own and does not need a reload
+- The service worker is terminated mid-dictation and the content script sends
+  into a dead port
+- The offscreen document fails to create, or is torn down while a result is in flight
+- The user navigates away, or the editor is removed from the DOM, mid-dictation
+- Two tabs dictating at the same time
+- The extension is reloaded or updated while a page is open. There is a message
+  for this (`reload`); verify it actually appears rather than the control dying silently
+
+Write the findings as a table: the failure, what happens today, what should
+happen, and whether you fixed it.
+
+## 11. Audit the extension as a hostile page would see it
+
+The content script runs in every frame of every site, and the control lives in an
+**open** shadow root, which means any page's own JavaScript can reach into it.
+Think like someone who wants to abuse that.
+
+- Can a page read the text the user dictated, or the contents of the preview panel?
+- Can a page click the extension's buttons, or dispatch events that make the
+  extension write attacker-chosen text into a box the user is about to submit?
+- Can a page learn which sites the user has turned Ukti off for, or anything else
+  from `chrome.storage`?
+- Does the field filter actually hold? `editableFrom()` excludes password, OTP,
+  PIN, CVV and card fields. Try to defeat it: a password behind `type="text"`,
+  a field whose sensitive name only appears after the user focuses it, a field
+  inside a cross-origin iframe, a custom element with `contenteditable`.
+- Does anything the extension writes to a page ever come from the page itself?
+- Would a closed shadow root be better here, and what would it cost?
+
+Write it up in `SECURITY.md` with what you tested, what held and what did not.
+Fix what did not. If a closed shadow root is the right call, say so and make the
+change behind a clear commit.
+
+## 12. Make releases boring and repeatable
+
+Right now the extension is packaged by hand into a zip, and the version appears
+in two places that can drift apart.
+
+- A `scripts/package.sh` that validates and builds the release zip: checks that
+  the manifest version matches the version shown in the setup page footer,
+  checks that every file the manifest references exists, checks that the icons
+  are the sizes they claim, refuses to build if the test suite fails, and
+  excludes development files from the zip.
+- A `CHANGELOG.md`, starting with 1.0.0 and 1.0.1. The 1.0.1 entry is the Gemini
+  insertion fix, the no-op translation guard, the toast that no longer gets
+  clipped, and the nasal cluster rules.
+- A release checklist in `RELEASING.md`: bump both version strings, raise
+  `SCHEMA` if a stored default changed, add the migration step, run the tests,
+  build, and verify the built zip loads as an unpacked extension.
+- A test that installs version N with settings saved, then loads version N+1
+  over it, and asserts the user's own choices survived while changed defaults
+  were migrated. This is the thing that quietly breaks for real users and that
+  nobody tests.
+
+## A note on order
+
+Tasks 1 to 7 make what exists correct. 9 to 12 make it hold up once strangers
+are using it. 8, new features, comes last on purpose. If the budget runs out
+before task 8, that is the right outcome, not a failure: a reliable extension
+with a written plan for features beats an extension with half-built features.
+
+## 13. Privacy: say exactly what is true, and make the product match it
+
+Read this one before task 5, because task 5's privacy policy depends on it.
+
+**A false claim has already been caught once in this repo.** The README said
+"nothing sent to a server". That was wrong: speech recognition uses the Web
+Speech API, and Chrome sends the audio to Google to be transcribed. It has been
+corrected. Check every other place the same claim may have been repeated,
+including any marketing copy, the store description, the setup page and the
+popup, and correct them too. A privacy claim that cannot be defended is grounds
+for removal from the Chrome Web Store, and it is the kind of thing that destroys
+trust in a free tool from an unknown author.
+
+**Establish the facts before writing a word of policy.** For each of these,
+verify in the code what actually happens, and cite the file and line:
+
+- The audio path. Where does `webkitSpeechRecognition` send it, is it continuous
+  or per-utterance, and is anything retained locally
+- The translation path. Confirm the Translator API is on-device and that no text
+  is sent anywhere, including when a pack is missing and it has to fall back
+- Everything written to `chrome.storage.local`. List every key, what it holds,
+  and whether any of it is content the user dictated rather than a setting. The
+  custom word replacements are user content and need saying so
+- Whether any dictated text is ever written to a log, the console, or the
+  undo stack in a way that outlives the page
+- Whether the extension can be made to read a page it was not meant to read
+- What the extension can see that it does not need to see, and whether that can
+  be narrowed
+
+**Then write the policy.** Plain Bengali and plain English, no legal padding.
+It must say, in the user's own terms: speech goes to Google and why, translation
+and Banglish conversion stay on the machine, Ukti has no server and no
+analytics, what is stored locally, that password and payment fields are skipped,
+and how to delete everything. If something is a limitation rather than a
+feature, say it is a limitation.
+
+**Then check the product matches.** If the policy says password fields are
+skipped, task 11 has to have proved it. If the policy says nothing is retained,
+confirm nothing is retained. Write the policy last, from what you verified, not
+from what the README says.
+
+**Also decide the honest answer to the obvious question.** A user will ask why a
+free Bangla voice extension needs no account and no payment. The answer is that
+it costs the author nothing to run, because the heavy lifting is Chrome's. Put
+that in the FAQ. An unexplained free tool reads as suspicious.
