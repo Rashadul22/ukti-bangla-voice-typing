@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><title>page with an editor inside a cross-origin iframe</title>
+<p>Top page. The iframe below is on another origin.</p>
+<iframe id="frame" style="width:40em;height:14em"></iframe>
+<script>
+  // ?src= names the frame's URL so the test can pick the other origin.
+  document.getElementById('frame').src = new URLSearchParams(location.search).get('src');
+</script>

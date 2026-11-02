@@ -7,6 +7,21 @@ const OFFSCREEN_PATH = 'offscreen.html';
 
 let creatingOffscreen = null;
 
+const ENDINGS = new Set(['STOPPED', 'FATAL', 'STUCK']);
+
+// Stops dictation if the offscreen document is running the session named.
+// The offscreen side ignores a stop for any other session or tab.
+async function stopSession(which) {
+  try {
+    if (!(await hasOffscreenDocument())) return;
+    await chrome.runtime.sendMessage({ target: 'offscreen', type: 'STOP_DICTATION', ...which });
+  } catch (_) {}
+}
+
+// Closing the tab is the one ending a page cannot report itself. Needs no
+// permission: onRemoved gives the id, which is all that is compared.
+chrome.tabs.onRemoved.addListener(tabId => stopSession({ tabId }));
+
 async function hasOffscreenDocument() {
   const url = chrome.runtime.getURL(OFFSCREEN_PATH);
   const contexts = await chrome.runtime.getContexts({
@@ -141,7 +156,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (await hasOffscreenDocument()) {
           await chrome.runtime.sendMessage({
             target: 'offscreen',
-            type: 'STOP_DICTATION'
+            type: 'STOP_DICTATION',
+            sessionId: message.sessionId
           });
         }
         sendResponse({ ok: true });
@@ -217,7 +233,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof message.frameId === 'number') options.frameId = message.frameId;
 
     chrome.tabs.sendMessage(message.tabId, payload, options).catch(() => {
-      // Tab closed or content script gone. Nothing to do.
+      // Nobody is there any more: the tab navigated, the frame was removed,
+      // or the content script was orphaned by an update. The microphone must
+      // not keep running for it. The end-of-session messages are left alone,
+      // or stopping a dead session would answer itself forever.
+      if (ENDINGS.has(message.type)) return;
+      stopSession({ sessionId: message.sessionId });
     });
     return false;
   }

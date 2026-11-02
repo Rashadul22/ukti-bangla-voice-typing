@@ -652,6 +652,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'STOP_DICTATION') {
+    // A stop names the session or tab it is for. One for anything else is
+    // stale: a page that was dictating before another tab took over.
+    if (message.sessionId && message.sessionId !== state.sessionId) return false;
+    if (message.tabId != null && message.tabId !== state.tabId) return false;
+    // Already stopped: say nothing, so a stop sent for a dead page cannot
+    // set off another round of messages to it.
+    if (!state.desired && !state.current) return false;
     stopDictation();
     return false;
   }

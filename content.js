@@ -65,6 +65,15 @@
     }
   };
 
+  // Settings writes that must never break an action. After the extension is
+  // reloaded or updated, an open page keeps this script running with
+  // chrome.storage gone, so a plain set() threw synchronously and took the
+  // Banglish button down with it, silently, though conversion needs no
+  // extension at all.
+  function save(items) {
+    try { chrome.storage.local.set(items).catch(() => {}); } catch (_) {}
+  }
+
   function t(key, ...args) {
     const table = STRINGS[settings.uiLang === 'en' ? 'en' : 'bn'];
     const value = table[key] ?? STRINGS.bn[key] ?? key;
@@ -551,7 +560,7 @@
     if (coach) {
       coach.classList.remove('on');
       settings.coachDone = true;
-      chrome.storage.local.set({ coachDone: true }).catch(() => {});
+      save({ coachDone: true });
     }
     placePreview();
     preview.classList.add('on');
@@ -630,8 +639,16 @@
 
   // Ukti is not wanted on every site. One switch turns it off everywhere,
   // another turns it off just here, which is what people actually reach for.
+  // In a frame, the site is the page the user is looking at, not the
+  // frame's own origin. Otherwise "off for this site" left every embedded
+  // third-party editor (comments, chat widgets) still showing the control.
+  // ancestorOrigins is readable even across origins.
   function siteKey() {
-    try { return location.hostname.replace(/^www\./, ''); } catch (_) { return ''; }
+    try {
+      const up = location.ancestorOrigins;
+      const host = up && up.length ? new URL(up[up.length - 1]).hostname : location.hostname;
+      return host.replace(/^www\./, '');
+    } catch (_) { return ''; }
   }
 
   function isOff() {
@@ -707,9 +724,20 @@
     showIndicator(t('stopped'));
     hideIndicator();
     try {
-      await chrome.runtime.sendMessage({ type: 'STOP_DICTATION' });
+      // Scoped to this frame's session, so stopping here can never stop a
+      // dictation another tab has since started.
+      await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId });
     } catch (_) {}
   }
+
+  // A page that goes away mid-dictation used to leave the microphone
+  // running in the offscreen document, sending audio for a page that no
+  // longer existed. Tell the engine before the page goes.
+  window.addEventListener('pagehide', () => {
+    if (!listening) return;
+    listening = false;
+    try { chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId }).catch(() => {}); } catch (_) {}
+  });
 
   function pushUndo(element) {
     undoStack.push(snapshot(element));
@@ -880,8 +908,11 @@
   }
 
   async function undoLast() {
-    const entry = undoStack.pop();
-    if (!entry || !entry.element.isConnected) {
+    // An entry whose box has left the page cannot be undone, and stopping
+    // at it hid every older entry for a box that is still here.
+    let entry = undoStack.pop();
+    while (entry && !entry.element.isConnected) entry = undoStack.pop();
+    if (!entry) {
       showIndicator(t('nothingUndo'), 'error');
       hideIndicator();
       return;
@@ -1518,6 +1549,7 @@
     const onUp = event => {
       document.removeEventListener('pointermove', onMove, true);
       document.removeEventListener('pointerup', onUp, true);
+      document.removeEventListener('pointercancel', onUp, true);
       if (!dragging) return;
 
       // Swallow the click that would otherwise follow the drag.
@@ -1529,12 +1561,12 @@
       bar.classList.remove('dragging');
       dragging = false;
       const rect = bar.getBoundingClientRect();
-      chrome.storage.local.set({
+      save({
         barPos: {
           right: Math.round(window.innerWidth - rect.right),
           bottom: Math.round(window.innerHeight - rect.bottom)
         }
-      }).catch(() => {});
+      });
     };
 
     handle.addEventListener('pointerdown', event => {
@@ -1547,6 +1579,9 @@
       dragging = false;
       document.addEventListener('pointermove', onMove, true);
       document.addEventListener('pointerup', onUp, true);
+      // A cancelled drag (a touch turned into a scroll, a context menu)
+      // never sends pointerup, which left the control following the pointer.
+      document.addEventListener('pointercancel', onUp, true);
     });
   }
 
@@ -1697,7 +1732,7 @@
   function countUse() {
     const next = (settings.useCount ?? 0) + 1;
     settings.useCount = next;
-    chrome.storage.local.set({ useCount: next }).catch(() => {});
+    save({ useCount: next });
     paintHints();
   }
 
@@ -1720,7 +1755,7 @@
     coach.querySelector('button').addEventListener('click', () => {
       coach.classList.remove('on');
       settings.coachDone = true;
-      chrome.storage.local.set({ coachDone: true }).catch(() => {});
+      save({ coachDone: true });
       setTimeout(() => { coach?.remove(); coach = null; }, 400);
     });
 
