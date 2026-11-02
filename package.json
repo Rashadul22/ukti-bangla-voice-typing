@@ -5,7 +5,8 @@
   "description": "Ukti, Bangla voice typing for Chrome. This file only exists to run the tests.",
   "scripts": {
     "test": "node --test --test-concurrency=1 'tests/*.test.js'",
-    "test:mutants": "node tests/mutants.js"
+    "test:mutants": "node tests/mutants.js",
+    "corpus": "node tests/corpus/score.js"
   },
   "devDependencies": {
     "playwright": "1.63.0"
