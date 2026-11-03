@@ -1072,3 +1072,25 @@ In `RESEARCH.md`:
 - **Why it is unknown:** the packager printed only the totals, so I do not know which test it was.
 - **Now:** the packager names every failing test, so the next occurrence will say which one.
 - **Built:** `dist/ukti-1.0.1.zip`, 19 files, 104.1 KB (now with `words.html` and `words.js`), loaded and started.
+
+---
+
+# Bug: অ after EN gave a re-translation, not the user's words, 3 November
+
+**Reported, with these sentences:**
+1. "আচ্ছা দেখি তো এখন ঠিক মতন কাজ করে নাকি" became, with EN, "Well now it works fine".
+2. Then অ gave "ভাল এখন এটা ভাল কাজ করে", not the original. Only undo brought the original back.
+
+**Cause:** not a bug in translation. অ translated the English back, and a translation back is never the original wording. Reproduced word for word with a stand-in translator.
+
+**Fix (`content.js`):**
+- Ukti remembers its last *translation* in each box (original, result, direction), in page memory only, never stored.
+- Pressing the opposite button while the box still holds exactly that result puts the original back, with no call to the translator.
+- An edited result is translated as before.
+- Banglish to EN to অ returns the Bangla form of what was typed.
+- **A hole in my first version, caught by a test before shipping:** Banglish to অ (transliteration) to EN would have handed the Banglish back instead of English. Transliteration is now not reversible that way; EN translates.
+
+**Tests:** 5 new in `tests/translate.test.js`.
+- 3 failed before: the reported sentence gave "ভাল এখন এটা ভাল কাজ করে"; Banglish, EN, অ stayed "?আমি ভালো আছি"; and the hole gave "ami bhalo achi".
+- 2 passed before as guards: an edited English is translated; English, অ, EN.
+- Suite: 280 tests, 279 pass, 1 todo (the Gemini-shape dictation finding).

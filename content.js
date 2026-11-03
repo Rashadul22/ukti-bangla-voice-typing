@@ -1047,11 +1047,41 @@
   }
 
   // অ button: whatever is in the box ends up in Bangla.
+  // The last conversion in each box: what was there, what Ukti made of it,
+  // and which way it went. Translating back is never the original wording
+  // (reported: "আচ্ছা দেখি তো এখন ঠিক মতন কাজ করে নাকি" went to "Well now it
+  // works fine" and came back "ভাল এখন এটা ভাল কাজ করে"), so if the box still
+  // holds exactly what Ukti wrote, the opposite button puts the original
+  // back. Kept in the page's memory only, never stored.
+  const lastConversion = new WeakMap();
+
+  function remember(box, selected, original, result, to) {
+    if (selected) { lastConversion.delete(box); return; }   // whole boxes only
+    lastConversion.set(box, { original, result, to });
+  }
+
+  // The original, if pressing toward `to` should undo the last conversion.
+  function reversible(box, selected, source, to) {
+    const last = lastConversion.get(box);
+    if (!last || selected || last.to === to) return null;
+    return sameText(source, last.result) ? last.original : null;
+  }
+
+  async function restore(box, selected, original, doneKey, button) {
+    lastConversion.delete(box);
+    if (!(await putBack(box, selected, original))) return;
+    showIndicator(t(doneKey));
+    succeeded(box, button);
+    hideIndicator();
+  }
+
   async function convertBanglish() {
     const grabbed = grabText();
     if (!grabbed) return;
 
     const { box, selected, source } = grabbed;
+    const back = reversible(box, selected, source, 'bn');
+    if (back != null) return restore(box, selected, back, 'doneBangla', banglishButton);
     const kind = self.UktiBanglish.classify(source);
 
     if (kind === 'bangla') {
@@ -1062,7 +1092,10 @@
 
     if (kind === 'banglish') {
       countUse();
-      if (!(await putBack(box, selected, self.UktiBanglish.convert(source)))) return;
+      const out = self.UktiBanglish.convert(source);
+      if (!(await putBack(box, selected, out))) return;
+      // Not reversible: the original is Banglish, and EN asks for English.
+      lastConversion.delete(box);
       showIndicator(t('doneBangla'));
       succeeded(box, banglishButton);
       hideIndicator();
@@ -1085,6 +1118,7 @@
 
     countUse();
     if (!(await putBack(box, selected, reply.text))) return;
+    remember(box, selected, source, reply.text, 'bn');
     showIndicator(t('doneBangla'));
     succeeded(box, banglishButton);
     hideIndicator();
@@ -1098,6 +1132,8 @@
     if (!grabbed) return;
 
     const { box, selected, source } = grabbed;
+    const back = reversible(box, selected, source, 'en');
+    if (back != null) return restore(box, selected, back, 'doneEnglish', englishButton);
     const kind = self.UktiBanglish.classify(source);
 
     if (kind === 'english') {
@@ -1133,6 +1169,8 @@
 
     countUse();
     if (!(await putBack(box, selected, reply.text))) return;
+    // Back to Bangla means the Bangla form, even if Banglish was typed.
+    remember(box, selected, bangla, reply.text, 'en');
     showIndicator(t('doneEnglish'));
     succeeded(box, englishButton);
     hideIndicator();
