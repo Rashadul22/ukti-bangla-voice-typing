@@ -52,6 +52,11 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
   }
+
+  /* Bangla is never tracked or uppercased. Letter-spacing pulls conjuncts
+     and vowel signs apart, and the script has no capitals; both rules were
+     written for Latin labels. (tests/layout.test.js) */
+  :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
 </style>
 <link rel="stylesheet" href="fx.css">
 </head>

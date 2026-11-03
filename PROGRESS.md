@@ -1175,3 +1175,27 @@ LinkedIn linkedin.com/in/rashadul-islam-73790a241, photo to come.
 
 Order: A author, B layout, C colour, D motion, E growth, F features,
 G security, H marketing kit and zip. Each step below as it is finished.
+
+## B. Layout (82/100 review, every finding)
+
+- **Bangla text size.** Popup labels were 10.5px and hints 11.5px; the
+  control's labels were 10.06px at the small size. Now every Bangla text
+  node on the popup (3 tabs), setup, corrections page and control is 12px
+  or more (`tests/layout.test.js` walks every visible Bangla text node).
+- **No tracking or uppercase on Bangla.** `:lang(bn)` turns letter-spacing
+  and text-transform off; they were written for Latin labels and pull
+  conjuncts apart. English labels keep their small caps style.
+- **Setup buttons** were #312a6e on a #0e1117 card, 1.52:1, and read as
+  disabled. Now the brand gradient, 4.3:1 against the card.
+- **Setup page** now uses three columns at 1280 wide (steps; things to know;
+  shortcuts and the maker), so it still fits 1280x720 with the new maker
+  card (measured 720 of 720) and leaves room for the try-it box. Two
+  columns under 1180px, one under 880px, scrolling instead of clipping.
+- **The control** has tiers: the mic; অ and EN share a purple accent ring;
+  undo plain; grip and collapse are 32px and flat, with an invisible ring
+  that keeps the hit area at 40px (the audit's target check still passes).
+- **Look tab hints** shortened to one line each.
+- **Correction to my own review:** the "+1" I scored against was not a
+  badge. It is the end of the "বাংলা করুন Alt+Shift+1" label, cut off by
+  the old screenshot crop. No change was needed there.
+- All 27 screenshot baselines regenerated on purpose and reviewed.

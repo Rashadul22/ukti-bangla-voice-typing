@@ -67,7 +67,7 @@
     line-height: 1.25;
   }
   .brand small {
-    display: block; font-size: 11.5px; font-weight: 400; color: var(--dim);
+    display: block; font-size: 12px; font-weight: 400; color: var(--dim);
   }
 
   /* --------------------------------------------------- rounded cards */
@@ -88,7 +88,7 @@
     display: block; font-size: 13.5px; font-weight: 600;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .who span { font-size: 11.5px; color: var(--dim); }
+  .who span { font-size: 12.5px; color: var(--dim); }
 
   /* ------------------------------------------------------------ tabs */
 
@@ -119,7 +119,7 @@
 
   .group { padding: 13px 14px; margin-bottom: 10px; }
   .label {
-    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    font-size: 12px; font-weight: 700; letter-spacing: .09em;
     text-transform: uppercase; color: var(--faint); margin-bottom: 10px;
   }
 
@@ -162,7 +162,7 @@
     flex: 1; cursor: pointer; text-align: center;
     padding: 9px 0 7px; border-radius: var(--r-md);
     border: 1px solid var(--line); background: var(--raise);
-    font: inherit; font-size: 11.5px; color: var(--dim);
+    font: inherit; font-size: 12.5px; color: var(--dim);
     transition: border-color .22s, color .22s, background .22s;
   }
   .theme:hover { border-color: #333a49; color: var(--ink); }
@@ -227,7 +227,7 @@
 
   .by {
     margin: 11px 12px 0; text-align: center;
-    font-size: 11.5px; color: var(--faint);
+    font-size: 12px; color: var(--faint);
   }
   .by { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .by a { color: var(--dim); text-decoration: none; }
@@ -244,7 +244,7 @@
   html[lang="en"] .avatar::before { content: 'MR'; }
   .by a:hover { color: var(--ink); }
 
-  .hint { margin: 9px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
+  .hint { margin: 9px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--faint); }
 
   textarea {
     width: 100%; height: 86px; resize: vertical;
@@ -306,6 +306,11 @@
   /* Everything below the master switch dims when Ukti is switched off. */
   body.off .dimmable { opacity: .38; pointer-events: none; filter: saturate(.5); }
   .dimmable { transition: opacity .3s var(--ease), filter .3s var(--ease); }
+
+  /* Bangla is never tracked or uppercased. Letter-spacing pulls conjuncts
+     and vowel signs apart, and the script has no capitals; both rules were
+     written for Latin labels. (tests/layout.test.js) */
+  :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
 </style>
 <link rel="stylesheet" href="fx.css">
 </head>
@@ -406,9 +411,7 @@
         <button data-v="bl">বাঁয়ে নিচে</button>
       </div>
     </div>
-    <p class="hint">"নিজে থেকে" মানে যে বক্সে লিখছেন তার পাশে এসে বসবে।
-      মাইকের বাটনটা ধরে টেনেও সরানো যায়, আর এখান থেকে আবার আগের জায়গায়
-      ফেরানো যায়।</p>
+    <p class="hint">নিজে থেকে: যে বক্সে লিখছেন তার পাশে বসে। মাইক টেনেও সরানো যায়।</p>
     <div class="field">
       <span>কখন দেখাবে</span>
       <div class="seg" id="showSeg">
@@ -418,9 +421,7 @@
         <button data-v="sites">বাছাই সাইটে</button>
       </div>
     </div>
-    <p class="hint">স্মার্ট: লেখার বক্সে আসে, সার্চ বক্সে আসে না যদি না
-      বাংলিশ লেখেন, আর বক্স ছেড়ে গেলে লুকিয়ে যায়। বাছাই সাইটে: শুধু যেসব
-      সাইটে ওপরের "এই সাইট" সুইচ চালু করবেন।</p>
+    <p class="hint">স্মার্ট: লেখার বক্সে আসে, বক্স ছাড়লে লুকায়। বাছাই সাইটে: যেখানে "এই সাইট" চালু করবেন।</p>
   </div>
 
   <div class="group">

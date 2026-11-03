@@ -140,6 +140,11 @@ const UKTI_EN = {
   'ডাউনলোড শুরু করতে বাটনে সরাসরি চাপ দিতে হবে। আবার চেষ্টা করুন।':
     'The download has to start from a direct press on the button. Try again.',
 
+  'নিজে থেকে: যে বক্সে লিখছেন তার পাশে বসে। মাইক টেনেও সরানো যায়।':
+    'On its own: it sits beside the box you are writing in. You can also drag the mic.',
+  'স্মার্ট: লেখার বক্সে আসে, বক্স ছাড়লে লুকায়। বাছাই সাইটে: যেখানে "এই সাইট" চালু করবেন।':
+    'Smart: appears in writing boxes and hides when you leave. Chosen sites: only where "This site" is on.',
+
   // ---- credit
   'বানিয়েছেন': 'Built by',
   'মোঃ রাশেদুল ইসলাম': 'Md Rashadul Islam',

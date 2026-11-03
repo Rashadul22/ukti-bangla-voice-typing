@@ -1355,6 +1355,9 @@
       /* The preview's two text colours: speaking now, and finished. */
       --live-ink: #ffffff;
       --done-ink: #8e96aa;
+      --quiet: rgba(22, 24, 30, .72);
+      --accent-edge: rgba(150, 136, 255, .7);
+      --accent-ink: #d9d4ff;
       --glass: rgba(22, 24, 30, .93);
       --edge: rgba(255, 255, 255, .12);
       --blur: none;
@@ -1370,6 +1373,9 @@
       --ink: #f4f4f5;
       --live-ink: #ffffff;
       --done-ink: #8e96aa;
+      --quiet: rgba(27, 29, 35, .8);
+      --accent-edge: rgba(150, 136, 255, .7);
+      --accent-ink: #d9d4ff;
       --glass: #1b1d23;
       --edge: rgba(255, 255, 255, .09);
       --blur: none;
@@ -1383,6 +1389,9 @@
       --ink: #1d2230;
       --live-ink: #0d1018;
       --done-ink: #6b7285;
+      --quiet: rgba(255, 255, 255, .8);
+      --accent-edge: rgba(91, 74, 224, .55);
+      --accent-ink: #4b3cc4;
       --glass: #ffffff;
       --edge: rgba(0, 0, 0, .1);
       --blur: none;
@@ -1485,6 +1494,19 @@
       visibility: hidden; /* and out of the tab order while they are */
     }
     .row:has(.noTip) .tip { display: none; }
+    /* Three tiers, so six round buttons stop looking alike. The mic is the
+       big one. The language pair (অ, EN) shares an accent ring. Undo is
+       plain. The utilities that move or fold the control (grip, toggle) are
+       smaller and flat, with an invisible ring that keeps the hit area at
+       40px. */
+    .grip, .toggle {
+      width: calc(var(--unit) * 2.1); height: calc(var(--unit) * 2.1);
+      min-width: 32px; min-height: 32px;
+      background: var(--quiet);
+      box-shadow: none;
+    }
+    .grip::before, .toggle::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; }
+    .lang, .lang:hover { border-color: var(--accent-edge); color: var(--accent-ink); }
     .toggle { opacity: .55; }
     .bar:hover .toggle { opacity: .9; }
     .grip { cursor: grab; opacity: .32; }
@@ -1702,7 +1724,7 @@
       background: var(--glass);
       border: 1px solid var(--edge);
       color: var(--ink);
-      font-size: calc(var(--unit) * .74);
+      font-size: max(12px, calc(var(--unit) * .78));
       box-shadow: 0 calc(var(--unit) * .2) calc(var(--unit) * .6) var(--drop);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
@@ -2162,8 +2184,8 @@
     });
     micButton.setAttribute('aria-pressed', 'false');
     tilt(micButton);
-    const banglish = makeButton('অ', t('toBangla'), 'small', convertBanglish);
-    const english = makeButton('EN', t('toEnglish'), 'small en', convertToEnglish);
+    const banglish = makeButton('অ', t('toBangla'), 'small lang', convertBanglish);
+    const english = makeButton('EN', t('toEnglish'), 'small en lang', convertToEnglish);
     const undo = makeButton(ICONS.undo, t('undo'), 'small', undoLast);
     banglishButton = banglish; englishButton = english; undoButton = undo;
 
