@@ -1334,10 +1334,16 @@
     .coach button {
       all: unset; cursor: pointer; margin-top: .7em;
       padding: .35em 1em; border-radius: 999px;
-      background: rgba(255,255,255,.2); font-size: .92em;
+      /* A darker chip, not a lighter one: white on the lightened blue was
+         3.37:1, under the 4.5 body text needs. */
+      background: rgba(0,0,0,.22); font-size: .92em;
       transform: none; opacity: 1;
+      position: relative;
     }
-    .coach button:hover { background: rgba(255,255,255,.32); transform: none; }
+    /* 32px tall; a finger needs 40. The hit area grows, the chip does not. */
+    .coach button::before { content: ''; position: absolute; inset: -5px -4px; }
+    .coach button:hover { background: rgba(0,0,0,.32); transform: none; }
+    .coach button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
     /* Live preview of what is being said, above the buttons. */
     .preview {
@@ -1404,7 +1410,9 @@
     }
     .tip b { font-weight: 600; }
     .tip span {
-      opacity: .6; margin-left: .45em;
+      /* .6 left the shortcut at 4.27:1 on the light theme; .7 passes there
+         and still reads as secondary to the label beside it. */
+      opacity: .7; margin-left: .45em;
       font-family: ui-monospace, monospace; font-size: .92em;
     }
     .bar.hints .tip,

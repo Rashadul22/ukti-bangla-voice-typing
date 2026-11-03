@@ -660,3 +660,147 @@ directly. The version was not bumped, since you did not ask for a release.
 - Converting and undoing in both composers still works (the insertion engine
   is unchanged, but this is the first build that reaches it through commands).
 - The popup's "Change shortcuts" link opens `chrome://extensions/shortcuts`.
+
+---
+
+# UI audit, 3 November
+
+The settled decisions (collapsed by default, the arc toward the nearer edge,
+labels on hover or focus only, negative margins on collapsed rows, the
+separate drag handle, the logo and mark, no resident blur) were not touched.
+**I have no argument against any of them**: nothing I measured points the
+other way, and the audit found every defect elsewhere.
+
+## How it was measured
+
+- `tests/ui/shoot.js <phase>` screenshots and audits 65 surfaces:
+  - the popup on all three tabs (Bengali and English, both colour-scheme preferences, and English at 200%)
+  - the setup page at 1280x720, 1366x768 and 1920x1080 (both languages and schemes, plus 1280x720 at 200%)
+  - the floating control collapsed, open, with the preview, an info toast, an error toast and the coach mark, each in six theme and page combinations (glass, dark and light on light and dark pages)
+- `tests/ui/audit-lib.js`, inside the page:
+  - **contrast**: every visible text and icon, against what is actually painted under its centre (so the sliding pill behind a segmented button counts). Semi-transparent layers are composited down to the page, and a gradient is judged by its worst stop.
+  - **clipping**: elements that hide overflowing text
+  - **window edge**: text running past the edge of the window
+  - **overlaps**: interactive elements that overlap
+  - **scrollbars**: on the page itself
+  - **hit areas**: walking out from the centre with `elementFromPoint`, so an invisible enlarged hit area counts and a neighbour covering one is caught
+  - **focus rings**: by tabbing through and reading the computed outline
+  - **motion**: under `prefers-reduced-motion`
+- `tests/ui/summary.js` and `tests/ui/tokens.js` summarise the report and
+  count the design values.
+- Screenshots: `docs/ui-audit/before/` and `docs/ui-audit/after/` (65 each,
+  same names), proposals in `docs/ui-audit/proposals/`.
+
+**About light and dark.** The popup and setup page are dark only
+(`color-scheme: dark`, no light palette), so their light and dark captures are
+identical; that is shown, not hidden. The floating control has its own
+themes, and those are what light and dark mean for it. A light mode for the
+pages is proposal C.
+
+**About fonts.** This headless Linux has only a fallback Bengali font, so
+Bengali renders more crudely in the screenshots than on your machine. Layout
+measurements hold; glyph shapes do not.
+
+## Contrast
+
+1,211 text and icon checks after the fixes, 1,182 pass. The other 29 are all
+the logo mark (white on the tile's `#4aa8ff` end, 2.52:1), which is settled,
+and logos are exempt from both WCAG contrast rules.
+
+| Surface | Checks | Lowest before | Failing before | Lowest after | Failing after |
+|---|---|---|---|---|---|
+| Popup, 3 tabs, both languages | 304 | 3.11 | 72 | 4.62 | 0 |
+| Popup at 200% | 76 | 3.11 | 18 | 4.62 | 0 |
+| Setup, 3 sizes, both languages | 540 | 3.43 | 72 | 4.63 | 0 (+12 logo) |
+| Setup at 200% | 90 | 3.43 | 10 | 4.63 | 0 (+2 logo) |
+| Control, collapsed | 12 | 13.37 | 0 | 13.37 | 0 |
+| Control, open (labels showing) | 48 | 4.27 | 2 | 5.89 | 0 |
+| Control, preview | 54 | 3.76 (large text and icons, need 3) | 0 | 3.76 | 0 |
+| Control, info toast | 18 | 13.37 | 0 | 13.37 | 0 |
+| Control, error toast | 18 | 6.04 | 0 | 6.04 | 0 |
+| Control, coach mark | 36 | 3.37 | 6 | 4.74 | 0 |
+
+## Defects fixed
+
+| What was wrong | Measured | Now | Screenshots |
+|---|---|---|---|
+| Popup `--faint` grey: section labels, hints, credit | 3.11:1 on the panel (needs 4.5) | `#7e8593`: 4.63 to 5.25 | `popup-main-bn-dark.png`, `popup-look-*` |
+| Setup `--faint` grey: closing line, footer, version | 3.43:1 | `#7d8392`: 4.63 to 5.27 | `setup-1280x720-*` |
+| White text on the brand gradient (active tab, segmented pill, Open setup) | 3.99:1 at the `#7c6cf0` end | that end `#7263dd` where text sits on it: 4.61 | `popup-*` |
+| Coach mark button, white on a lightened chip | 3.37:1 | darker chip: 4.74 | `control-coach-*` |
+| Shortcut text in the control's labels, light theme | 4.27:1 (60% opacity) | 70%: passes (worst now 5.89 in that state) | `control-open-light-on-light.png` |
+| Header switches (on everywhere, this site) | hit area 42x24 | 54x40, no visible change | `popup-*` |
+| Popup tabs | 37 tall | 41 | `popup-*` |
+| "Change shortcuts" links, author credit links | 15 to 20 tall | 40+ | `popup-main-*`, `setup-*` |
+| Coach mark button | 32 tall | 42 | `control-coach-*` |
+| Link focus rings | the browser's thin default, unlike every other control | 2px `--brand2`, like the rest | (focus state, not in the static shots) |
+| Popup under reduced motion | 13 transitions and the pane animation still ran | none | |
+| Setup under reduced motion | 6 transitions still ran | none | |
+| English: "Built byMd Rashadul Islam" (popup and setup footer) | translation dropped the space before the link | "Built by Md Rashadul Islam" | `popup-main-en-*`, `setup-*-en-*` |
+
+Clipping, text past the window edge, overlapping controls and horizontal
+scrollbars: **none**, in either language, at 100% or 200%. (A first pass
+reported many at 200%; that was my own model of the zoomed popup window,
+corrected before the "before" set was taken.) The setup page fits without
+scrolling at 1280x720 and scrolls rather than clips at 200%.
+
+**Consistency drift fixed**, picking the value already used most:
+- Popup: "Open setup" used `.2s` where the other six feedback transitions use `.22s`; and `.change` and `.unset` (mine, from the shortcuts work) used 12px where the rows beside them use 12.5px.
+- Setup: the card border's `.4s` became `.35s`, and the progress bar's `.25s` became `.3s`, the page's common durations.
+
+**Left as found.**
+- The control's durations spread over eleven values (`.09s` to `.35s`), but each belongs to a motion you tuned, and the steps between them are 10 to 50 ms. I do not count that as drift worth touching.
+- The popup and setup cards differ (20 against 18 px radius), and so does `kbd` (7 against 6). These are different surfaces with no majority between them.
+
+Each fix has a failing test first: run against the code before today,
+`tests/ui-audit.test.js` fails 15 of its 30 tests (every popup and setup
+surface, the coach mark, the light theme's open labels, and both reduced
+motion checks), and the space bug has its own test in `tests/pages.test.js`.
+
+## Tests added
+
+`tests/ui-audit.test.js`, 30 tests on 27 surfaces:
+- **Contrast**, apart from the logo.
+- **No clipping, no text past the edge, no overlaps, no horizontal scrollbar.**
+- **Targets of 40 px or more**, except the packed rows in proposal A.
+- **A focus ring on every tab stop.**
+- **Nothing moving under reduced motion.**
+- **A screenshot compared pixel by pixel with a baseline.** It fails if 1% or more of pixels move. The PNG decoder is in `tests/ui/png.js`, so there's no dependency.
+- **Per-platform baselines**, in `tests/ui/baselines/<platform>/`. A platform without baselines writes them on its first run, and `UPDATE_BASELINES=1` refreshes them after an intended change. Screenshots are taken with reduced motion on, so the caret blink and the listening ring cannot make them flaky. Two runs back to back passed.
+
+Suite: 216 tests, 216 pass.
+
+## Proposals, not in the code
+
+Rendered by `tests/ui/mockups.js`, which injects CSS into the real popup and
+measures it. Images in `docs/ui-audit/proposals/`, each with a `-now` and a
+`-proposed` version.
+
+**A. Every popup control at 40px** (`A-40px-targets-*`). The segmented
+buttons are 30 tall and the switch rows 34, packed edge to edge, so no
+invisible hit area fits without overlapping a neighbour. Making them 40 tall
+clears all 14 remaining small targets, and grows the main tab from 641 to
+659 px and the Look tab from 801 to 861 px. The popup is a desktop surface,
+so this matters for touch-screen laptops, and it makes proposal B harder.
+
+**B. The main tab inside Chrome's 600 px popup limit**
+(`B-fits-600-main-*`). Today the popup scrolls on every tab: main 641 px
+(English) or 639 (Bengali), Look 801 or 765. Trimming spacing that repeats
+brings the main tab to exactly 600, so the first thing anyone sees has no
+scrollbar:
+- card padding 13 to 11
+- the gaps between cards 10 to 8
+- the header padding
+- the label margins
+- the shortcut list gap 7 to 5
+- the bottom padding 14 to 10
+
+The Look tab would still be 769 and would still scroll; fixing that means
+moving something (the "which buttons to show" switches are the natural
+candidate, to the setup page).
+
+**C. A light mode for the popup and setup page** (`C-light-mode-*`),
+following the system setting. The popup works with a palette swap: 0 new
+contrast failures on main, 1 on Look. The setup page does not: the mockup
+shows 11 failures, because the setup page hard-codes many colours instead of
+using its variables. So this is real work, and the mockup shows where.

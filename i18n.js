@@ -169,7 +169,10 @@ function applyLang(root, lang) {
 
     if (node.__bn == null) node.__bn = node.nodeValue;
     const original = node.__bn;
-    const next = lang === 'en' ? tr(original, 'en') : original;
+    // The lookup ignores surrounding whitespace, but the page needs it: a
+    // phrase followed by a link lost its space ("Built byMd Rashadul Islam").
+    const lead = original.match(/^\s*/)[0], trail = original.match(/\s*$/)[0];
+    const next = lang === 'en' ? lead + tr(original.trim(), 'en') + trail : original;
     if (node.nodeValue !== next) node.nodeValue = next;
   }
 

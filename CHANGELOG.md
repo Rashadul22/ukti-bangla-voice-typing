@@ -8,6 +8,12 @@ footer of the setup page (`scripts/package.js` refuses to build otherwise).
 Work done after 1.0.1, not yet given a version number. Details and the
 measurements behind each item are in `PROGRESS.md`.
 
+- **Readability and reach.** Grey labels, hints and footers in the popup and
+  setup page, white text on the purple buttons, the welcome card's button and
+  the light theme's shortcut labels now meet 4.5:1 contrast (they measured
+  3.11 to 4.27). Small links, the tabs and the header switches have a 40px
+  hit area. Both pages respect reduced motion. "Built by" no longer runs into
+  the name in English.
 - **Shortcuts.** Ukti no longer takes Ctrl+Shift+Z (redo), Ctrl+Shift+B
   (Chrome's bookmarks bar) or Ctrl+Shift+E from every page. Shortcuts are now
   Chrome extension commands, changeable at `chrome://extensions/shortcuts`:

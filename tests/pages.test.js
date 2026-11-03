@@ -178,3 +178,21 @@ test('setup.html tab title is English in English mode', async () => {
     await storage.set(ext.worker, { uiLang: 'bn' });
   }
 });
+
+// Translating a text node used to drop the spaces around it, so a phrase
+// followed by a link ran into it: "Built byMd Rashadul Islam".
+for (const [file, sel] of [['popup.html', '.by'], ['setup.html', 'footer']]) {
+  test(`${file}: English keeps the space before a link`, async () => {
+    await storage.set(ext.worker, { uiLang: 'en' });
+    const page = await ext.context.newPage();
+    try {
+      await page.goto(ext.extUrl(file));
+      await settle(page);
+      const text = await page.evaluate(s => document.querySelector(s).textContent.replace(/\s+/g, ' ').trim(), sel);
+      assert.match(text, /^Built by Md Rashadul Islam/, text);
+    } finally {
+      await page.close();
+      await storage.set(ext.worker, { uiLang: 'bn' });
+    }
+  });
+}
