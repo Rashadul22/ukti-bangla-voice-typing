@@ -74,3 +74,25 @@ test('converting twice is harmless', () => {
   const once = B.convert('ami tomake bhalobashi, eta amar computer');
   assert.equal(B.convert(once), once);
 });
+
+// Translator output is plain English, but it often contains a word that is
+// also in the Bangla dictionary ("Bangla", "to"), and classify() used to call
+// any such sentence Banglish, so অ transliterated it into a jumble.
+test('classify: English sentences a translator writes are English', () => {
+  for (const t of ['I speak Bangla every day', 'I want to go home', 'He is a good boy',
+    'How are you doing today?', 'I will send you the file tomorrow morning', 'Please call me back',
+    'Where do you live in Bangladesh?', 'My name is Rahim and I am from Dhaka']) {
+    assert.equal(B.classify(t), 'english', t);
+  }
+});
+
+test('classify: every Banglish sentence in the corpus is still Banglish', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  for (const f of ['sentences.tsv', 'heldout-sentences.tsv']) {
+    for (const line of fs.readFileSync(path.join(__dirname, 'corpus', f), 'utf8').split('\n')) {
+      if (!line || line.startsWith('#')) continue;
+      const input = line.split('\t')[0];
+      assert.equal(B.classify(input), 'banglish', input);
+    }
+  }
+});

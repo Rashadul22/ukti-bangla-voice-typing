@@ -601,14 +601,29 @@
 
     let english = 0;
     let bangla = 0;
-    for (const word of words) {
+    // A capitalised word in mid-sentence is a name (Rahim, Dhaka), which
+    // says nothing about the language around it, so it is not counted.
+    const counted = [...text.matchAll(/[A-Za-z]+/g)].filter(m => {
+      const w = m[0];
+      if (w === 'I' || !/^[A-Z][a-z]/.test(w)) return true;
+      return /(^|[.!?।]\s*)$/.test(text.slice(0, m.index).trimEnd() ? text.slice(0, m.index) : '');
+    }).map(m => m[0]);
+    for (const word of counted) {
       const lower = word.toLowerCase();
-      if (hasKey(COMMON, lower) || hasKey(COMMON, normalise(word))) bangla++;
+      // The English list first: "to" is তো in Banglish, but in a sentence
+      // that is otherwise English it is "to", and the other words decide.
+      if (ENGLISH.has(lower)) english++;
+      else if (hasKey(COMMON, lower) || hasKey(COMMON, normalise(word))) bangla++;
       else if (looksEnglish(word)) english++;
     }
-    // Clear English wins only when almost nothing looks like Bangla, since
-    // mixing a few English words into Banglish is completely normal.
-    if (english >= 3 && bangla === 0 && english / words.length >= 0.6) {
+    // Clear English wins when most words are English. One Bangla-looking
+    // word, or a fifth of them, no longer outvotes the rest: translator
+    // output like "I speak Bangla every day" or "He is a good boy" (boy folds
+    // to boi, বই) was called Banglish, and অ transliterated it into a jumble.
+    // Mixing a few English words into Banglish is still normal, and those
+    // sentences keep Bangla words in the majority.
+    const tolerated = Math.max(1, Math.floor(counted.length * 0.2));
+    if (english >= 3 && bangla <= tolerated && english / Math.max(1, counted.length) >= 0.6) {
       return 'english';
     }
 

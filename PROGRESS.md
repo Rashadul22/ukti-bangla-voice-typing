@@ -895,3 +895,33 @@ moved.
 
 **Tests.** `tests/visibility.test.js`, 19 tests; 11 failed before the change
 (the 8 that passed guard what already worked). Suite: 247 tests, 247 pass.
+
+---
+
+# Bug: English back to Bangla came out jumbled, 3 November
+
+**Reported:** after EN turned Bangla into English, pressing অ on that English
+gave a jumble or an error; undo worked.
+
+**Cause, reproduced:**
+- অ asks `classify()` whether the box holds Banglish (transliterate) or English (translate).
+- It called a sentence English only if **not one word** was in the Bangla dictionary. Translator output nearly always has one: "Bangla" itself, "to" (also তো), "boy" (folds to boi, বই).
+- So the English was transliterated: "I speak Bangla every day" became "I speak বাংলা every day", and "I want to go home" became "I want তো গো হমে". These are the actual outputs, from `tests/translate.test.js` with a stand-in Translator in the offscreen document.
+- With the English-to-Bangla pack missing, no message appeared either, because the translator was never asked.
+
+**Fix (`banglish.js`, `classify()` only):**
+- A word in the English list counts as English before the Bangla dictionary is checked.
+- A mostly-English sentence may contain one Bangla-looking word, or a fifth of its words.
+- Capitalised words in mid-sentence (names such as Rahim, Dhaka) are not counted either way.
+
+**Tests:**
+- `tests/translate.test.js`, 3 tests: the two round trips, and the missing pack. All 3 failed before.
+- Two new tests in `tests/banglish.test.js`:
+  - eight English sentences a translator would write must count as English (failed before)
+  - every Banglish sentence in the corpus, 66 of them, must still count as Banglish (passes, a guard)
+- Corpus scores unchanged.
+- Suite: 252 tests, 252 pass.
+
+**Could not verify from here:** Chrome's real translator. The stand-in
+returns fixed sentences; the real one may phrase things differently, which
+is why the classify tests use eight varied sentences, not only these two.
