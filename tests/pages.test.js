@@ -5,7 +5,7 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor } = require('./helpers');
+const { serve, launch, storage, waitFor, command } = require('./helpers');
 
 let ext, server, base;
 before(async () => {
@@ -136,7 +136,7 @@ test('the on-page control in English', async () => {
     assert.ok(labels.includes('Make it Bangla'), labels.join(' | '));
     assert.deepEqual(labels.filter(l => BENGALI.test(l)), []);
 
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     const said = await waitFor(() => page.evaluate(() =>
       document.querySelector('[data-ukti="bar"]').shadowRoot.querySelector('.toast.on')?.textContent));
     assert.equal(said, 'The box is empty');

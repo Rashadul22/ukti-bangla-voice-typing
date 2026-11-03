@@ -95,4 +95,12 @@ const toast = page =>
     return t && t.classList.contains('on') ? t.textContent : '';
   });
 
-module.exports = { serve, launch, storage, waitFor, barShown, boxState, toast, ROOT, EXT };
+// Delivers a chrome.commands command the way Chrome would: the worker's
+// handler, with the page's tab active. Headless Chrome does not turn key
+// presses into commands, so this is the closest a test can get.
+async function command(ext, page, name) {
+  await page.bringToFront();
+  await ext.worker.evaluate(n => handleCommand(n), name);
+}
+
+module.exports = { serve, launch, storage, waitFor, barShown, boxState, toast, command, ROOT, EXT };

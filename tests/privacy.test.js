@@ -6,7 +6,7 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { serve, launch, storage, waitFor, boxState, ROOT, EXT } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, ROOT, EXT, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -74,13 +74,13 @@ test('dictated words are never written to storage, the page console, or left in 
     await page.goto(`http://127.0.0.1:${port}/textarea.html`);
     await page.waitForFunction(() => window.mimic);
     await page.click('#ed');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(() => off.eval('__fake.live().length === 1')));
     const secret = 'আমার গোপন কথা';
     await off.eval(`__fake.say(${JSON.stringify(secret)}, false)`);
     await off.eval(`__fake.say(${JSON.stringify(secret)})`);
     assert.ok(await waitFor(async () => (await boxState(page)).dom === secret));
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     await page.waitForTimeout(500);
 
     const stored = JSON.stringify(await storage.get(ext.worker));

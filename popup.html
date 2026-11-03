@@ -210,6 +210,9 @@
   .key { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .key > span { font-size: 12.5px; color: var(--dim); }
   .combo { display: flex; gap: 3px; }
+  .unset { font-size: 12px; opacity: .65; }
+  .change { display: inline-block; margin-top: 8px; font-size: 12px; color: inherit; opacity: .75; }
+  .change:hover, .change:focus-visible { opacity: 1; }
   kbd {
     font: 600 10px/1 ui-monospace, monospace;
     padding: 5px 7px; border-radius: 7px;
@@ -300,14 +303,15 @@
     <div class="label">শর্টকাট</div>
     <div class="keys">
       <div class="key"><span>বলা শুরু বা বন্ধ</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div></div>
+        <div class="combo" data-command="toggle-dictation"></div></div>
       <div class="key"><span>বাংলিশ → বাংলা</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>B</kbd></div></div>
+        <div class="combo" data-command="to-bangla"></div></div>
       <div class="key"><span>লেখাটা ইংরেজি</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></div></div>
+        <div class="combo" data-command="to-english"></div></div>
       <div class="key"><span>ফেরত নিন</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></div></div>
+        <div class="combo" data-command="undo"></div></div>
     </div>
+    <a href="#" id="changeShortcuts" class="change">শর্টকাট বদলান</a>
   </div>
 
   <a href="#" class="cta" id="openSetup">সেটআপ খুলুন</a>
@@ -386,5 +390,6 @@
 
 <script src="i18n.js"></script>
 <script src="popup.js"></script>
+<script src="shortcuts.js"></script>
 </body>
 </html>

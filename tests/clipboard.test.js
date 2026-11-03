@@ -5,7 +5,7 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, boxState } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, command } = require('./helpers');
 
 const ARCHETYPES = ['textarea', 'plain', 'model-paste', 'late-selection', 'quill', 'caret-restore'];
 
@@ -48,7 +48,7 @@ test('converting does not touch the system clipboard', async () => {
     await page.waitForFunction(() => window.mimic);
     await page.evaluate(() => navigator.clipboard.writeText('the user copied this'));
     await page.evaluate(() => mimic.setText('ami bangla'));
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     assert.ok(await waitFor(async () => (await boxState(page)).model === 'আমি বাংলা'));
     assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'the user copied this');
   } finally {

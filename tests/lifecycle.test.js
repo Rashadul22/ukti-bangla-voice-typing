@@ -4,7 +4,7 @@
 
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, boxState, toast, barShown } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, toast, barShown, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -32,7 +32,7 @@ async function openAndDictate(path = 'textarea.html', box = '#ed') {
   await page.goto(url(path));
   await page.waitForFunction(() => window.mimic);
   await page.click(box);
-  await page.keyboard.press('Control+Shift+Space');
+  await command(ext, page, 'toggle-dictation');
   assert.ok(await waitFor(listening), 'engine listening');
   return page;
 }
@@ -58,7 +58,7 @@ test('a result for a removed iframe stops the engine', async () => {
     const frame = await waitFor(() => page.frames().find(f => f !== page.mainFrame() && f.url().includes('b.test')));
     await frame.waitForFunction(() => window.mimic);
     await frame.click('#ed');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(listening));
     await page.evaluate(() => document.getElementById('frame').remove());
     await off.eval('__fake.say("হ্যালো")');
@@ -87,7 +87,7 @@ test('the service worker terminated mid-dictation: results still arrive, stop st
     await page.waitForTimeout(300);
     await off.eval('__fake.say("আবার এসেছি")');
     assert.ok(await waitFor(async () => (await boxState(page)).dom === 'আবার এসেছি'), 'result after SW restart');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(idle), 'stop after SW restart');
   } finally {
     await page.close();
@@ -101,14 +101,14 @@ test('undo skips an entry whose box has gone instead of giving up', async () => 
     await page.goto(url('two-boxes.html'));
     await page.waitForFunction(() => window.mimic);
     await page.click('#a'); await page.keyboard.type('ami');
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     assert.ok(await waitFor(() => page.evaluate(() => document.getElementById('a').value === 'আমি')));
     await page.click('#b'); await page.keyboard.type('tumi');
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     assert.ok(await waitFor(() => page.evaluate(() => document.getElementById('b').value === 'তুমি')));
     await page.click('#remove');
     await page.click('#a');
-    await page.keyboard.press('Control+Shift+KeyZ');
+    await command(ext, page, 'undo');
     assert.ok(await waitFor(() => page.evaluate(() => document.getElementById('a').value === 'ami'), { timeout: 3000 }),
       `box a: ${await page.inputValue('#a')}, toast: ${await toast(page)}`);
   } finally { await page.close(); }
@@ -119,11 +119,11 @@ test('the undo stack is bounded at 20 entries', async () => {
   try {
     for (let i = 1; i <= 25; i++) await off.eval(`__fake.say("শব্দ${i}")`);
     assert.ok(await waitFor(async () => (await boxState(page)).dom.endsWith('শব্দ25')));
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     await waitFor(idle);
     let undone = 0;
     for (let i = 0; i < 25; i++) {
-      await page.keyboard.press('Control+Shift+KeyZ');
+      await command(ext, page, 'undo');
       const said = await waitFor(() => toast(page).then(t => /ফেরত নেওয়া হলো|ফেরত নেওয়ার কিছু নাই/.test(t) ? t : null));
       if (said === 'ফেরত নেওয়ার কিছু নাই') break;
       undone++;
@@ -193,7 +193,7 @@ test('a cancelled drag does not leave the control following the pointer', async 
 
 // Runs last: it reloads the extension, which ends this file's offscreen
 // document and service worker.
-test('after the extension is reloaded, an open page still converts Banglish and says why the mic is out', async () => {
+test('after the extension is reloaded, an open page still converts Banglish from its buttons and says why the mic is out', async () => {
   const page = await ext.context.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -206,10 +206,14 @@ test('after the extension is reloaded, an open page still converts Banglish and 
     await ext.worker.evaluate(() => chrome.runtime.reload()).catch(() => {});
     await page.waitForTimeout(1200);
 
-    await page.keyboard.press('Control+Shift+KeyB');
+    // Shortcuts arrive from the service worker, and a reloaded worker cannot
+    // reach the old page's script, so here the buttons are what still work.
+    const bar = '[data-ukti="bar"]';
+    await page.click(`${bar} .toggle`);
+    await page.click(`${bar} button[aria-label="বাংলা করুন"]`);
     assert.ok(await waitFor(async () => (await boxState(page)).dom === 'আমি বাংলা', { timeout: 3000 }),
       `box: ${(await boxState(page)).dom}`);
-    await page.keyboard.press('Control+Shift+Space');
+    await page.click(`${bar} .main`);
     assert.equal(await waitFor(() => toast(page).then(t => t.includes('F5') ? t : null)),
       'উক্তি আবার লোড হয়েছে, পেজটা রিফ্রেশ করুন (F5)');
     assert.deepEqual(errors, []);

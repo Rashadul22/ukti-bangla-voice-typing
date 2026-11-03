@@ -8,6 +8,13 @@ footer of the setup page (`scripts/package.js` refuses to build otherwise).
 Work done after 1.0.1, not yet given a version number. Details and the
 measurements behind each item are in `PROGRESS.md`.
 
+- **Shortcuts.** Ukti no longer takes Ctrl+Shift+Z (redo), Ctrl+Shift+B
+  (Chrome's bookmarks bar) or Ctrl+Shift+E from every page. Shortcuts are now
+  Chrome extension commands, changeable at `chrome://extensions/shortcuts`:
+  Ctrl+Shift+Space to speak, Alt+Shift+1 for Bangla, Alt+Shift+2 for English,
+  Alt+Shift+3 to undo. They do nothing outside a text box. The Alt+Z fallback
+  is gone (it was word wrap in VS Code for the web). Pages opened before an
+  update need a refresh before the shortcuts reach them; the buttons work.
 - **Security.** A web page could switch on the microphone with a synthetic
   keypress or a script click on the button. Only the user's own keys and
   clicks are obeyed now. The password and payment field filter now covers the

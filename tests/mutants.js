@@ -11,7 +11,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const FILES = ['manifest.json', 'background.js', 'content.js', 'banglish.js', 'offscreen.js',
-  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'icons'];
+  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'icons'];
 
 const MUTANTS = [
   { id: '1a', what: 'replaceAll tries only the paste strategy',
@@ -43,31 +43,24 @@ const MUTANTS = [
   { id: '9', what: 'sensitive-field filter removed',
     file: 'content.js',
     from: "if (SENSITIVE.test(hint)) return true;", to: '', tests: ['ui', 'security'] },
-  { id: '11', what: 'synthetic keys obeyed (no isTrusted check)',
-    file: 'content.js', from: 'if (!event.isTrusted) return;\n    if (isOff()) return;', to: 'if (isOff()) return;',
+  { id: '11', what: 'synthetic clicks obeyed (no isTrusted check on the buttons)',
+    file: 'content.js', from: 'if (!event.isTrusted) return;\n      if (suppressClick) return;', to: 'if (suppressClick) return;',
     tests: ['security'] },
+  { id: 'H1', what: 'a command acts with focus outside any box',
+    file: 'content.js', from: 'if (!document.hasFocus() || !currentEditable()) return;', to: '',
+    tests: ['hotkeys'] },
+  { id: 'H2', what: 'a command ignores the off switches',
+    file: 'content.js', from: 'function runCommand(command) {\n    if (isOff()) return;', to: 'function runCommand(command) {',
+    tests: ['hotkeys'] },
   { id: '12', what: 'remembered box not re-checked at the moment of use',
     file: 'content.js', from: '(lastEditable?.isConnected ? editableFrom(lastEditable) : null)',
     to: '(lastEditable?.isConnected ? lastEditable : null)', tests: ['security'] },
   { id: '10', what: 'toast back to one clipped line',
     file: 'content.js', from: 'white-space: normal;\n      overflow-wrap: break-word;',
     to: 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis;', tests: ['ui'] },
-  { id: 'S1', what: 'hotkeys ignore the off switches',
-    file: 'content.js', from: 'function handleHotkey(event) {\n    if (isOff()) return;', to: 'function handleHotkey(event) {',
-    tests: ['switches'] },
   { id: 'S2', what: 'per-site key keeps the www. prefix',
-    file: 'content.js', from: "try { return location.hostname.replace(/^www\\./, ''); }", to: 'try { return location.hostname; }',
-    tests: ['switches'] },
-  { id: 'B1', what: 'normalise() collapses doubled consonants (bollo becomes bolo)',
-    file: 'banglish.js', from: ".replace(/([aeiou])\\1+/g, '$1')", to: ".replace(/([a-z])\\1+/g, '$1')",
-    tests: ['banglish'] },
-  { id: 'B2', what: '^th and ^sh treated as strong English signals',
-    file: 'banglish.js', from: "    /ea|oa|ie/,", to: "    /ea|oa|ie/, /^(?:th|sh)[aeiou]/,",
-    tests: ['banglish'] },
-  { id: 'B3', what: 'ss and ll counted as English doubled consonants',
-    file: 'banglish.js', from: "/([bdfgmprtz])\\1/,", to: "/([bdfglmprstz])\\1/,", tests: ['banglish'] },
-  { id: 'B4', what: 'nasal cluster rule for ng removed',
-    file: 'banglish.js', from: "if (pair === 'ng') {", to: "if (false) {", tests: ['banglish'] }
+    file: 'content.js', from: "return host.replace(/^www\\./, '');", to: 'return host;',
+    tests: ['switches'] }
 ];
 
 const only = process.argv.slice(2);
@@ -80,6 +73,8 @@ for (const m of MUTANTS.filter(m => !only.length || only.includes(m.id))) {
   const src = fs.readFileSync(file, 'utf8');
   if (!src.includes(m.from)) {
     results.push({ ...m, verdict: 'STALE (pattern not found, update mutants.js)' });
+    // Said out loud: a silent stale mutant looks like a passing check.
+    process.stdout.write(`${m.id.padEnd(3)} STALE    ${m.what}  (pattern not found)\n`);
     continue;
   }
   fs.writeFileSync(file, src.replace(m.from, m.to));

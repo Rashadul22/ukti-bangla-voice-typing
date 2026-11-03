@@ -4,7 +4,7 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, boxState, barShown, toast } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, barShown, toast, command } = require('./helpers');
 
 const SOURCE = 'ami bangla bolte pari';
 const BANGLA = 'আমি বাংলা বলতে পারি';
@@ -52,10 +52,10 @@ for (const kind of ARCHETYPES) {
       assert.deepEqual(await boxState(page), { dom: SOURCE, model: SOURCE }, 'typing landed');
       assert.ok(await waitFor(() => barShown(page)), 'control shows for the focused box');
 
-      await page.keyboard.press('Control+Shift+KeyB');
+      await command(ext, page, 'to-bangla');
       assert.deepEqual(await settle(page, BANGLA), { dom: BANGLA, model: BANGLA }, 'converted');
 
-      await page.keyboard.press('Control+Shift+KeyZ');
+      await command(ext, page, 'undo');
       assert.deepEqual(await settle(page, SOURCE), { dom: SOURCE, model: SOURCE }, 'undone');
     } finally {
       await page.close();
@@ -87,7 +87,7 @@ test('undo with nothing to undo says so and leaves the box alone', async () => {
   const page = await open('plain');
   try {
     await page.evaluate(s => mimic.setText(s), SOURCE);
-    await page.keyboard.press('Control+Shift+KeyZ');
+    await command(ext, page, 'undo');
     assert.equal(await waitFor(() => toast(page)), 'ফেরত নেওয়ার কিছু নাই');
     assert.deepEqual(await boxState(page), { dom: SOURCE, model: SOURCE });
   } finally {
@@ -99,7 +99,7 @@ test('Bangla text is refused by the Bangla button, untouched', async () => {
   const page = await open('textarea');
   try {
     await page.evaluate(s => mimic.setText(s), BANGLA);
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     assert.equal(await waitFor(() => toast(page)), 'এটা তো অলরেডি বাংলা');
     assert.deepEqual(await boxState(page), { dom: BANGLA, model: BANGLA });
   } finally {
@@ -111,7 +111,7 @@ test('a selection converts only the selected words', async () => {
   const page = await open('textarea');
   try {
     await page.evaluate(() => { mimic.setText('hello ami bangla'); mimic.el.setSelectionRange(6, 16); });
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     const want = 'hello আমি বাংলা';
     assert.deepEqual(await settle(page, want), { dom: want, model: want });
   } finally {
@@ -126,7 +126,7 @@ test('no-select: refuses to write, keeps the text, warns, and never doubles it',
   const page = await open('no-select');
   try {
     await page.evaluate(s => mimic.setText(s), SOURCE);
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     const said = await waitFor(async () => {
       const t = await toast(page);
       return t && t !== 'বাংলা হয়েছে' ? t : null;

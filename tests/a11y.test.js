@@ -4,7 +4,7 @@ const nodeTest = require('node:test');
 const { before, after, beforeEach } = nodeTest;
 const test = (name, fn) => nodeTest.test(name, { timeout: 60000 }, fn);
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, barShown } = require('./helpers');
+const { serve, launch, storage, waitFor, barShown, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -139,7 +139,7 @@ test('messages are announced: the toast is a polite live region', async () => {
   const page = await open();
   try {
     await page.evaluate(() => mimic.setText(''));
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     const toast = await waitFor(() => page.evaluate(() => {
       const t = document.querySelector('[data-ukti="bar"]').shadowRoot.querySelector('.toast');
       return t && { role: t.getAttribute('role'), live: t.getAttribute('aria-live') };

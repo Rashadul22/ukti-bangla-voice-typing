@@ -19,26 +19,23 @@ reviewers ask whether `activeTab` would do.
 `PRIVACY-FACTS.md`, "Could the access be narrowed". If you keep it, expect
 in-depth review and a slower first approval.
 
-## 2. The hotkeys take over keys on every page (needs your decision)
+## 2. The hotkeys took over keys on every page (fixed)
 
-**Measured.** On a page with the extension on, a page listener never
-receives Ctrl+Shift+Z, Ctrl+Shift+B, Ctrl+Shift+E or Ctrl+Shift+Space, whether
-or not a text box is focused: Ukti catches them at `window` in the capture
-phase and calls `stopImmediatePropagation`. Ctrl+Shift+Z is redo in Google
-Docs, Figma, VS Code for the web and many other editors; Ctrl+Shift+B is
-Chrome's own "show bookmarks bar".
+**Was:** a page never received Ctrl+Shift+Z, B, E or Space, focused box or
+not, which broke redo in Google Docs and Figma and Chrome's own Ctrl+Shift+B.
 
-**Why it matters.** Users will report "redo stopped working" without knowing
-why, and a reviewer can read it as interfering with sites and the browser.
+**Now:** the shortcuts are `chrome.commands`, rebindable at
+`chrome://extensions/shortcuts`, with defaults Ctrl+Shift+Space (speak),
+Alt+Shift+1 (Bangla), Alt+Shift+2 (English) and Alt+Shift+3 (undo). Adding
+`commands` adds no install warning (measured). A command does nothing unless
+focus is in a box Ukti handles, except stopping a dictation already running.
+A test checks a page now receives Ctrl+Shift+Z, B, E and Alt+Z, and another
+pins the defaults clear of a list of shortcuts Chrome and common editors use.
 
-**Recommendation.** Move the shortcuts to the `chrome.commands` API. It needs
-no permission, the user can see and rebind them at
-`chrome://extensions/shortcuts`, and Chrome resolves conflicts instead of the
-extension silently winning. The cost is a message from the service worker to
-the tab for each press. Smaller step if you want to keep the current design:
-act on (and swallow) a hotkey only when the focused element is a box Ukti
-handles, and let Ctrl+Shift+Z through unless Ukti has something to undo for
-that box. I have not changed this: it changes how the product is used.
+One thing a reviewer could still raise: a `chrome.commands` shortcut is
+consumed by Chrome before any page sees it, so the four default combinations
+are unavailable to pages everywhere. That is how every extension shortcut
+works, and the user can unbind any of them.
 
 ## 3. Data-usage disclosure (needs your decision, in the dashboard)
 
@@ -81,10 +78,9 @@ states the remaining limit (an unmarked password box cannot be recognised).
 
 ## Lower risk, worth a glance
 
-- **`author` in `manifest.json` is a string.** Chrome documents `author` as an
-  object (`{"email": "..."}`). A string is not an error today, but it is not
-  the documented form. Removing it or switching to the object form costs
-  nothing. Not changed.
+- **`author` in `manifest.json` was a string** where Chrome documents an
+  object with an email. Removed: the object form would publish an email
+  address, and the store shows the publisher from the developer account.
 - **Setup page opens on install** (`chrome.tabs.create` in `onInstalled`).
   Allowed for onboarding, and it is needed for the microphone prompt and the
   language-pack download. Fine as long as it opens only on `install`, which
@@ -93,8 +89,9 @@ states the remaining limit (an unmarked password box cannot be recognised).
   Google's servers") is fine; do not use Google's logos in screenshots or the
   promo tile.
 - **Screenshots must show the real product.** None exist yet.
-- **`homepage_url` and the policy link `rashadul.me`.** Make sure it loads and
-  says who you are; reviewers sometimes check.
+- **`homepage_url` and the policy link `rashadul.me`.** Well formed; whether it
+  loads could not be checked from here. Make sure it does and says who you are;
+  reviewers sometimes check.
 - **Requirements.** `minimum_chrome_version: 138` is honest about the
   Translator API. Say "desktop Chrome" in the listing (it does), since the
   Translator API and offscreen documents are not on Android.

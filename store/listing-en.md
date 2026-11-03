@@ -15,9 +15,10 @@ Ukti is for the many people who speak Bangla fluently but find typing its script
 WHAT IT DOES
 • Speak to type. Click in any text box, press the microphone (or Ctrl+Shift+Space), and speak Bangla. Your words land right where the cursor is.
 • Bangla or English. Choose to get Bangla script, or have what you say translated into English as it is written.
-• Banglish to Bangla. Typed "ami banglay kotha boli"? Press অ (or Ctrl+Shift+B) and it becomes আমি বাংলায় কথা বলি.
-• Make it English. Press EN (or Ctrl+Shift+E) to turn the text in the box into English.
-• Undo. One press puts back what was there before.
+• Banglish to Bangla. Typed "ami banglay kotha boli"? Press অ (or Alt+Shift+1) and it becomes আমি বাংলায় কথা বলি.
+• Make it English. Press EN (or Alt+Shift+2) to turn the text in the box into English.
+• Undo. One press (or Alt+Shift+3) puts back what was there before.
+• Your shortcuts, your keys. Change any of them at chrome://extensions/shortcuts. They do nothing unless you are in a text box, and the defaults stay clear of keys Chrome and common editors use.
 • Off where you do not want it: for one site, or everywhere, from the toolbar button.
 • Bangla or English interface.
 

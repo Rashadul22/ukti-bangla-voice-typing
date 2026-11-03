@@ -4,7 +4,7 @@
 
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, barShown, boxState } = require('./helpers');
+const { serve, launch, storage, waitFor, barShown, boxState, command } = require('./helpers');
 
 let server, ext, port;
 before(async () => {
@@ -26,7 +26,7 @@ async function open(host) {
 // Whether the hotkey converted the box. "No" needs a fair wait.
 async function hotkeyWorks(page) {
   await page.evaluate(() => mimic.setText('ami bangla'));
-  await page.keyboard.press('Control+Shift+KeyB');
+  await command(ext, page, 'to-bangla');
   const ok = await waitFor(async () => (await boxState(page)).dom === 'আমি বাংলা', { timeout: 1200 });
   return !!ok;
 }

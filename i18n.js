@@ -14,6 +14,8 @@ const UKTI_EN = {
   'বাংলিশ → বাংলা': 'Banglish to Bangla',
   'লেখাটা ইংরেজি': 'Make the text English',
   'ফেরত নিন': 'Undo',
+  'শর্টকাট বদলান': 'Change shortcuts',
+  'সেট করা নাই': 'Not set',
   'বাংলা': 'Bangla',
 
   // ---- popup, header and site switch

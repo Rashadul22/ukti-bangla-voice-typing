@@ -7,7 +7,7 @@ const { before, after, beforeEach } = nodeTest;
 // than hanging the file.
 const test = (name, fn) => nodeTest.test(name, { timeout: 30000 }, fn);
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, boxState, toast } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, toast, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -41,7 +41,7 @@ async function open(lang, text = '') {
   return page;
 }
 async function dictate(page) {
-  await page.keyboard.press('Control+Shift+Space');
+  await command(ext, page, 'toggle-dictation');
   assert.ok(await waitFor(() => off.eval('__fake.live().length === 1')), 'session live');
 }
 // Waits for a toast matching `re`, and returns it.
@@ -103,7 +103,7 @@ for (const lang of ['bn', 'en']) {
     const page = await open(lang);
     try {
       await off.eval('__fake.dieInstantly(true), true');
-      await page.keyboard.press('Control+Shift+Space');
+      await command(ext, page, 'toggle-dictation');
       const message = await said(page, lang === 'en' ? /speech service needs a short break/ : /বিশ্রাম/, 8000);
       assert.ok(message, `toast was: ${await toast(page)}`);
       assert.equal(await off.eval('state.desired'), true);
@@ -120,7 +120,7 @@ for (const lang of ['bn', 'en']) {
   test(`language pack missing (${lang}): the EN button says to open setup, box untouched`, async () => {
     const page = await open(lang, 'আমি ভালো আছি');
     try {
-      await page.keyboard.press('Control+Shift+KeyE');
+      await command(ext, page, 'to-english');
       const message = await said(page, lang === 'en' ? /language pack/ : /ভাষা প্যাক/, 8000);
       assert.ok(message, `toast was: ${await toast(page)}`);
       assert.equal((await boxState(page)).dom, 'আমি ভালো আছি');
@@ -133,7 +133,7 @@ for (const lang of ['bn', 'en']) {
     await off.eval('delete self.Translator; true');
     const page = await open(lang, 'আমি ভালো আছি');
     try {
-      await page.keyboard.press('Control+Shift+KeyE');
+      await command(ext, page, 'to-english');
       const message = await said(page, lang === 'en' ? /Chrome 138/ : /Chrome 138/, 8000);
       assert.ok(message, `toast was: ${await toast(page)}`);
     } finally { await page.close(); }
@@ -149,7 +149,7 @@ test('the offscreen document fails to create (en): a readable message, nothing s
   await ext.worker.evaluate(() => chrome.offscreen.closeDocument().catch(() => {}));
   const page = await open('en');
   try {
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     const message = await said(page, /could not start/i);
     assert.ok(message && !BENGALI.test(message), `toast was: ${await toast(page)}`);
     assert.equal(await micLive(page), false);
@@ -167,4 +167,44 @@ test('reconnecting is said in English when the setting is English', async () => 
     const message = await said(page, /./, 4000);
     assert.equal(BENGALI.test(message || ''), false, `toast was: ${message}`);
   } finally { await page.close(); }
+});
+
+// Under load the START reply can reach the page after the engine has already
+// said "listening" and then reported a problem. The late reply used to show
+// "listening" again on top of the warning. Forced here by slowing the reply.
+test('nothing covers the offline warning: not a late START reply, not "reconnecting"', async () => {
+  await ext.worker.evaluate(() => {
+    self.__realSend = chrome.runtime.sendMessage;
+    chrome.runtime.sendMessage = async (...args) => {
+      const out = await self.__realSend.apply(chrome.runtime, args);
+      if (args[0]?.target === 'offscreen' && args[0]?.type === 'START_DICTATION') {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+      return out;
+    };
+  });
+  const page = await open('bn');
+  try {
+    await page.click('#ed');
+    await command(ext, page, 'toggle-dictation');
+    assert.ok(await waitFor(() => off.eval('__fake.live().length === 1')), 'session live');
+    await page.evaluate(() => {
+      window.__toasts = [];
+      const t0 = performance.now();
+      const root = document.querySelector('[data-ukti="bar"]').shadowRoot;
+      new MutationObserver(() => {
+        const t = root.querySelector('.toast');
+        window.__toasts.push(Math.round(performance.now() - t0) + 'ms ' + (t.classList.contains('on') ? t.textContent : '(hidden)'));
+      }).observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+    });
+    await off.eval('__fake.fail("network")');
+    assert.ok(await said(page, /ইন্টারনেট নাই/), 'offline notice never shown');
+    await page.waitForTimeout(1500);          // the slow reply lands in here
+    const shown = (await page.evaluate(() => window.__toasts)).map(t => t.replace(/^\d+ms /, ''));
+    assert.deepEqual(shown.filter(t => !/ইন্টারনেট নাই/.test(t)), [], 'something covered the warning');
+    assert.match(await toast(page), /ইন্টারনেট নাই/, 'the warning was covered');
+  } finally {
+    await ext.worker.evaluate(() => { chrome.runtime.sendMessage = self.__realSend; });
+    await page.close();
+  }
 });

@@ -3,7 +3,7 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, barShown } = require('./helpers');
+const { serve, launch, storage, waitFor, barShown, command } = require('./helpers');
 
 let server, ext, base;
 before(async () => {
@@ -27,7 +27,7 @@ test('a box focused before the script loaded still gets the control', async () =
     assert.equal(await page.evaluate(() => document.activeElement.id), 'ed');
     assert.ok(await waitFor(() => barShown(page), { timeout: 3000 }));
     await page.keyboard.type('ami bangla');
-    await page.keyboard.press('Control+Shift+KeyB');
+    await command(ext, page, 'to-bangla');
     assert.ok(await waitFor(() => page.evaluate(() => mimic.el.value === 'আমি বাংলা')));
   } finally {
     await page.close();
@@ -41,7 +41,7 @@ for (const id of ['password', 'otp', 'pin', 'cvv', 'card', 'cc', 'number']) {
       await page.click(`#${id}`);
       await page.keyboard.type(id === 'number' ? '1234' : 'ami bangla');
       const typed = await page.inputValue(`#${id}`);
-      await page.keyboard.press('Control+Shift+KeyB');
+      await command(ext, page, 'to-bangla');
       await page.waitForTimeout(600);
       assert.equal(await barShown(page), false, 'control stays hidden');
       assert.equal(await page.inputValue(`#${id}`), typed, 'value untouched');
@@ -81,7 +81,7 @@ for (const theme of ['glass', 'dark', 'light']) {
       await page.click('#ed');
       assert.ok(await waitFor(() => barShown(page)));
       await page.click('[data-ukti="bar"] .toggle');        // fan everything out
-      await page.keyboard.press('Control+Shift+KeyB');      // and raise a toast
+      await command(ext, page, 'to-bangla');      // and raise a toast
       await page.waitForTimeout(300);
       assert.deepEqual(await blurred(page), []);
     } finally {
@@ -97,7 +97,7 @@ test('a long toast wraps onto more lines instead of being cut off', async () => 
     await page.setViewportSize({ width: 480, height: 700 });
     await page.click('#ed');
     await waitFor(() => barShown(page));
-    await page.keyboard.press('Control+Shift+KeyB');   // empty box: short toast first, creates it
+    await command(ext, page, 'to-bangla');   // empty box: short toast first, creates it
     await waitFor(() => page.evaluate(() =>
       !!document.querySelector('[data-ukti="bar"]').shadowRoot.querySelector('.toast.on')));
     const out = await page.evaluate(() => {

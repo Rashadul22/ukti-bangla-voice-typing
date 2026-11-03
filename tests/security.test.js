@@ -2,7 +2,7 @@
 
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, barShown } = require('./helpers');
+const { serve, launch, storage, waitFor, barShown, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -68,7 +68,7 @@ test('the real user still can: a trusted hotkey and a trusted click both work', 
   const page = await hostile();
   try {
     await page.click('#ok');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(engineOn), 'trusted hotkey');
     await page.click('[data-ukti="bar"] .main');
     assert.ok(await waitFor(async () => !(await engineOn())), 'trusted click stops');
@@ -82,7 +82,7 @@ for (const id of ['otpAuto', 'ccAuto', 'cscAuto', 'masked', 'cePin', 'ceCard']) 
       await page.click(`#${id}`);
       await page.waitForTimeout(500);
       assert.equal(await barShown(page), false, 'control showed');
-      await page.keyboard.press('Control+Shift+Space');
+      await command(ext, page, 'toggle-dictation');
       await page.waitForTimeout(600);
       assert.equal(await engineOn(), false, 'dictation started in a sensitive field');
     } finally { await page.close(); }
@@ -94,9 +94,17 @@ test('a field that turns sensitive after focus is refused at the moment of use',
   try {
     await page.click('#lateName');
     await page.waitForTimeout(300);           // the page has now marked it a password
-    await page.keyboard.press('Control+Shift+Space');
+    // Both routes in: a shortcut looks only at the focused box, and the mic
+    // button (which keeps focus in the field) falls back to the remembered
+    // box, which must be checked again.
+    await command(ext, page, 'toggle-dictation');
     await page.waitForTimeout(600);
-    assert.equal(await engineOn(), false, 'dictation started in a field marked as a password');
+    assert.equal(await engineOn(), false, 'the shortcut started dictation in a field marked as a password');
+    if (await barShown(page)) {
+      await page.click('[data-ukti="bar"] .main');
+      await page.waitForTimeout(600);
+      assert.equal(await engineOn(), false, 'the mic button started dictation in a field marked as a password');
+    }
   } finally { await page.close(); }
 });
 
@@ -109,7 +117,7 @@ test('a password field inside a cross-origin iframe is refused too', async () =>
     await frame.click('#password');
     await page.waitForTimeout(400);
     assert.equal(await barShown(frame), false);
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     await page.waitForTimeout(600);
     assert.equal(await engineOn(), false);
   } finally { await page.close(); }
@@ -120,7 +128,7 @@ test('what a page can see: the host element and, while dictating, the preview', 
   const page = await hostile();
   try {
     await page.click('#ok');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(() => off.eval('__fake.live().length === 1')));
     await off.eval('__fake.say("এখনো বলছি", false)');
     await page.waitForTimeout(200);

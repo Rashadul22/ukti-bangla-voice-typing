@@ -550,3 +550,97 @@ evidenced, the table says "none found".
 Recommended against for now: learning from undo, per-site output language,
 and Prompt API rewriting. Bijoy to Unicode has real demand but is a
 different product.
+
+---
+
+# Follow-up session, 3 November
+
+## Your decisions, recorded
+
+1. **The broad content script stays**, and with it the install warning. The
+   manifest's `content_scripts` were not touched. The honest store copy from
+   task 5 stands.
+2. **The hotkeys were a bug.** Fixed below.
+
+## Shortcuts moved to chrome.commands (RESEARCH.md item 1)
+
+**Tests first.** `tests/hotkeys.test.js`, 13 tests; all 13 failed before the
+change. They check:
+- a page now receives Ctrl+Shift+Z, B, E and Alt+Z, both in a text box and with nothing focused
+- the manifest declares four commands, with defaults clear of a deny-list of 37 combinations that Chrome, Google Docs, common editors and VS Code for the web use
+- Chrome registered the bindings
+- a command converts and undoes in a focused box
+- a command does nothing (no change, no toast) with focus outside a box, in a sensitive field, or where Ukti is off
+- only the focused frame acts
+- toggle-dictation can stop a running dictation from anywhere
+- Escape still stops dictation, and passes through when not listening
+- the floating control and the popup show the bindings as they are now, and the popup links to `chrome://extensions/shortcuts`
+
+**Measured before building.** Adding a `commands` key leaves Chrome's install
+warning list unchanged: still the one line, no new permission
+(`getPermissionWarningsByManifest`). Headless Chrome does not turn a key press
+into a command (a synthetic Alt+Shift+1 never reached `onCommand`), so the
+tests call the worker's `handleCommand` with what Chrome would pass. **The
+last hop, key to command, is the thing to check by hand.**
+
+**Defaults.** Ctrl+Shift+Space speaks (unchanged, the habit carries over);
+Alt+Shift+1 to Bangla; Alt+Shift+2 to English; Alt+Shift+3 undo. Digits
+because Docs puts its menus on Alt+Shift+letters and strikethrough on
+Alt+Shift+5, Chrome uses Alt+Shift+I, T and A, and Ctrl+Shift+letters are
+crowded. These are from what I know of those apps, not measured; nothing here
+can reach them. The Alt+Z fallback is gone (word wrap in VS Code for the web).
+
+**Changed.** `manifest.json`: `commands` with bilingual descriptions.
+`background.js`: `handleCommand` sends the command to every frame of the tab;
+`GET_SHORTCUTS` for the labels. `content.js`: the keydown handler keeps only
+Escape; `runCommand` acts only with `document.hasFocus()` and a focused box
+Ukti handles; the labels show the live bindings. `shortcuts.js` (new, shared
+by popup and setup): shows the bindings, "Not set" when unbound, and a
+"Change shortcuts" link. Strings added to `UKTI_EN`. About 48 call sites in
+the older tests moved from key presses to the command helper.
+
+**Two more races, found because commands arrive more slowly than key
+presses.** Both were in code I wrote last night, and both were caught by
+existing tests:
+- "Three presses end listening" failed every time after "start then stop".
+  When a start learned it had been pressed off, it then waited for its STOP
+  to go out while still counting as "starting", and a press in that wait
+  only flipped a flag nobody read: the user's "on" was lost. Now the start
+  stops counting as starting once it has decided, routes its STOP through the
+  shared `stopping` promise, and a token stops an old start from clearing a
+  new one's flag. 27 of 27 race results over three runs after.
+- The offline notice from task 10 was replaced by "Reconnecting…" 15 ms after
+  it appeared (measured by recording every toast), and under load a late
+  START reply could cover it with "listening". A restart caused by the
+  network no longer announces itself, and the reply announces "listening"
+  only if the engine has not. New test; checked it fails without each fix.
+
+**Behaviour change to know about.** After an extension update, pages that
+were already open do not get the shortcuts until they are refreshed: the new
+service worker cannot reach the old page's script. The on-screen buttons
+still work there, and the mic still says "refresh (F5)". The task 3 test now
+checks the buttons in that case.
+
+## Mechanical store items
+
+- `author` removed from `manifest.json`: Chrome documents it as an object
+  with an email, which would publish an address; the store shows the
+  publisher from the developer account anyway.
+- `homepage_url`: well formed, left as is; whether `rashadul.me` loads could
+  not be checked from here.
+- Store listings (both languages) and `store/reviewer-notes.md` updated for
+  the new shortcuts; `CHANGELOG.md` has the entry.
+- Left alone, as product decisions: everything else in the reviewer notes.
+
+## Mutants
+
+The full run showed two problems in the runner itself: S2 had gone stale
+when task 3 rewrote `siteKey()`, and S1 when the hotkey handler changed, and
+the runner skipped stale mutants silently. S1 is replaced by H1 and H2
+(commands without the focus check, commands ignoring the off switch), S2 is
+repointed, 11 now targets the button `isTrusted` check, and stale mutants are
+printed. Mutant 12 survived the move, because shortcuts no longer use the
+remembered box; the test now also tries the mic button. 19 of 20 killed; the
+survivor is still number 3 (`putBack` change), as since task 1.
+
+**Tests.** Suite: 184 tests, 184 pass.

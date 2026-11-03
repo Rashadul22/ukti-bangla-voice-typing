@@ -3,7 +3,7 @@
 
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { serve, launch, storage, waitFor, boxState, toast } = require('./helpers');
+const { serve, launch, storage, waitFor, boxState, toast, command } = require('./helpers');
 const { fakeSpeech, randomPort } = require('./speech');
 
 let server, ext, port, cdpPort, off;
@@ -44,8 +44,8 @@ async function settled(page) {
 test('start then stop, pressed back to back, ends stopped', async () => {
   const page = await open();
   try {
-    await page.keyboard.press('Control+Shift+Space');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
+    await command(ext, page, 'toggle-dictation');
     assert.deepEqual(await settled(page), { ui: false, engine: false, live: 0 });
   } finally { await page.close(); }
 });
@@ -53,7 +53,7 @@ test('start then stop, pressed back to back, ends stopped', async () => {
 test('three presses back to back end listening, with one session', async () => {
   const page = await open();
   try {
-    for (let i = 0; i < 3; i++) await page.keyboard.press('Control+Shift+Space');
+    for (let i = 0; i < 3; i++) await command(ext, page, 'toggle-dictation');
     assert.deepEqual(await settled(page), { ui: true, engine: true, live: 1 });
   } finally { await page.close(); }
 });
@@ -67,7 +67,7 @@ for (const presses of [4, 7, 10]) {
   test(`${presses} rapid presses: the button and the engine agree, never two sessions`, async () => {
     const page = await open();
     try {
-      for (let i = 0; i < presses; i++) await page.keyboard.press('Control+Shift+Space');
+      for (let i = 0; i < presses; i++) await command(ext, page, 'toggle-dictation');
       const s = await settled(page);
       assert.equal(s.ui, s.engine, `button ${s.ui ? 'on' : 'off'}, engine ${s.engine ? 'on' : 'off'}`);
       assert.equal(s.live, s.engine ? 1 : 0, `${s.live} live sessions`);
@@ -80,10 +80,10 @@ test('a second tab taking over tells the first one it has stopped', async () => 
   const b = await open();
   try {
     await a.bringToFront();
-    await a.keyboard.press('Control+Shift+Space');
+    await command(ext, a, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(a)));
     await b.bringToFront();
-    await b.keyboard.press('Control+Shift+Space');
+    await command(ext, b, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(b)));
     assert.ok(await waitFor(async () => !(await micLive(a)), { timeout: 2000 }), 'tab A still shows a live mic');
     assert.equal(await waitFor(() => toast(a)), 'অন্য ট্যাবে বলা শুরু হয়েছে, এখানে থামানো হলো');
@@ -100,10 +100,10 @@ test("the first tab's stop does not stop the second tab's dictation", async () =
   const b = await open();
   try {
     await a.bringToFront();
-    await a.keyboard.press('Control+Shift+Space');
+    await command(ext, a, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(a)));
     await b.bringToFront();
-    await b.keyboard.press('Control+Shift+Space');
+    await command(ext, b, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(b)));
     // A's page goes away, which sends its own stop.
     await a.goto(url('plain.html'));
@@ -118,10 +118,10 @@ test('words the service hands back after stop still land in the box', async () =
   const page = await open();
   try {
     await off.eval('__fake.slowEnd(400), true');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(page)));
     await off.eval('__fake.say("শেষ কথা", false)');
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     await page.waitForTimeout(80);
     await off.eval('__fake.sayLast("শেষ কথা")');
     assert.ok(await waitFor(async () => (await boxState(page)).dom === 'শেষ কথা'), (await boxState(page)).dom);
@@ -132,11 +132,11 @@ test('words the service hands back after stop still land in the box', async () =
 test('the offscreen document torn down mid-dictation: the button recovers on the next press', async () => {
   const page = await open();
   try {
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     assert.ok(await waitFor(() => micLive(page)));
     off.close(); off = null;
     await ext.worker.evaluate(() => chrome.offscreen.closeDocument());
-    await page.keyboard.press('Control+Shift+Space');
+    await command(ext, page, 'toggle-dictation');
     await page.waitForTimeout(400);
     assert.equal(await micLive(page), false);
     assert.equal(await ext.worker.evaluate(() => hasOffscreenDocument()), false, 'stop must not create a document');

@@ -765,6 +765,7 @@
   // wanted, and the start honours the last word when its reply lands.
   let starting = false;
   let wanted = false;
+  let startToken = 0;
   let stopping = null;
 
   function toggleDictation() {
@@ -782,14 +783,17 @@
 
     starting = true;
     wanted = true;
+    const mine = ++startToken;
     try {
-      await beginDictation(box);
+      await beginDictation(box, mine);
     } finally {
-      starting = false;
+      // Only the start that set the flag clears it: a newer start may have
+      // begun while this one was finishing.
+      if (startToken === mine) starting = false;
     }
   }
 
-  async function beginDictation(box) {
+  async function beginDictation(box, token) {
     if (stopping) await stopping;
     await loadSettings();
     target = box;
@@ -818,11 +822,23 @@
     if (!wanted) {
       listening = false;
       paintMic();
-      try { await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId, epoch: ++epoch }); } catch (_) {}
+      // Decided. From here a press is a new start, not a change of mind about
+      // this one: before, a press during this stop's round trip only flipped
+      // `wanted`, which nothing read any more, and the user's "on" was lost.
+      if (startToken === token) starting = false;
+      const sent = stopping = (async () => {
+        try { await chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId, epoch: ++epoch }); } catch (_) {}
+      })();
+      await sent;
+      if (stopping === sent) stopping = null;
       return;
     }
 
     countUse();
+    // The engine's own LISTENING can arrive before this reply, and after it
+    // a warning (offline, say). Announcing "listening" again here covered
+    // that warning, so only announce it if the engine has not.
+    if (listening) return;
     listening = true;
     paintMic();
     resetPreview();
@@ -1529,10 +1545,10 @@
     });
 
     bar.append(
-      row(micButton, t('speak'), 'Ctrl+Shift+Space', 'mic'),
-      row(banglish, t('toBangla'), 'Ctrl+Shift+B', 'banglish'),
-      row(english, t('toEnglish'), 'Ctrl+Shift+E', 'english'),
-      row(undo, t('undo'), 'Ctrl+Shift+Z', 'undo'),
+      row(micButton, t('speak'), '', 'mic'),
+      row(banglish, t('toBangla'), '', 'banglish'),
+      row(english, t('toEnglish'), '', 'english'),
+      row(undo, t('undo'), '', 'undo'),
       row(grip, t('move'), '', 'grip'),
       row(toggle, '', '', 'toggle')
     );
@@ -1558,6 +1574,7 @@
     applyPosition();
     paintLayout();
     paintHints();
+    loadShortcuts();
     window.addEventListener('resize', () => {
       applyScale();
       // A smaller window can strand a saved position off the edge, and the
@@ -1767,11 +1784,12 @@
 
   // Labels are built once, so switching language has to rewrite them in
   // place rather than waiting for a page reload.
+  // [string key, command name]. The keys shown come from chrome.commands.
   const LABELS = {
-    mic: ['speak', 'Ctrl+Shift+Space'],
-    banglish: ['toBangla', 'Ctrl+Shift+B'],
-    english: ['toEnglish', 'Ctrl+Shift+E'],
-    undo: ['undo', 'Ctrl+Shift+Z'],
+    mic: ['speak', 'toggle-dictation'],
+    banglish: ['toBangla', 'to-bangla'],
+    english: ['toEnglish', 'to-english'],
+    undo: ['undo', 'undo'],
     grip: ['move', ''],
     toggle: [null, '']
   };
@@ -1781,11 +1799,11 @@
     for (const row of bar.querySelectorAll('.row')) {
       const entry = LABELS[row.dataset.name];
       if (!entry) continue;
-      const [key, keys] = entry;
+      const [key, name] = entry;
       if (!key) continue;
       const text = t(key);
       row.querySelector('.tip b').textContent = text;
-      row.querySelector('.tip span').textContent = keys;
+      row.querySelector('.tip span').textContent = (name && shortcuts[name]) || '';
       const button = row.querySelector('button');
       button.title = text;
       button.setAttribute('aria-label', text);
@@ -1964,55 +1982,52 @@
       return;
     }
 
-    // Alt+Z is the fallback for machines where Windows eats Ctrl+Shift to
-    // switch keyboard layout.
-    const combo = event.ctrlKey && event.shiftKey && !event.altKey;
-    const altCombo = event.altKey && !event.ctrlKey && !event.shiftKey;
+    // Nothing else here. The shortcuts are chrome.commands now (runCommand
+    // below): catching Ctrl+Shift combinations on every page took keys that
+    // pages use, redo above all.
+  }
 
-    if (altCombo && event.code === 'KeyZ') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
+  // On window, in the capture phase, so a site's own Escape handling does not
+  // see the key first while dictation is running.
+  window.addEventListener('keydown', handleHotkey, true);
+
+  // A chrome.commands shortcut, sent by the worker to every frame of the tab.
+  // It acts only where focus is in a box Ukti handles: not the remembered box,
+  // not a password field, not a frame without focus. The one exception is
+  // stopping a dictation this frame is running, wherever focus has gone.
+  function runCommand(command) {
+    if (isOff()) return;
+    if (command === 'toggle-dictation' && (listening || starting)) {
       toggleDictation();
       return;
     }
-
-    if (!combo) return;
-
-    // Space: start or stop dictation.
-    if (event.code === 'Space') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      toggleDictation();
-      return;
-    }
-
-    // B: convert Banglish already in the box.
-    if (event.code === 'KeyB') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      convertBanglish();
-      return;
-    }
-
-    // E: turn the text in the box into English.
-    if (event.code === 'KeyE') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      convertToEnglish();
-      return;
-    }
-
-    // Z: undo the last thing Ukti put in.
-    if (event.code === 'KeyZ') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      undoLast();
+    if (!document.hasFocus() || !currentEditable()) return;
+    switch (command) {
+      case 'toggle-dictation': toggleDictation(); break;
+      case 'to-bangla': convertBanglish(); break;
+      case 'to-english': convertToEnglish(); break;
+      case 'undo': undoLast(); break;
     }
   }
 
-  // On window, in the capture phase, so sites with their own global
-  // shortcut handlers (claude.ai, chatgpt.com) do not take the key first.
-  window.addEventListener('keydown', handleHotkey, true);
+  chrome.runtime.onMessage.addListener(message => {
+    if (message.source === 'ukti-command') runCommand(message.command);
+    return false;
+  });
+
+  // The labels beside the buttons show the shortcuts as the user has bound
+  // them, so they are asked for when the control is built and again when the
+  // page comes back into view (the user may have been off rebinding them).
+  let shortcuts = {};
+  async function loadShortcuts() {
+    try {
+      shortcuts = (await chrome.runtime.sendMessage({ type: 'GET_SHORTCUTS' })) || {};
+      paintLabels();
+    } catch (_) {}
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (bar && document.visibilityState === 'visible') loadShortcuts();
+  });
 
   // A chat site usually focuses its composer as the page settles, and on a
   // fast load that happens before this script exists. No focusin ever fires
@@ -2133,6 +2148,10 @@
         break;
 
       case 'RESTARTING':
+        // A restart after a network error is already explained by the
+        // offline notice. Saying "reconnecting" here replaced that notice
+        // within 15 ms, measured, so the user never got to read it.
+        if (message.detail === 'network') break;
         showIndicator(t('reconnecting'), 'busy');
         break;
 

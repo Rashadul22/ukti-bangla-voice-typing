@@ -122,8 +122,38 @@ chrome.storage.onChanged.addListener(changes => {
   if (changes.uiLang) paintActionTitle();
 });
 
+// Keyboard shortcuts come through chrome.commands, so the user can see and
+// change them at chrome://extensions/shortcuts. They used to be caught by
+// the content script on every page, which took Ctrl+Shift+Z (redo in Docs
+// and Figma) and Chrome's own Ctrl+Shift+B from everyone. The command goes to
+// every frame of the tab; only the frame holding focus in a box Ukti handles
+// acts on it (content.js, runCommand).
+async function handleCommand(command, tab) {
+  let id = tab?.id;
+  if (id == null) {
+    const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    id = active?.id;
+  }
+  if (id == null) return;
+  chrome.tabs.sendMessage(id, { source: 'ukti-command', command }).catch(() => {
+    // chrome:// pages, the store, a page opened before install: no script.
+  });
+}
+chrome.commands.onCommand.addListener(handleCommand);
+
+// The shortcuts as currently bound, for the labels on the floating control.
+async function currentShortcuts() {
+  const all = await chrome.commands.getAll();
+  return Object.fromEntries(all.map(c => [c.name, c.shortcut || '']));
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ---- from content script ----
+
+  if (message.type === 'GET_SHORTCUTS') {
+    currentShortcuts().then(sendResponse, () => sendResponse({}));
+    return true;
+  }
 
   if (message.type === 'START_DICTATION') {
     (async () => {
