@@ -138,7 +138,9 @@
     showHints: false, useCount: 0, barPos: null, barCorner: 'auto', coachDone: false,
     theme: 'glass', uiLang: 'bn', layout: 'compact',
     buttons: { banglish: true, english: true, undo: true, grip: true },
-    enabled: true, disabledSites: []
+    enabled: true, disabledSites: [],
+    showMode: 'smart',          // 'smart' | 'always' | 'sites'
+    allowSites: []              // the sites chosen in 'sites' mode
   };
   let settings = { ...DEFAULTS };
 
@@ -213,16 +215,88 @@
     () => {
       const found = currentEditable();
       if (!found) return;
+      clearTimeout(hideSoon);
       // A heavy site can fire focusin many times for one user action, and
       // measuring the page on each of them is how a control like this
       // starts costing frames. Nothing to do if the box has not changed.
       if (found === lastEditable && bar && bar.classList.contains('on')) return;
       lastEditable = found;
+      if (quietBox(found)) { watchQuiet(found); return; }
       showButtons();
       if (found !== anchored) requestAnimationFrame(() => anchorToField(found));
     },
     true
   );
+
+  // ------------------------------------------------- when the control shows
+  // It used to appear on the first focus in any box and then stay for the
+  // life of the page: one click in YouTube's search box and it sat there
+  // through the video. Now it follows focus, search boxes do not summon it,
+  // and the popup lets the user choose where it appears at all.
+
+  // Search and address fields: short lookups, not writing. They do not
+  // summon the control in smart mode, though the shortcuts work there and
+  // typing Banglish into one brings it (watchQuiet).
+  const SEARCH_NAMES = new Set(['q', 's', 'k', 'query', 'search', 'search_query', 'searchterm', 'keyword', 'keywords']);
+  const SEARCH_HINT = /\bsearch\b|\bfind\b|\blook ?up\b|খুঁজ|সার্চ|অনুসন্ধান/i; // not-a-message: matches page labels
+  function quietBox(el) {
+    if (settings.showMode === 'always') return false;
+    if (el instanceof HTMLInputElement && ['search', 'url', 'email', 'tel'].includes(el.type)) return true;
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (role === 'searchbox' || role === 'combobox') return true;
+    if (el.closest('[role="search"], search')) return true;
+    if (SEARCH_NAMES.has((el.getAttribute('name') || '').toLowerCase())) return true;
+    const im = (el.getAttribute('inputmode') || '') + ' ' + (el.getAttribute('enterkeyhint') || '');
+    if (/search/i.test(im)) return true;
+    const hint = [el.getAttribute('aria-label'), el.getAttribute('placeholder'), el.getAttribute('title'), el.id].join(' ');
+    return SEARCH_HINT.test(hint);
+  }
+
+  // In a quiet box the control waits until the user writes Banglish there:
+  // two Banglish words are a person writing Bangla, not searching.
+  const watched = new WeakSet();
+  function watchQuiet(el) {
+    if (watched.has(el)) return;
+    watched.add(el);
+    let timer = 0;
+    el.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (currentEditable() !== el || (bar && bar.classList.contains('on'))) return;
+        const s = self.UktiBanglish.stats(existingText(el));
+        // Two words or more, at least one the dictionary knows as Bangla,
+        // and no more than half of them looking English.
+        if (s.words < 2 || s.bangla < 1 || s.english > s.words / 2) return;
+        showButtons();
+        requestAnimationFrame(() => anchorToField(el));
+      }, 350);
+    });
+  }
+
+  // Hide once focus has left the box, after a grace period long enough to
+  // reach the control with the pointer. Not while dictating, not while the
+  // pointer or keyboard focus is on the control, not while its preview or
+  // welcome card is open.
+  const HIDE_AFTER_MS = 2000;
+  let hideSoon = 0;
+  let pointerOnBar = false;
+  function scheduleHide() {
+    clearTimeout(hideSoon);
+    hideSoon = setTimeout(maybeHide, HIDE_AFTER_MS);
+  }
+  function maybeHide() {
+    if (!bar || !bar.classList.contains('on')) return;
+    const box = currentEditable();
+    const keep = listening || starting || pointerOnBar ||
+      document.activeElement === hostEl ||
+      (preview && preview.classList.contains('on')) ||
+      (coach && coach.classList.contains('on')) ||
+      (box && !quietBox(box));
+    if (keep) { scheduleHide(); return; }
+    bar.classList.remove('on');
+    lastEditable = null;
+  }
+  document.addEventListener('focusout', () => { if (bar) scheduleHide(); }, true);
 
   // The remembered box is checked again at the moment of use. A page can
   // mark a field as a password after it was focused, and the old fallback
@@ -731,6 +805,12 @@
 
   function isOff() {
     if (settings.enabled === false) return true;
+    // "Chosen sites only": everywhere else Ukti is as good as off,
+    // shortcuts included.
+    if (settings.showMode === 'sites') {
+      const allow = settings.allowSites;
+      if (!Array.isArray(allow) || !allow.includes(siteKey())) return true;
+    }
     const list = settings.disabledSites;
     return Array.isArray(list) && list.includes(siteKey());
   }
@@ -743,8 +823,9 @@
       hidePreview();
       if (indicator) indicator.classList.remove('on');
       if (coach) coach.classList.remove('on');
-    } else if (resolveTarget()) {
-      bar.classList.add('on');
+    } else {
+      const box = currentEditable();
+      if (box && !quietBox(box)) bar.classList.add('on');
     }
   }
 
@@ -1737,6 +1818,8 @@
 
     // Both work: the handle is the obvious one, the microphone is the
     // shortcut for anyone who finds it.
+    bar.addEventListener('pointerenter', () => { pointerOnBar = true; });
+    bar.addEventListener('pointerleave', () => { pointerOnBar = false; scheduleHide(); });
     makeDraggable(grip);
     makeDraggable(micButton);
 
@@ -2137,6 +2220,8 @@
     if (!micButton) return;
     // The moment listening begins, one ring goes out; the halo follows.
     if (listening && !wasLive) overlay('burst', micButton.getBoundingClientRect(), 600);
+    // Dictation over: the control may go once focus is no longer in a box.
+    if (!listening && wasLive) scheduleHide();
     wasLive = listening;
     micButton.classList.toggle('live', listening);
     if (!listening) micButton.style.setProperty('--lvl', 0);
@@ -2223,6 +2308,7 @@
     const found = currentEditable();
     if (!found) return;
     lastEditable = found;
+    if (quietBox(found)) { watchQuiet(found); return; }
     showButtons();
     requestAnimationFrame(() => anchorToField(found));
   }

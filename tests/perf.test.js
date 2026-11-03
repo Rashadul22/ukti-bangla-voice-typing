@@ -36,7 +36,9 @@ test('idle, control shown and left alone: the same', async () => {
   await page.goto(`${base}/textarea.html`);
   await page.click('#ed');
   assert.ok(await waitFor(() => barShown(page)));
-  await page.click('#elsewhere');
+  // Left alone with focus still in the box, so the control stays up. (Focus
+  // elsewhere now hides it after two seconds, which is one change, not idle.)
+  await page.mouse.move(5, 5);
   const c = await idleCost(page);
   await page.close();
   assert.deepEqual({ layouts: c.layouts, styleRecalcs: c.styleRecalcs, mutations: c.mutations }, IDLE_ZERO);
@@ -111,4 +113,23 @@ test('heavy page (16,000 elements): focus to control under 25 ms of script', asy
   await page.close();
   const ms = (b.ScriptDuration - a.ScriptDuration) * 1000;
   assert.ok(ms < 25, `${ms.toFixed(2)} ms`);
+});
+
+// Measured 3 November, when a refresh felt slower: Chrome injects the content
+// script around the page's load, and Ukti builds its control after it. With
+// a box focused at load on a 16,000-element page, the load event saw one
+// layout pass with Ukti, as without. This keeps setup off the load path.
+test('the control is set up after the page has loaded, not before', async () => {
+  const page = await ext.context.newPage();
+  try {
+    await page.goto(`${base}/heavy-focused.html`);
+    await page.waitForTimeout(500);
+    await page.reload({ waitUntil: 'load' });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Performance.enable');
+    const m = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(x => [x.name, x.value]));
+    await cdp.detach();
+    assert.ok(m.LayoutCount <= 2, `${m.LayoutCount} layout passes by the load event`);
+    assert.ok(await waitFor(() => barShown(page), { timeout: 4000 }), 'the focused box never got the control');
+  } finally { await page.close(); }
 });

@@ -65,6 +65,7 @@ test('content.js has no Bengali messages outside STRINGS', () => {
   const hits = [];
   outside.split('\n').forEach((line, i) => {
     if (/^\s*\/\//.test(line)) return;                // comments
+    if (line.includes('// not-a-message')) return;  // patterns that read page text, not messages
     if (/'অ'/.test(line) && !/[ঀ-৿]/.test(line.replace(/'অ'/g, ''))) return;  // the button glyph
     if (/[ঀ-৿]/.test(line)) hits.push(`content.js:${i + 1}: ${line.trim()}`);
   });

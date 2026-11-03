@@ -615,13 +615,28 @@
     return 'banglish';
   }
 
-  return { convert: banglishToBangla, classify };
+  // How many words the dictionary knows as Bangla, and how many look
+  // English. Used to decide whether someone typing in a search box is
+  // writing Bangla: classify() is tuned for the buttons and calls unknown
+  // words Banglish, which is too loose for popping up uninvited.
+  function stats(text) {
+    const words = (text || '').match(/[A-Za-z]+/g) || [];
+    let bangla = 0, english = 0;
+    for (const w of words) {
+      if (lookup(w)) bangla++;
+      else if (looksEnglish(w)) english++;
+    }
+    return { words: words.length, bangla, english };
+  }
+
+  return { convert: banglishToBangla, classify, stats };
   }
 
   let engine = null;
   const ready = () => engine || (engine = build());
   self.UktiBanglish = {
     convert: text => ready().convert(text),
-    classify: text => ready().classify(text)
+    classify: text => ready().classify(text),
+    stats: text => ready().stats(text)
   };
 })();

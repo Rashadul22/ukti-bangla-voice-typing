@@ -15,6 +15,14 @@ const UKTI_EN = {
   'লেখাটা ইংরেজি': 'Make the text English',
   'ফেরত নিন': 'Undo',
   'শর্টকাট বদলান': 'Change shortcuts',
+  'কখন দেখাবে': 'When it shows',
+  'স্মার্ট': 'Smart',
+  'সব বক্সে': 'Every box',
+  'বাছাই সাইটে': 'Chosen sites',
+  'স্মার্ট: লেখার বক্সে আসে, সার্চ বক্সে আসে না যদি না বাংলিশ লেখেন, আর বক্স ছেড়ে গেলে লুকিয়ে যায়। বাছাই সাইটে: শুধু যেসব সাইটে ওপরের "এই সাইট" সুইচ চালু করবেন।':
+    'Smart: appears in writing boxes, not in search boxes unless you type Banglish, '
+    + 'and hides when you leave the box. Chosen sites: only on the sites where you '
+    + 'turn on the "This site" switch above.',
   'সেট করা নাই': 'Not set',
   'বাংলা': 'Bangla',
 

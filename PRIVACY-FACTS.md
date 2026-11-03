@@ -76,6 +76,8 @@ key outside this list appears.
 | `enabled` | the master switch | no |
 | `disabledSites` | hostnames where the user turned Ukti off | **yes, a list of sites the user chose** |
 | `replacements` | the user's own "heard = becomes" word fixes | **yes, typed by the user** |
+| `showMode` | when the control appears: smart, every box, or chosen sites only | no |
+| `allowSites` | in "chosen sites only" mode, the sites the user chose (starts with a list of chat, AI and email sites) | **yes, a list of sites the user chose** |
 | `useCount` | how many times a button was used, so the labels can retire | no, a number |
 | `coachDone`, `setupDone`, `micGranted` | first-run flags | no |
 | `schema` | settings version, for migration | no |

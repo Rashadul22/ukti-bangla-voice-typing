@@ -73,6 +73,8 @@ async function getSettings() {
     barCorner: 'auto',         // auto: sit beside the box being typed in
     coachDone: false,          // first-run card has been seen
     replacements: [],          // [{from, to}]
+    showMode: 'smart',         // when the control appears: 'smart' | 'always' | 'sites'
+    allowSites: [],            // in 'sites' mode, the only sites Ukti works on
     setupDone: false
   };
   const stored = await chrome.storage.local.get(defaults);

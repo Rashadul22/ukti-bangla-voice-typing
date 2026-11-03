@@ -847,3 +847,51 @@ Suite: 227 tests, 227 pass.
 
 **For you to judge by hand:** how it feels, the tilt above all. If it wants
 to be calmer, it is one number in `tilt()`.
+
+---
+
+# When the control shows, 3 November
+
+**The problem you saw:** the control appeared on YouTube, news sites and
+while browsing. Found in the code: it appeared on the first focus in any box
+and **nothing ever hid it again**, so one click in YouTube's search box left it
+on screen through the video.
+
+**Researched:** Grammarly and LanguageTool rely on per-site off lists;
+LanguageTool users ask for "only on a few sites", and the forum shows that
+turning it off everywhere to allow a few has side effects. A fixed allow-list
+by default would break "any box on any site" (forms, Facebook, email, Docs)
+and need a list kept up to date for ever, so it is an option, not the default.
+
+**Built:**
+1. **Follows focus.** Hides 2 s after focus leaves the box. Not while
+   dictating, while the pointer or keyboard focus is on it, or while the
+   preview or welcome card is open.
+2. **Smart (default): search boxes stay quiet.**
+   - **What counts as a search box:**
+     - `type=search/url/email/tel`, or `role=searchbox/combobox`
+     - inside a `role=search` area
+     - a search hint in the label or placeholder, or a name like `q` or `search_query`
+     - this covers YouTube's and Google's search boxes, and WhatsApp's chat search
+   - **The control appears there only** when the user types at least two words, at least one of them a dictionary Bangla word, and no more than half of them English-looking. "bangla gaan" brings it; "weather tomorrow london" does not.
+   - **Shortcuts work in every box**, quiet or not.
+3. **Popup, Look tab: "When it shows":**
+   - **Smart**
+   - **Every box** (the old behaviour)
+   - **Chosen sites** (only where the "this site" switch is on). It starts with 12 chat, AI and email sites.
+
+**Design:** the popup's Look tab gains one row, so its two screenshot
+baselines were refreshed on purpose; every other baseline is unchanged.
+
+**Storage:** two new keys, `showMode` and `allowSites` (the second is the
+user's own list); `PRIVACY-FACTS.md`, the privacy policy in both languages and
+the storage-key test are updated. No `SCHEMA` change: no existing default
+moved.
+
+**Also measured, at your request: does Ukti slow page loads?**
+- **No measurable slowdown from recent builds.** Medians of 25 reloads, in two rounds: the current build loads like 1.0.1, and like an extension whose content scripts are empty. Any content script adds 20 to 50 ms to the full `load` of a heavy page; first paint is unchanged.
+- **With a box focused at load,** Ukti's control setup (about 25 layout passes) happens after the `load` event, never before it. A new test in `tests/perf.test.js` pins that.
+- You then confirmed the slowness was your network.
+
+**Tests.** `tests/visibility.test.js`, 19 tests; 11 failed before the change
+(the 8 that passed guard what already worked). Suite: 247 tests, 247 pass.
