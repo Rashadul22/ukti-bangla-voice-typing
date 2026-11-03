@@ -644,3 +644,19 @@ remembered box; the test now also tries the mic button. 19 of 20 killed; the
 survivor is still number 3 (`putBack` change), as since task 1.
 
 **Tests.** Suite: 184 tests, 184 pass.
+
+## The build for hand testing
+
+`sh scripts/package.sh` passed: 184 of 184 tests, then
+`dist/ukti-1.0.1.zip` built (17 files, 89.5 KB, now including
+`shortcuts.js`), unzipped and loaded as an unpacked extension, which started
+and reported version 1.0.1. `dist/` is not in git, so the zip was sent
+directly. The version was not bumped, since you did not ask for a release.
+
+**What to check on Gemini and WhatsApp, which I cannot reach:**
+- Press Alt+Shift+1, Alt+Shift+2, Alt+Shift+3 and Ctrl+Shift+Space in each
+  composer: the key-to-command hop is the one thing the tests cannot drive.
+- Ctrl+Shift+Z in Google Docs now redoes.
+- Converting and undoing in both composers still works (the insertion engine
+  is unchanged, but this is the first build that reaches it through commands).
+- The popup's "Change shortcuts" link opens `chrome://extensions/shortcuts`.
