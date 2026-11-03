@@ -1094,3 +1094,50 @@ In `RESEARCH.md`:
 - 3 failed before: the reported sentence gave "ভাল এখন এটা ভাল কাজ করে"; Banglish, EN, অ stayed "?আমি ভালো আছি"; and the hole gave "ami bhalo achi".
 - 2 passed before as guards: an edited English is translated; English, অ, EN.
 - Suite: 280 tests, 279 pass, 1 todo (the Gemini-shape dictation finding).
+
+# Effects everywhere, and what to build next (3 November)
+
+Asked for: research the newest animation techniques, make the live preview
+and the words appearing as impressive as possible, then the same across
+everything, without changing the layout. Then research useful features and
+report, without building them.
+
+## Built
+
+Details, sources and the table of every effect: `MOTION.md`, "Second pass".
+
+- **The preview:** a ring of moving colour that follows the voice's
+  loudness, a "বলুন, শুনছি…" prompt before the first word, words that rise
+  out of a blur on a real spring (CSS `linear()`), a band of light across
+  words still being guessed, finished sentences that light up and cool, and
+  a copy of each sentence that flies into its box.
+- **The control's toast, welcome card and learning card** rise on the same
+  spring out of a light blur.
+- **Popup, setup and corrections page** (new shared `fx.css` and `fx.js`):
+  staggered entrance, a spotlight under the pointer, a shine across main
+  buttons, the logo's glint, the new tab's pane rising in, springy
+  switches, a green ring for a finished setup step.
+- **Bug found by screenshot and fixed:** a finished sentence and the next
+  live word ran together in the preview.
+- **Tried and removed:** a view transition between popup tabs. Its overlay
+  swallowed a press made during it; the existing motion test caught it.
+
+## Kept
+
+Layout (measured: every block's box is identical with and without motion),
+the settled control design, the insertion engine (the only change in the
+FINAL_RESULT handler is one added `flyToBox` call after `insertText`), no
+permission, no network call, no dependency. Reduced motion turns everything
+off. Nothing runs at rest.
+
+## Tests
+
+`tests/preview.test.js` (10) and `tests/fx.test.js` (10), each watched
+failing first: 8 of 9, then the spacing test, then 6 of 10. Popup and setup
+baselines are now shot at rest, as the control's always were.
+
+## Feature research
+
+`FEATURES.md`. Recommended: Bangla voice commands (spoken punctuation, new
+line, "মুছে দাও"), then voice snippets, and a two-minute check on your
+machine of whether Chrome can recognise Bangla on the device.

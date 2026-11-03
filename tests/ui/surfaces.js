@@ -12,7 +12,9 @@ async function popup(ext, { tab = 0, lang = 'bn', scheme = 'dark', zoom = 1 } = 
   // device px. At 200% zoom that cap holds 400x300 CSS px, which is what the
   // zoomed case models; the screenshot is then taken at that window size.
   await page.setViewportSize(zoom === 1 ? { width: 352, height: 600 } : { width: Math.round(800 / zoom), height: Math.round(600 / zoom) });
-  await page.emulateMedia({ colorScheme: scheme });
+  // At rest, as for the control: the entrance (fx.css) would otherwise be
+  // caught halfway. tests/fx.test.js checks the motion itself.
+  await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
   await page.goto(ext.extUrl('popup.html'));
   await page.waitForTimeout(350);
   if (tab) {
@@ -27,7 +29,7 @@ async function setup(ext, { size = [1280, 720], lang = 'bn', scheme = 'dark', zo
   const page = await ext.context.newPage();
   // Browser zoom halves the CSS viewport; the screenshot stays the window size.
   await page.setViewportSize({ width: Math.round(size[0] / zoom), height: Math.round(size[1] / zoom) });
-  await page.emulateMedia({ colorScheme: scheme });
+  await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
   await page.goto(ext.extUrl('setup.html'));
   await page.waitForTimeout(600);
   return { page, opts: {} };

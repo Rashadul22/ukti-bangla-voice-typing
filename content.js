@@ -29,7 +29,7 @@
       speak: 'বলে লিখুন', stopSpeak: 'বলা বন্ধ করুন', startSpeak: 'বলা শুরু করুন',
       toBangla: 'বাংলা করুন', toEnglish: 'ইংরেজি করুন',
       undo: 'ফেরত নিন', move: 'টেনে সরান', more: 'আরও', less: 'গুটিয়ে নিন',
-      listening: 'শুনছি', stopped: 'থামানো হলো', doneBangla: 'বাংলা হয়েছে',
+      listening: 'শুনছি', speakNow: 'বলুন, শুনছি…', stopped: 'থামানো হলো', doneBangla: 'বাংলা হয়েছে',
       doneEnglish: 'ইংরেজি হয়েছে', working: 'ইংরেজি করছি',
       putBackFailed: 'এই বক্সটা লেখা বদলাতে দিল না। লেখাটা সিলেক্ট করে আবার চেষ্টা করুন।',
       noBox: 'কোনো লেখার বক্সে ক্লিক করুন', noText: 'বক্সে কোনো লেখা নাই',
@@ -71,7 +71,7 @@
       speak: 'Speak to type', stopSpeak: 'Stop listening', startSpeak: 'Start listening',
       toBangla: 'Make it Bangla', toEnglish: 'Make it English',
       undo: 'Undo', move: 'Drag to move', more: 'More', less: 'Collapse',
-      listening: 'Listening', stopped: 'Stopped', doneBangla: 'Converted to Bangla',
+      listening: 'Listening', speakNow: 'Speak, I am listening…', stopped: 'Stopped', doneBangla: 'Converted to Bangla',
       doneEnglish: 'Converted to English', working: 'Translating',
       putBackFailed: 'This box refused the change. Select the text and try again.',
       noBox: 'Click inside a text box first', noText: 'The box is empty',
@@ -673,18 +673,40 @@
 
   let doneSpan = null;
   let liveSpan = null;
+  let scrollBox = null;
+  let hintSpan = null;
   let lastWords = [];
 
+  // The frame keeps the size and place it always had; the text scrolls in
+  // an inner box so the glow ring on the frame's edge never scrolls away.
   function ensurePreviewParts() {
     buildBar();
     if (doneSpan) return;
+    scrollBox = document.createElement('div');
+    scrollBox.className = 'scroll';
+    hintSpan = document.createElement('span');
+    hintSpan.className = 'hint';
     doneSpan = document.createElement('span');
     doneSpan.className = 'done';
     liveSpan = document.createElement('span');
     liveSpan.className = 'live';
     const caret = document.createElement('span');
     caret.className = 'caret';
-    preview.append(doneSpan, liveSpan, caret);
+    scrollBox.append(hintSpan, doneSpan, liveSpan, caret);
+    preview.append(scrollBox);
+  }
+
+  // The prompt shows until the first word, so an open, empty panel never
+  // looks broken.
+  function paintHint() {
+    if (!hintSpan) return;
+    hintSpan.textContent = t('speakNow');
+    const empty = !doneSpan.childNodes.length && !liveSpan.childNodes.length;
+    hintSpan.hidden = !empty;
+  }
+
+  function scrollToEnd() {
+    if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
   }
 
   let coach = null;
@@ -718,6 +740,7 @@
       save({ coachDone: true });
     }
     placePreview();
+    paintHint();
     preview.classList.add('on');
   }
 
@@ -726,10 +749,15 @@
     doneSpan.textContent = '';
     liveSpan.textContent = '';
     lastWords = [];
+    paintHint();
   }
 
   function hidePreview() {
-    if (preview) preview.classList.remove('on');
+    if (preview) {
+      preview.classList.remove('on');
+      preview.style.removeProperty('--lvl');
+    }
+    for (const f of shadow?.querySelectorAll('.fly') || []) f.remove();
     resetPreview();
   }
 
@@ -752,19 +780,59 @@
     for (let i = same; i < words.length; i++) {
       const w = document.createElement('w');
       w.textContent = words[i];
+      // A word that arrives in a burst with others starts a beat later, so
+      // a phrase reads in rather than popping in all at once.
+      w.style.animationDelay = `${Math.min(i - same, 6) * 35}ms`;
       liveSpan.appendChild(w);
     }
 
     lastWords = words;
-    preview.scrollTop = preview.scrollHeight;
+    paintHint();
+    scrollToEnd();
   }
 
+  // Each final sentence becomes its own segment, which settles from the
+  // bright live colour to the quieter colour of finished text.
   function commitToPreview(text) {
     ensurePreviewParts();
-    doneSpan.textContent += (doneSpan.textContent ? ' ' : '') + text;
+    const seg = document.createElement('span');
+    seg.className = 'seg';
+    seg.textContent = text;
+    if (doneSpan.childNodes.length) doneSpan.append(' ');
+    doneSpan.append(seg);
     liveSpan.textContent = '';
     lastWords = [];
-    preview.scrollTop = preview.scrollHeight;
+    paintHint();
+    scrollToEnd();
+  }
+
+  // A copy of the sentence travels from the preview into the box it went
+  // to. Decoration only: the words are already in the box by the time it
+  // lands, and under reduced motion it never runs.
+  function flyToBox(text, box) {
+    if (calm() || !shadow || !preview || !box?.isConnected) return;
+    const from = (doneSpan.lastChild || preview).getBoundingClientRect();
+    const to = box.getBoundingClientRect();
+    if (!from.width || !to.width) return;
+    const fly = document.createElement('div');
+    fly.className = 'fly';
+    fly.textContent = text;
+    fly.style.left = `${from.left}px`;
+    fly.style.top = `${from.top}px`;
+    shadow.appendChild(fly);
+    const dx = Math.round(to.left + Math.min(24, to.width / 4) - from.left);
+    const dy = Math.round(to.top + Math.min(to.height / 2, 28) - from.top);
+    const gone = () => fly.remove();
+    if (!fly.animate) { gone(); return; }
+    const anim = fly.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 0, filter: 'blur(0)' },
+      { opacity: 1, offset: .15 },
+      { transform: `translate(${dx * .55}px, ${dy * .55 - 30}px) scale(.85)`, opacity: .9, offset: .6 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.5)`, opacity: 0, filter: 'blur(3px)' },
+    ], { duration: 640, easing: 'cubic-bezier(.45,0,.2,1)' });
+    anim.onfinish = gone;
+    anim.oncancel = gone;
+    setTimeout(gone, 900);
   }
 
   const DOTS = '<span class="dots"><i></i><i></i><i></i></span>';
@@ -1275,6 +1343,12 @@
       --s: 1;
       --unit: calc(16px * var(--s));
       --spring: cubic-bezier(.34, 1.4, .5, 1);
+      /* A real spring, sampled into linear() (Chrome 113+): a soft
+         overshoot and one small settle, which cubic-bezier cannot draw. */
+      --spring-soft: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938 16.7%,
+        1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%,
+        1.051 39.6%, 1.017 43.1%, .991, .977 51%, .974 53.8%, .975 57.1%, .997 69.8%,
+        1.003 76.9%, 1.004 83.8%, 1);
 
       /* Glass: see-through, blurred. The default. */
       --ink: #f4f4f5;
@@ -1509,15 +1583,13 @@
     .coach button:hover { background: rgba(0,0,0,.32); transform: none; }
     .coach button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-    /* Live preview of what is being said, above the buttons. */
+    /* Live preview of what is being said, above the buttons. The frame
+       holds the place, the colour and the ring; .scroll holds the text. */
     .preview {
       position: fixed;
       right: calc(var(--unit) * 1.4);
       bottom: calc(var(--unit) * 9.2); /* replaced at runtime by placePreview */
       width: min(34rem, 42vw);
-      max-height: calc(var(--unit) * 11);
-      overflow-y: auto;
-      padding: calc(var(--unit) * .85) calc(var(--unit) * 1.1);
       border-radius: calc(var(--unit) * 1.1);
       background: var(--glass);
       border: 1px solid var(--edge);
@@ -1526,28 +1598,98 @@
       line-height: 1.65;
       box-shadow: 0 calc(var(--unit) * .4) calc(var(--unit) * 1.2) var(--drop);
       opacity: 0; transform: translateY(calc(var(--unit) * .7)) scale(.98);
-      transition: opacity .25s ease, transform .3s var(--spring);
+      transition: opacity .25s ease, transform .45s var(--spring-soft),
+                  box-shadow .3s ease;
       pointer-events: none;
+      --lvl: 0;
+    }
+    .preview .scroll {
+      max-height: calc(var(--unit) * 11);
+      overflow-y: auto;
+      padding: calc(var(--unit) * .85) calc(var(--unit) * 1.1);
       scrollbar-width: thin;
+      text-wrap: pretty;
+      overflow-wrap: anywhere;
     }
     .preview.on {
       backdrop-filter: var(--blur-panel);
-      -webkit-backdrop-filter: var(--blur-panel); opacity: 1; transform: none; }
-    .preview .done { opacity: .5; }
+      -webkit-backdrop-filter: var(--blur-panel); opacity: 1; transform: none;
+      box-shadow: 0 calc(var(--unit) * .4) calc(var(--unit) * 1.2) var(--drop),
+                  0 0 calc(var(--unit) * (.6 + var(--lvl) * 1.6)) rgba(124, 108, 240, calc(.12 + var(--lvl) * .3));
+    }
+    /* The listening ring: a conic gradient whose angle turns, masked down
+       to a thin line on the frame's edge. It brightens with the voice.
+       Only while the panel is open; nothing runs at idle. */
+    .preview::before {
+      content: ''; position: absolute; inset: -1px; border-radius: inherit;
+      padding: 1.5px; pointer-events: none;
+      background: conic-gradient(from var(--ukti-glow-angle),
+        #7c6cf0, #4aa8ff, #34d3c3, #f472b6, #7c6cf0);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+      opacity: 0;
+      transition: opacity .3s ease;
+    }
+    .preview.on::before {
+      opacity: calc(.55 + var(--lvl) * .45);
+      animation: glow-turn 3.2s linear infinite;
+    }
+    @keyframes glow-turn { to { --ukti-glow-angle: 360deg; } }
+
+    .preview .hint {
+      color: var(--ink); opacity: .55; font-style: normal;
+      animation: hint-breathe 2.4s ease-in-out infinite;
+    }
+    .preview .hint[hidden] { display: none; }
+    @keyframes hint-breathe { 0%, 100% { opacity: .4 } 50% { opacity: .72 } }
+
+    .preview .done { opacity: .62; }
+    .preview .seg { display: inline; animation: settle .7s ease-out both; }
+    .preview .seg:last-child { margin-right: .22em; }
+    /* A finished sentence arrives at full brightness and cools to the
+       finished colour, so the eye can tell what was just written. */
+    @keyframes settle {
+      from { opacity: 1; filter: brightness(1.25); text-shadow: 0 0 .6em rgba(124, 108, 240, .55); }
+      to   { opacity: 1; filter: none; text-shadow: none; }
+    }
     .preview .live { opacity: .97; }
     .preview w {
       display: inline-block;
-      animation: rise .32s var(--spring) both;
       margin-right: .22em;
+      animation: rise .5s var(--spring-soft) both;
     }
+    /* Words still being guessed carry a slow light across them. Only with
+       motion allowed: the text is transparent inside the gradient, so it
+       must never apply when the animation would not run. */
+    @media (prefers-reduced-motion: no-preference) {
+      .preview .live w {
+        background: linear-gradient(100deg, var(--ink) 0 40%, #b9b0ff 50%, var(--ink) 60% 100%)
+          0 0 / 250% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent;
+        animation: rise .5s var(--spring-soft) both, shimmer 2.2s linear .5s infinite;
+      }
+    }
+    @keyframes shimmer { from { background-position: 100% 0 } to { background-position: -150% 0 } }
     @keyframes rise {
-      from { opacity: 0; transform: translateY(.5em) scale(.9); filter: blur(2px); }
-      to   { opacity: 1; transform: none; filter: none; }
+      from { opacity: 0; transform: translateY(.45em) scale(.94); filter: blur(6px); }
+      to   { opacity: 1; transform: none; filter: blur(0); }
     }
     .caret {
       display: inline-block; width: .09em; height: 1.05em;
       background: #f87171; vertical-align: text-bottom;
+      border-radius: 1px;
       animation: caret 1.1s steps(1) infinite;
+    }
+    .fly {
+      position: fixed; z-index: 2; pointer-events: none;
+      max-width: 22em; white-space: nowrap; overflow: hidden; text-overflow: clip;
+      padding: .1em .5em; border-radius: .6em;
+      font: 500 calc(var(--unit) * 1.02) / 1.5 inherit;
+      color: #fff; background: linear-gradient(120deg, #7c6cf0, #4aa8ff);
+      box-shadow: 0 .3em 1em rgba(124, 108, 240, .45);
+      will-change: transform, opacity;
     }
     @keyframes caret { 0%,50% { opacity: 1 } 50.01%,100% { opacity: 0 } }
 
@@ -1612,6 +1754,15 @@
       overflow-wrap: break-word;
     }
     .toast.on { opacity: 1; transform: none; }
+    /* Entering, the small panels rise on the sampled spring and come out
+       of a light blur. Only on the way in, and only for that moment: no
+       panel keeps a filter while it sits on screen. */
+    .toast.on, .coach.on, .teach.on {
+      transition-duration: .22s, .5s;
+      transition-timing-function: ease, var(--spring-soft);
+      animation: unblur .35s ease-out;
+    }
+    @keyframes unblur { from { filter: blur(5px); } }
     .toast.err  { background: rgba(185, 28, 28, .95); color: #fff; }
     .toast.busy { background: rgba(180, 83, 9, .95); color: #fff; }
 
@@ -1995,6 +2146,14 @@
     host.style.cssText =
       'position:fixed;top:0;left:0;z-index:2147483646;pointer-events:none';
     shadow = host.attachShadow({ mode: 'open' });
+
+    // @property is ignored inside a shadow root, and the ring's angle has to
+    // be a typed <angle> to turn smoothly instead of jumping. Registering it
+    // on the document is the only way; the name is prefixed so no page
+    // property can collide, and a second frame or reload finds it taken.
+    try {
+      CSS.registerProperty({ name: '--ukti-glow-angle', syntax: '<angle>', inherits: false, initialValue: '0deg' });
+    } catch (_) {}
 
     const style = document.createElement('style');
     style.textContent = STYLE;
@@ -2602,6 +2761,7 @@
         const before = existingText(target);
         const needsSpace = before.length > 0 && !/\s$/.test(before);
         insertText(target, (needsSpace ? ' ' : '') + message.text);
+        flyToBox(message.text, target);
         landed(target);
         watchInsert(target, before);
 
@@ -2617,6 +2777,7 @@
       case 'LEVEL':
         if (micButton && listening) {
           micButton.style.setProperty('--lvl', message.level ?? 0);
+          preview?.style.setProperty('--lvl', message.level ?? 0);
         }
         break;
 

@@ -106,3 +106,87 @@ cannot fight `paintMic()` or the spring layout.
 How it feels. Timing that reads well in a test can feel wrong in the hand,
 and the 3D tilt in particular is a matter of taste: it is one number
 (`* 16` in `tilt()`, giving at most 8 degrees) if it wants to be calmer.
+
+## Second pass, 3 November: the preview and every page
+
+Asked for: the newest effects on the market, on the live preview first and
+then everywhere, without changing the layout.
+
+### Research
+
+- **Springs in CSS.** `linear()` (Chrome 113+) takes sampled points, so a
+  real spring with overshoot and settle can be an easing, which
+  cubic-bezier cannot draw
+  ([Chrome docs](https://developer.chrome.com/docs/css-ui/css-linear-easing-function)).
+  Used as `--spring-soft`.
+- **The "Apple Intelligence" edge glow.** A conic gradient whose angle is a
+  registered `@property <angle>`, animated, and masked down to a ring
+  ([Art of Styleframe](https://artofstyleframe.com/blog/apple-intelligence-gradient-css/),
+  [Learn with Jason](https://learnwithjason.dev/blog/animated-css-gradient-border)).
+- **Streaming text.** AI chat products fade and unblur each new word as it
+  streams in ([Streamdown](https://streamdown.ai/docs/animation),
+  [Aceternity](https://ui.aceternity.com/blocks/text-animations/text-animation-blur-fade-in)).
+- **`text-wrap: pretty`** (Chrome 117+) avoids a single orphan word on the last line
+  ([Chrome docs](https://developer.chrome.com/docs/css-ui/css-text-wrap-balance)).
+- **View Transitions** (`document.startViewTransition`, Chrome 111+) for a
+  state change inside one page, and spotlight cards that light under the
+  pointer, both common in current product sites. The view transition was
+  tried for the popup's tabs and removed: its overlay swallowed a press made
+  while it ran (`tests/motion.test.js` caught it: the switch did not respond
+  0.3 s after a tab change, even with `pointer-events: none` on the
+  overlay). The pane now animates itself.
+
+### What was built
+
+| Where | Effect | When it runs |
+|---|---|---|
+| Preview | A thin ring of moving colour around the panel, brighter as the voice gets louder (`--lvl`), plus a soft outer glow | Only while the panel is open |
+| Preview | "বলুন, শুনছি…" ("Speak, I am listening…") until the first word | Before the first word |
+| Preview | Each new word rises out of a 6px blur on the spring, a burst of words one after another (35 ms apart) | As words arrive |
+| Preview | Words still being guessed carry a slow band of light (gradient text) | Only with motion allowed; the text is never transparent otherwise |
+| Preview | A finished sentence lights up and cools to the finished colour | 0.7 s, once |
+| Preview to box | A copy of the sentence flies from the preview into the box along a curve and fades | 0.64 s, once, decoration only: the words are already in the box |
+| Toast, welcome card, learning card | Rise on the spring out of a light blur | On the way in only |
+| Popup, setup, corrections page | Blocks enter one after another out of a blur | Once, on open |
+| Same | A soft light follows the pointer inside a card | While hovered |
+| Same | A band of light crosses a main button | Once per hover |
+| Same | The logo catches the light | Once, on open |
+| Popup | The new tab's pane rises out of a blur | On click |
+| Popup | Switches and segment pills overshoot and settle | On change |
+| Setup | A finished step sends out one green ring | Once |
+| Status lines | Each new message fades in from a blur | On change |
+
+Also fixed, found by a screenshot: a finished sentence and the next live
+word ran together ("যাবোতারপর"). A test measured a 0 px gap; it is now
+spaced.
+
+### Two technical notes
+
+- `@property` is ignored inside a shadow root, so the ring's angle is
+  registered with `CSS.registerProperty` on the page, under the prefixed
+  name `--ukti-glow-angle`. That is the one thing this pass adds outside
+  the shadow root. Without it the ring would jump instead of turning; the
+  test samples the angle twice to check it turns.
+- The preview frame now holds an inner `.scroll` box, so the ring stays on
+  the edge while long text scrolls. Same size and place as before.
+
+### Measured
+
+- `tests/preview.test.js`, 10 tests. Before the code: 8 of the first 9
+  failed (the reduced-motion guard passed both ways); the spacing test
+  failed with a 0 px gap before its fix.
+- `tests/fx.test.js`, 10 tests. Before the code: 6 failed, and the 4 that
+  passed are guards (reduced motion, layout unchanged).
+- On every page, 1.8 s after opening, `document.getAnimations()` has no
+  running animation and no block keeps the entrance class. Nothing runs at rest.
+- With reduced motion, no animation runs at all on the three pages, and
+  every block sits in exactly the same place as with motion.
+- Screenshot baselines for the popup and setup page are now taken at rest
+  (reduced motion), as the control's always were; otherwise they would
+  catch the entrance halfway.
+
+### Not verified from here
+
+How it feels on a real screen and on a slower laptop. The ring uses one
+masked layer and runs only while dictating; if it ever feels heavy, the
+first thing to cut is the outer glow's `--lvl` shadow.
