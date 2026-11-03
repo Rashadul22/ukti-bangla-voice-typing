@@ -38,6 +38,9 @@ const SURFACES = [
   ['setup-1280x720-bn', () => S.setup(ext, { size: [1280, 720], lang: 'bn' })],
   ['setup-1280x720-en', () => S.setup(ext, { size: [1280, 720], lang: 'en' })],
   ['setup-1280x720-en-zoom200', () => S.setup(ext, { size: [1280, 720], lang: 'en', zoom: 2 })],
+  // Light mode: the pages follow the system now, so they are audited in it.
+  ...['main', 'look', 'words'].map((tab, i) => [`popup-${tab}-bn-light`, () => S.popup(ext, { tab: i, lang: 'bn', scheme: 'light' })]),
+  ['setup-1280x720-bn-light', () => S.setup(ext, { size: [1280, 720], lang: 'bn', scheme: 'light' })],
   ...['collapsed', 'open', 'preview', 'toast-info', 'toast-error', 'coach'].flatMap(state =>
     [['glass', 'light'], ['dark', 'dark'], ['light', 'light']].map(([theme, bg]) =>
       [`control-${state}-${theme}-on-${bg}`, () => S.control(ext, base, { state, theme, bg, off, reduced: true })]))

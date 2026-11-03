@@ -1359,13 +1359,15 @@
       --accent-edge: rgba(150, 136, 255, .7);
       --accent-ink: #d9d4ff;
       --glass: rgba(22, 24, 30, .93);
-      --edge: rgba(255, 255, 255, .12);
+      /* .24: the edge has to show on a dark site, where the fill itself
+         is nearly the page colour (2:1 against the page, was 1.48). */
+      --edge: rgba(255, 255, 255, .24);
       --blur: none;
       /* Only the speech preview blurs, and only while it is on screen. */
       --blur-panel: blur(12px) saturate(1.25);
       --drop: rgba(0, 0, 0, .3);
       --hover: rgba(38, 41, 50, .92);
-      --hover-edge: rgba(255, 255, 255, .2);
+      --hover-edge: rgba(255, 255, 255, .36);
     }
     /* Solid dark: no blur, so it stays readable over busy pages. */
     :host([data-theme="dark"]) {
@@ -1377,11 +1379,11 @@
       --accent-edge: rgba(150, 136, 255, .7);
       --accent-ink: #d9d4ff;
       --glass: #1b1d23;
-      --edge: rgba(255, 255, 255, .09);
+      --edge: rgba(255, 255, 255, .22);
       --blur: none;
       --drop: rgba(0, 0, 0, .45);
       --hover: #272a32;
-      --hover-edge: rgba(255, 255, 255, .18);
+      --hover-edge: rgba(255, 255, 255, .34);
     }
     /* Light, for pale pages and anyone who dislikes dark controls. */
     :host([data-theme="light"]) {
@@ -1781,8 +1783,13 @@
       animation: unblur .35s ease-out;
     }
     @keyframes unblur { from { filter: blur(5px); } }
-    .toast.err  { background: rgba(185, 28, 28, .95); color: #fff; }
-    .toast.busy { background: rgba(180, 83, 9, .95); color: #fff; }
+    /* Red belongs to recording. An error or a wait is the usual panel with
+       a coloured bar on its leading edge, so the two never look alike. */
+    .toast.err, .toast.busy { background: var(--glass); color: var(--ink); }
+    .toast.err  { border-color: rgba(239, 68, 68, .55);
+      box-shadow: inset 4px 0 0 rgb(239, 68, 68), 0 calc(var(--unit) * .3) calc(var(--unit) * .9) var(--drop); }
+    .toast.busy { border-color: rgba(245, 158, 11, .55);
+      box-shadow: inset 4px 0 0 rgb(245, 158, 11), 0 calc(var(--unit) * .3) calc(var(--unit) * .9) var(--drop); }
 
     /* Three dots that march while the engine is hearing speech. */
     .dots { display: inline-flex; gap: .22em; margin-left: .45em; vertical-align: middle; }

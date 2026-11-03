@@ -308,6 +308,23 @@
      and vowel signs apart, and the script has no capitals; both rules were
      written for Latin labels. (tests/layout.test.js) */
   :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
+
+  /* Light, when the computer is light (unlayered, so it wins over the
+     layers above). */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f3f4f8; --card: #ffffff; --raise: #eef0f5; --line: #dde1ea;
+      --ink: #141925; --dim: #4c5466; --faint: #5b6375;
+      --good: #047857; --bad: #b91c1c;
+    }
+    body::before { background: radial-gradient(circle, rgba(124,108,240,.16), transparent 68%); }
+    body::after { background: radial-gradient(circle, rgba(74,168,255,.12), transparent 68%); }
+    .card { box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 16px 34px -24px rgba(15,23,42,.28); }
+    .soft { background: #fafbfd; }
+    button { border-color: rgba(0,0,0,.06); }
+    .tick::after { border-color: #ffffff; }
+  }
 </style>
 <link rel="stylesheet" href="fx.css">
 </head>

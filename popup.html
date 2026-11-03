@@ -311,6 +311,25 @@
      and vowel signs apart, and the script has no capitals; both rules were
      written for Latin labels. (tests/layout.test.js) */
   :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
+
+  /* Light, when the computer is light. These pages were always dark,
+     whatever the system said. Every text colour here is 5.3:1 or more on
+     the surface it sits on (tests/colour.test.js, and the audit's light
+     surfaces). */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f4f5f9; --panel: #ffffff; --raise: #eef0f5;
+      --ink: #141925; --dim: #4c5466; --faint: #5b6375; --line: #dde1ea;
+    }
+    body::before { background: radial-gradient(circle, rgba(124,108,240,.16), transparent 68%); }
+    .theme:hover { border-color: #c3c8d4; }
+    .theme.on { color: var(--ink); background: rgba(124,108,240,.12); }
+    .chip { border-color: rgba(0,0,0,.12); }
+    .track { background: #cfd4de; }
+    .track::after { background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .tabs button.on, .seg .pill { box-shadow: 0 3px 10px rgba(124,108,240,.28); }
+  }
 </style>
 <link rel="stylesheet" href="fx.css">
 </head>

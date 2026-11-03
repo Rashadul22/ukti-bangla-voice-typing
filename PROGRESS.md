@@ -1199,3 +1199,18 @@ G security, H marketing kit and zip. Each step below as it is finished.
   badge. It is the end of the "বাংলা করুন Alt+Shift+1" label, cut off by
   the old screenshot crop. No change was needed there.
 - All 27 screenshot baselines regenerated on purpose and reviewed.
+
+## C. Colour (81/100 review, every finding)
+
+- **Light mode.** The popup, setup and corrections pages were always dark
+  (`color-scheme: dark` was fixed). They now follow the system. Light
+  tokens: ink #141925, dim #4c5466, faint #5b6375 (6.0:1 on white, 5.3:1 on
+  the raised grey). The UI audit gained four light surfaces (popup's three
+  tabs and setup), and their contrast, targets and layout pass.
+- **The control's edge on dark sites** was 1.48:1 against a dark page (the
+  fill is nearly the page colour). The edge is now 24% white on glass and
+  22% on solid dark: 2:1 or more, measured over the real fill.
+- **Red means recording only.** The error toast was a red block, the same
+  red as the live mic. It is now the usual panel with a red bar on its
+  leading edge; a wait has an amber bar.
+- `tests/colour.test.js`, 9 tests, 6 failed before the change.
