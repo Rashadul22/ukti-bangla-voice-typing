@@ -229,7 +229,19 @@
     margin: 11px 12px 0; text-align: center;
     font-size: 11.5px; color: var(--faint);
   }
+  .by { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .by a { color: var(--dim); text-decoration: none; }
+  .by .role { color: var(--faint); }
+  /* The maker's initials until a photo is added. In CSS, so the text a
+     screen reader or the language switch sees stays the plain sentence. */
+  .avatar {
+    width: 20px; height: 20px; flex: none; border-radius: 50%;
+    display: inline-grid; place-items: center;
+    background: linear-gradient(145deg, var(--brand), var(--brand2));
+    color: #fff; font-size: 9.5px; font-weight: 700; line-height: 1;
+  }
+  .avatar::before { content: 'রা'; }
+  html[lang="en"] .avatar::before { content: 'MR'; }
   .by a:hover { color: var(--ink); }
 
   .hint { margin: 9px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
@@ -357,7 +369,7 @@
   </div>
 
   <a href="#" class="cta" id="openSetup">সেটআপ খুলুন</a>
-  <p class="by">বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a></p>
+  <p class="by"><span class="avatar" aria-hidden="true"></span>বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a> <span class="role">· CSE, DIU</span></p>
 </div>
 
 <div class="pane dimmable" id="look">
@@ -430,7 +442,7 @@
   <div class="group">
     <div class="label">নিজের শব্দ ঠিক করা</div>
     <p class="hint">প্রতি লাইনে: যা শোনে = যা হবে</p>
-    <textarea id="replacements" placeholder="রাসাদুল = রাশাদুল" spellcheck="false"></textarea>
+    <textarea id="replacements" placeholder="রাসেদুল = রাশেদুল" spellcheck="false"></textarea>
     <a href="#" id="openWords" class="change">সব শব্দ, ফাইলে রাখা বা আনা</a>
   </div>
 

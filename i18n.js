@@ -142,7 +142,15 @@ const UKTI_EN = {
 
   // ---- credit
   'বানিয়েছেন': 'Built by',
-  'মোঃ রাশাদুল ইসলাম': 'Md Rashadul Islam',
+  'মোঃ রাশেদুল ইসলাম': 'Md Rashadul Islam',
+  '· CSE, DIU': '· CSE, DIU',
+  'নির্মাতা': 'The maker',
+  'কম্পিউটার সায়েন্স (CSE) শিক্ষার্থী, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি':
+    'Computer Science (CSE) student, Daffodil International University',
+  'যারা বাংলা টাইপ করতে পারেন না, তারাও যেন নিজের ভাষায় সহজে লিখতে পারেন, সেজন্যই উক্তি। একদম ফ্রি, আর আপনার কথা কোথাও জমা থাকে না।':
+    'Ukti is for everyone who cannot type Bangla, so they can still write in their own language with ease. Completely free, and nothing you say is kept anywhere.',
+  'LinkedIn এ যোগাযোগ': 'Contact on LinkedIn',
+  'রাসেদুল = রাশেদুল': 'রাসেদুল = রাশেদুল',
 
   // ---- setup, step numbers shown in the badges
   '১': '1',

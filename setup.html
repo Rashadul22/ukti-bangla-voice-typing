@@ -231,6 +231,28 @@
         animation: none !important;
       }
     }
+    /* The maker card. Initials until a photo is added; in CSS so the
+       language switch and screen readers see only the sentence. */
+    .maker .who { display: flex; align-items: center; gap: 12px; }
+    .maker .who b { display: block; font-size: 15px; font-weight: 650; }
+    .maker .who span { display: block; font-size: 13px; color: var(--dim); line-height: 1.5; }
+    .maker .why { margin-top: 10px; font-size: 13.5px; color: var(--dim); line-height: 1.65; }
+    .maker .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .maker .link {
+      display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
+      border-radius: 11px; border: 1px solid var(--line); background: var(--raise);
+      color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none;
+    }
+    .maker .link:hover { border-color: var(--brand); }
+    .avatar {
+      width: 46px; height: 46px; flex: none; border-radius: 50%;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, var(--brand), #5b4ae0 55%, var(--brand-2));
+      box-shadow: 0 6px 18px rgba(124,108,240,.35);
+      color: #fff; font-size: 17px; font-weight: 700;
+    }
+    .avatar::before { content: 'রা'; }
+    html[lang="en"] .avatar::before { content: 'MR'; }
     .change { display: inline-block; margin-top: 10px; font-size: 13px; color: inherit; opacity: .75; }
     .change:hover, .change:focus-visible { opacity: 1; }
     kbd {
@@ -360,12 +382,27 @@
       <a href="#" id="changeShortcuts" class="change">শর্টকাট বদলান</a>
     </section>
 
+    <section class="card soft maker">
+      <div class="label">নির্মাতা</div>
+      <div class="who">
+        <div class="avatar" aria-hidden="true"></div>
+        <div>
+          <b>মোঃ রাশেদুল ইসলাম</b>
+          <span>কম্পিউটার সায়েন্স (CSE) শিক্ষার্থী, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি</span>
+        </div>
+      </div>
+      <p class="why">যারা বাংলা টাইপ করতে পারেন না, তারাও যেন নিজের ভাষায় সহজে লিখতে পারেন, সেজন্যই উক্তি। একদম ফ্রি, আর আপনার কথা কোথাও জমা থাকে না।</p>
+      <div class="links">
+        <a class="link" href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">LinkedIn এ যোগাযোগ</a>
+      </div>
+    </section>
+
   </div>
 
   <div class="done-line">দুইটা ধাপ সবুজ হলে পেজটা বন্ধ করে দিন, উক্তি তৈরি</div>
 
   <footer>
-    বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a>
+    বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a>
     <span>·</span> <span class="ver">v1.0.1</span>
   </footer>
 

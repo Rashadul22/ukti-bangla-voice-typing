@@ -92,4 +92,4 @@ MIT. See `LICENSE`.
 
 ## Author
 
-Md Rashadul Islam (মোঃ রাশাদুল ইসলাম)
+Md Rashadul Islam (মোঃ রাশেদুল ইসলাম)

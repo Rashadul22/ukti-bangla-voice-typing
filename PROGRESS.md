@@ -1163,3 +1163,15 @@ for mixed writing; 4. voice snippets; 5 and 6 need a check on the author's
 machine (on-device recognition, alternatives).
 
 Also: `fx.js` added to the files `tests/privacy.test.js` scans.
+
+# Night 2 (from 3 November): everything the author asked for before sleeping
+
+Asked for: layout, colour and motion to 100; every feature buildable without
+the author's own test; deep security work; the author presented as maker;
+make it ready to spread on Facebook. Permission given to change the control's
+look (buttons and their order). Author details: Bangla name মোঃ রাশেদুল ইসলাম,
+English Md Rashadul Islam, CSE student at Daffodil International University,
+LinkedIn linkedin.com/in/rashadul-islam-73790a241, photo to come.
+
+Order: A author, B layout, C colour, D motion, E growth, F features,
+G security, H marketing kit and zip. Each step below as it is finished.
