@@ -140,3 +140,22 @@ test('no-select: refuses to write, keeps the text, warns, and never doubles it',
     await page.close();
   }
 });
+
+// CLAUDE.md item 3: putBack() must check that the box holds exactly the
+// new text. A box that cuts input past a limit changes, but wrongly. The
+// old check ("did anything change?") called that a success; the mutation
+// run showed no test caught it until this one (mutant 3).
+test('limit: a box that cuts the conversion short is reported, not called done', async () => {
+  const page = await ext.context.newPage();
+  try {
+    await page.goto(`${base}/limit.html`);
+    await page.waitForFunction(() => window.mimic);
+    await page.evaluate(() => mimic.setText('ami bhalo achi'));
+    await command(ext, page, 'to-bangla');
+    const said = await waitFor(() => page.evaluate(() =>
+      document.querySelector('[data-ukti="bar"]')?.shadowRoot.querySelector('.toast.on')?.textContent || null));
+    assert.ok(said, 'no message at all');
+    assert.equal(said.includes('বাংলা হয়েছে'), false, `claimed success: ${said}`);
+    assert.match(said, /বদলাতে দিল না/);
+  } finally { await page.close(); }
+});

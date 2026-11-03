@@ -43,7 +43,7 @@ test('packager: refuses when the two version strings drift', () => {
   edit(dir, 'manifest.json', `"version": "${VERSION}"`, '"version": "9.9.9"');
   const run = pack(dir);
   assert.notEqual(run.status, 0);
-  assert.match(run.stderr, /manifest says 1\.0\.2, setup footer says 1\.0\.1/);
+  assert.ok(run.stderr.includes(`manifest says 9.9.9, setup footer says ${VERSION}`), run.stderr);
 });
 
 test('packager: refuses when a referenced file is missing', () => {

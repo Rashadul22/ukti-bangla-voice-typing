@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>limit</title>
+<!-- A box with a site-imposed character limit, like a counter that cuts any
+     input past N characters. A conversion lands, then is cut short: the box
+     changed, but not to what was asked. putBack() must notice. -->
+<textarea id="ed" rows="3" cols="60"></textarea>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  const LIMIT = 6;
+  el.addEventListener('input', () => { if (el.value.length > LIMIT) el.value = el.value.slice(0, LIMIT); });
+  window.mimic = {
+    el, kind: 'textarea',
+    model: () => el.value,
+    setText(s) { el.value = s; el.focus(); el.setSelectionRange(s.length, s.length); }
+  };
+</script>

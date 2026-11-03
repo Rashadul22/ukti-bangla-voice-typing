@@ -59,6 +59,13 @@ and remote `src`, and checks the pages load nothing from outside the
 extension. The only external links are the author's name on the popup and
 setup page, which load nothing until clicked.
 
+Since 1.1.0 Chrome enforces this for Ukti's own pages (popup, setup,
+corrections page, offscreen document): the manifest's content security
+policy has `connect-src 'none'`, so a network request from them is refused
+by the browser, not just absent from the code (`tests/security2.test.js`
+makes one and sees it refused). The content script runs under each page's
+own policy, so for it the code check above still is the guarantee.
+
 ## chrome.storage.local, every key
 
 All stored by Chrome on the user's machine. `tests/privacy.test.js` fails if a

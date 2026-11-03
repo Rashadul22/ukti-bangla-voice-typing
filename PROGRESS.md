@@ -1330,3 +1330,14 @@ it fail, then fixed the code.
 - Version 1.1.0 in `manifest.json`, `package.json` and the setup footer
   together; `CHANGELOG.md` has the entry. The release tests now follow the
   manifest's version instead of pinning 1.0.1.
+
+## Mutation run, and a hole closed
+
+`npm run test:mutants`: 15 of 16 killed. The survivor was mutant 3,
+"putBack() counts any change as success", which is CLAUDE.md item 3. It
+survived on the code from before tonight as well (checked on commit
+28b6009), so it was not caused by tonight's work, but it meant no test
+guarded that item. New mimic `tests/pages/limit.html`: a box that cuts input
+past six characters, as counters on some sites do. The conversion lands and
+is cut short; the real code reports "this box refused the change", the
+mutant says "done". With the new test in `tests/editors.test.js`: 16 of 16.

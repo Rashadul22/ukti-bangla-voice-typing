@@ -1549,7 +1549,7 @@
     }
     .row:has(.noTip) .tip { display: none; }
     /* Three tiers, so six round buttons stop looking alike. The mic is the
-       big one. The language pair (অ, EN) shares an accent ring. Undo is
+       big one. The language pair (Bangla and EN) shares an accent ring. Undo is
        plain. The utilities that move or fold the control (grip, toggle) are
        smaller and flat, with an invisible ring that keeps the hit area at
        40px. */
