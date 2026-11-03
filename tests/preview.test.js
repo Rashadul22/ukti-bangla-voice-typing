@@ -82,13 +82,47 @@ test('the prompt is in English when the setting is English', async () => {
   } finally { await page.close(); }
 });
 
-test('words being guessed shimmer; a final sentence settles in its own segment', async () => {
+// The author's report: with the shimmer, words still being spoken and words
+// already finished looked the same colour, and the band of light moving
+// through the text was hard on the eyes. Now: live words solid and bright,
+// finished words a clearly quieter colour, nothing moving inside the text.
+const lum = rgb => {
+  const [r, g, b] = rgb.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => {
+    v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
+  return .2126 * r + .7152 * g + .0722 * b;
+};
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
+const PANEL = { glass: 'rgb(22, 24, 30)', dark: 'rgb(27, 29, 35)', light: 'rgb(255, 255, 255)' };
+
+for (const theme of ['glass', 'dark', 'light']) {
+  test(`${theme}: live words are solid and bright, finished words a clearly quieter colour`, async () => {
+    await storage.set(ext.worker, { theme });
+    const page = await listening();
+    try {
+      await off.eval('__fake.say("আমি ভালো আছি")');
+      await off.eval('__fake.say("তুমি কেমন", false)');
+      await page.waitForTimeout(900);
+      const c = await inPreview(page, root => {
+        const eff = el => { let o = 1; for (let e = el; e && e.classList && !e.classList.contains('preview'); e = e.parentElement) o *= +getComputedStyle(e).opacity; return o; };
+        const w = root.querySelector('.preview .live w'), s = root.querySelector('.preview .done .seg');
+        const cw = getComputedStyle(w), cs = getComputedStyle(s);
+        return { live: cw.color, done: cs.color, liveOp: eff(w), doneOp: eff(s),
+          liveAnim: cw.animationName, clip: cw.backgroundClip || cw.webkitBackgroundClip };
+      });
+      assert.doesNotMatch(c.liveAnim, /shimmer/, 'a band of light still runs through the words');
+      assert.notEqual(c.clip, 'text', 'live words are still gradient text');
+      assert.ok(c.liveOp > .99 && c.doneOp > .99, `colour comes from opacity, not a colour: ${c.liveOp} ${c.doneOp}`);
+      const bg = PANEL[theme];
+      assert.ok(contrast(c.live, bg) >= 12, `live words not bright enough: ${c.live} on ${bg}`);
+      assert.ok(contrast(c.done, bg) >= 4.5, `finished words unreadable: ${c.done} on ${bg}`);
+      assert.ok(contrast(c.live, c.done) >= 2.2, `live ${c.live} and finished ${c.done} look alike`);
+    } finally { await page.close(); await storage.set(ext.worker, { theme: 'glass' }); }
+  });
+}
+
+test('a final sentence settles into its own segment', async () => {
   const page = await listening();
   try {
-    await off.eval('__fake.say("আমি ভালো", false)');
-    await page.waitForTimeout(150);
-    const live = await inPreview(page, root => getComputedStyle(root.querySelector('.preview .live w')).animationName);
-    assert.match(live, /shimmer/, live);
     await off.eval('__fake.say("আমি ভালো আছি")');
     await page.waitForTimeout(80);
     const seg = await inPreview(page, root => {

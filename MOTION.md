@@ -143,7 +143,7 @@ then everywhere, without changing the layout.
 | Preview | A thin ring of moving colour around the panel, brighter as the voice gets louder (`--lvl`), plus a soft outer glow | Only while the panel is open |
 | Preview | "বলুন, শুনছি…" ("Speak, I am listening…") until the first word | Before the first word |
 | Preview | Each new word rises out of a 6px blur on the spring, a burst of words one after another (35 ms apart) | As words arrive |
-| Preview | Words still being guessed carry a slow band of light (gradient text) | Only with motion allowed; the text is never transparent otherwise |
+| Preview | (Removed after the hand test: a band of light through live words) | |
 | Preview | A finished sentence lights up and cools to the finished colour | 0.7 s, once |
 | Preview to box | A copy of the sentence flies from the preview into the box along a curve and fades | 0.64 s, once, decoration only: the words are already in the box |
 | Toast, welcome card, learning card | Rise on the spring out of a light blur | On the way in only |
@@ -190,3 +190,26 @@ spaced.
 How it feels on a real screen and on a slower laptop. The ring uses one
 masked layer and runs only while dictating; if it ever feels heavy, the
 first thing to cut is the outer glow's `--lvl` shadow.
+
+### Change after the author's hand test, 3 November
+
+The author reported that words being spoken and words already finished now
+looked the same colour, and that the band of light moving through the live
+words was hard on the eyes. Both were right: the live words were gradient
+text, mostly the same near-white as the finished text, which was only made
+dimmer with opacity.
+
+Now the preview text has two real colours per theme, and nothing moves
+inside the text:
+
+| Theme | Live words | Finished words | Live against finished |
+|---|---|---|---|
+| Glass | #ffffff, 17.7:1 | #8e96aa, 6.0:1 | 3.0:1 |
+| Dark | #ffffff, 16.8:1 | #8e96aa, 5.7:1 | 3.0:1 |
+| Light | #0d1018, 19.0:1 | #6b7285, 4.8:1 | 4.0:1 |
+
+The shimmer is removed, a new word only fades up 0.25em (no blur), and a
+finished sentence fades from the live colour to the finished one in
+0.6 s. The ring and the flier are unchanged, as asked. Three new tests in
+`tests/preview.test.js` (one per theme) failed first on the shimmer and
+check the contrast numbers above.

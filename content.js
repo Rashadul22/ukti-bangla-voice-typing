@@ -1352,6 +1352,9 @@
 
       /* Glass: see-through, blurred. The default. */
       --ink: #f4f4f5;
+      /* The preview's two text colours: speaking now, and finished. */
+      --live-ink: #ffffff;
+      --done-ink: #8e96aa;
       --glass: rgba(22, 24, 30, .93);
       --edge: rgba(255, 255, 255, .12);
       --blur: none;
@@ -1365,6 +1368,8 @@
     :host([data-theme="dark"]) {
       --blur-panel: none;
       --ink: #f4f4f5;
+      --live-ink: #ffffff;
+      --done-ink: #8e96aa;
       --glass: #1b1d23;
       --edge: rgba(255, 255, 255, .09);
       --blur: none;
@@ -1376,6 +1381,8 @@
     :host([data-theme="light"]) {
       --blur-panel: none;
       --ink: #1d2230;
+      --live-ink: #0d1018;
+      --done-ink: #6b7285;
       --glass: #ffffff;
       --edge: rgba(0, 0, 0, .1);
       --blur: none;
@@ -1644,37 +1651,26 @@
     .preview .hint[hidden] { display: none; }
     @keyframes hint-breathe { 0%, 100% { opacity: .4 } 50% { opacity: .72 } }
 
-    .preview .done { opacity: .62; }
-    .preview .seg { display: inline; animation: settle .7s ease-out both; }
+    /* Two colours, nothing else: what is being said now is solid and
+       bright, what is finished is a clearly quieter colour. Real colours,
+       not opacity, so each theme can pick a pair that reads well. The
+       shimmer that used to run through live words is gone: the author
+       found it hard on the eyes and it made both kinds of text look alike. */
+    .preview .done { color: var(--done-ink); }
+    .preview .seg { display: inline; animation: settle .6s ease-out both; }
     .preview .seg:last-child { margin-right: .22em; }
-    /* A finished sentence arrives at full brightness and cools to the
-       finished colour, so the eye can tell what was just written. */
-    @keyframes settle {
-      from { opacity: 1; filter: brightness(1.25); text-shadow: 0 0 .6em rgba(124, 108, 240, .55); }
-      to   { opacity: 1; filter: none; text-shadow: none; }
-    }
-    .preview .live { opacity: .97; }
+    /* A finished sentence starts in the live colour and fades to the
+       finished one, so the eye sees which words just went in. */
+    @keyframes settle { from { color: var(--live-ink); } to { color: var(--done-ink); } }
+    .preview .live { color: var(--live-ink); }
     .preview w {
       display: inline-block;
       margin-right: .22em;
-      animation: rise .5s var(--spring-soft) both;
+      animation: rise .32s ease-out both;
     }
-    /* Words still being guessed carry a slow light across them. Only with
-       motion allowed: the text is transparent inside the gradient, so it
-       must never apply when the animation would not run. */
-    @media (prefers-reduced-motion: no-preference) {
-      .preview .live w {
-        background: linear-gradient(100deg, var(--ink) 0 40%, #b9b0ff 50%, var(--ink) 60% 100%)
-          0 0 / 250% 100%;
-        -webkit-background-clip: text; background-clip: text;
-        color: transparent;
-        animation: rise .5s var(--spring-soft) both, shimmer 2.2s linear .5s infinite;
-      }
-    }
-    @keyframes shimmer { from { background-position: 100% 0 } to { background-position: -150% 0 } }
     @keyframes rise {
-      from { opacity: 0; transform: translateY(.45em) scale(.94); filter: blur(6px); }
-      to   { opacity: 1; transform: none; filter: blur(0); }
+      from { opacity: 0; transform: translateY(.25em); }
+      to   { opacity: 1; transform: none; }
     }
     .caret {
       display: inline-block; width: .09em; height: 1.05em;
