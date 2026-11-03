@@ -720,6 +720,12 @@ and logos are exempt from both WCAG contrast rules.
 | Control, error toast | 18 | 6.04 | 0 | 6.04 | 0 |
 | Control, coach mark | 36 | 3.37 | 6 | 4.74 | 0 |
 
+One caveat on the "before" column: `docs/ui-audit/before/report.json` was
+taken before I fixed one artefact in my own harness (it composited text
+below the fold of the zoomed setup page onto white instead of the page's
+dark canvas). It reports a 1.16:1 there that never existed; the table leaves
+it out and shows the real lowest, 3.43.
+
 ## Defects fixed
 
 | What was wrong | Measured | Now | Screenshots |
