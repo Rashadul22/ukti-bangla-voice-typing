@@ -1239,3 +1239,25 @@ pass. `tests/motion2.test.js`, 7 tests, all failed first.
 - Two new storage keys, both numbers or flags: `uses` and `rateDone`
   (listed in `PRIVACY-FACTS.md`, checked by `tests/privacy.test.js`).
 - `tests/growth.test.js`, 7 tests, 6 failed before the change.
+
+## F1. Smarter Banglish with a word list (measured)
+
+A public-domain list of 451,348 Bangla words (Unlicense,
+github.com/tahmid02016/bangla-wordlist) is shipped as a 1% Bloom filter,
+`data/bn-words.js`, 704 KB, built by `scripts/build-words.js`. When a
+Banglish conversion is not a real word, `repair()` in `banglish.js` tries
+the letters people confuse, one swap then two, and keeps the first spelling
+the list knows. The filter lives in the offscreen document, not in every
+page; the page asks for a repair and keeps its own conversion if no answer
+comes within 1.5 s.
+
+| Set | Before | After |
+|---|---|---|
+| Tuning words | 478/479 | 478/479 |
+| Tuning sentences | 45/46 | 45/46 |
+| Held-out words (reported, never tuned on) | 79/137, 57.7% | 92/137, 67.2% |
+| Held-out sentences | 16/20 | 17/20 |
+
+In a real box, "bishesh shokal" now becomes বিশেষ সকাল (was বিশেশ শকাল)
+and "thakur" ঠাকুর (was থাকুর). `tests/wordlist.test.js`, 5 tests, all
+failed first.

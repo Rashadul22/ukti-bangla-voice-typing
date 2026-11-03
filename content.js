@@ -1105,6 +1105,20 @@
   //   bangla   refuse, already Bangla     translate bn to en
   //   english  translate en to bn         refuse, already English
 
+  // The word list sits in the offscreen document. If it is slow or gone,
+  // the plain conversion stands: a repair is an improvement, never a wait.
+  async function repaired(text) {
+    try {
+      const reply = await Promise.race([
+        chrome.runtime.sendMessage({ type: 'REPAIR_WORDS', text }),
+        new Promise(done => setTimeout(() => done(null), 1500))
+      ]);
+      return reply?.ok && typeof reply.text === 'string' ? reply.text : text;
+    } catch (_) {
+      return text;
+    }
+  }
+
   async function ask(text, from, to) {
     try {
       return await chrome.runtime.sendMessage({
@@ -1171,7 +1185,7 @@
 
     if (kind === 'banglish') {
       countUse();
-      const out = self.UktiBanglish.convert(source);
+      const out = await repaired(self.UktiBanglish.convert(source));
       if (!(await putBack(box, selected, out))) return;
       // Not reversible: the original is Banglish, and EN asks for English.
       lastConversion.delete(box);
@@ -1222,7 +1236,7 @@
     }
 
     const bangla = kind === 'banglish'
-      ? self.UktiBanglish.convert(source)
+      ? await repaired(self.UktiBanglish.convert(source))
       : source;
 
     showIndicator(t('working'), 'busy', true);

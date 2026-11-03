@@ -12,7 +12,7 @@ const { chromium } = require('playwright');
 const { ROOT } = require('./helpers');
 
 const RUNTIME = ['manifest.json', 'background.js', 'content.js', 'banglish.js', 'offscreen.js',
-  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.html', 'words.js', 'fx.css', 'fx.js', 'icons', 'LICENSE'];
+  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.html', 'words.js', 'fx.css', 'fx.js', 'data', 'icons', 'LICENSE'];
 
 function scratch() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ukti-release-'));

@@ -216,6 +216,7 @@ function chunkText(text, maxLen = 900) {
 // A translation that has not answered in this long is not going to. Better
 // to tell the user than to leave "translating" on screen.
 const TRANSLATE_TIMEOUT_MS = 20000;
+let repairWords = null;
 
 function withTimeout(promise) {
   let timer;
@@ -733,6 +734,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // set off another round of messages to it.
     if (!state.desired && !state.current) return false;
     stopDictation();
+    return false;
+  }
+
+  // Banglish repair: the word list lives here, not in every page, because
+  // it is 700 KB and only a conversion needs it.
+  if (message.type === 'REPAIR_WORDS') {
+    try {
+      if (!repairWords) repairWords = self.UktiBanglish.wordSet(self.UKTI_WORDS);
+      sendResponse({ ok: true, text: self.UktiBanglish.repair(String(message.text || ''), repairWords) });
+    } catch (error) {
+      sendResponse({ ok: false, error: error.name || 'error' });
+    }
     return false;
   }
 

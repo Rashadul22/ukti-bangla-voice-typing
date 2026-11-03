@@ -647,11 +647,95 @@
   return { convert: banglishToBangla, classify, stats };
   }
 
+  // ---------------------------------------------------------------- repair
+  // A conversion that is not a real word is usually one confusable letter
+  // off: শ/ষ/স, ন/ণ, ি/ী, ত/ট, থ/ঠ and the like sound the same in speech
+  // and in Banglish. Try those swaps, one and then two at a time, and keep
+  // the first spelling the word list knows. FEATURES.md, experiment 1:
+  // held-out words 57.7% to 67.2%, tuning words unchanged.
+  //
+  // The list is a Bloom filter (data/bn-words.js, built by
+  // scripts/build-words.js): 1% false positives, never a false negative.
+  // Both sides are NFC, because ড় and য় have two Unicode spellings, and a
+  // mismatch there broke 27 correct words in the first experiment.
+
+  const SWAPS = [['ি','ী'],['ী','ি'],['ু','ূ'],['ূ','ু'],['স','শ'],['শ','স'],['স','ষ'],['শ','ষ'],['ষ','শ'],
+    ['ন','ণ'],['ণ','ন'],['জ','য'],['য','জ'],['দ','ড'],['র','ড়'],['ড়','র'],['ত','ৎ'],['ই','ঈ'],['উ','ঊ'],
+    ['ো',''],['য়','ই'],['ই','য়'],['া','্যা'],['ে','্যা'],['ং','ঙ'],['ঙ','ং'],['ত','ট'],['ট','ত'],['ড','দ'],
+    ['থ','ঠ'],['ধ','ঢ'],['ঞ','ন'],['ক্ষ','খ'],['খ','ক্ষ'],['জ্ঞ','গ্য']];
+
+  function swapsOf(words) {
+    const out = [];
+    for (const x of words) {
+      for (const [a, b] of SWAPS) {
+        for (let i = x.indexOf(a); i >= 0; i = x.indexOf(a, i + 1)) {
+          out.push(x.slice(0, i) + b + x.slice(i + a.length));
+        }
+      }
+    }
+    return out;
+  }
+
+  function repairWord(word, has) {
+    const w = word.normalize('NFC');
+    if (has(w)) return w;
+    const one = swapsOf([w]);
+    for (const c of one) if (has(c)) return c;
+    // Two swaps: গবেশনা needs both শ to ষ and ন to ণ. Capped, so a long
+    // word cannot make this slow.
+    const two = swapsOf(one.slice(0, 60));
+    for (const c of two.slice(0, 3000)) if (has(c)) return c;
+    return word;
+  }
+
+  // Only runs of Bangla letters are touched; English, digits, spaces and
+  // punctuation pass through as they are.
+  function repair(text, has) {
+    if (typeof has !== 'function') return text;
+    return String(text).replace(/[\u0980-\u09FF]+/g, run => {
+      const lead = run.match(/^[।॥]*/)[0], trail = run.match(/[।॥]*$/)[0];
+      const core = run.slice(lead.length, run.length - trail.length);
+      return core ? lead + repairWord(core, has) + trail : run;
+    });
+  }
+
+  // FNV-1a, twice with different seeds, combined as h1 + i*h2 (Kirsch and
+  // Mitzenmacher). scripts/build-words.js uses these same functions.
+  function hash(s, seed) {
+    let x = (2166136261 ^ seed) >>> 0;
+    for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); }
+    return x >>> 0;
+  }
+  function positions(s, m, k) {
+    const a = hash(s, 0), b = (hash(s, 0x9e3779b9) | 1) >>> 0, out = [];
+    for (let i = 0; i < k; i++) out.push((a + i * b) % m);
+    return out;
+  }
+  function bloomBuild(words, p = 0.01) {
+    const n = words.length;
+    const m = Math.ceil(-n * Math.log(p) / (Math.LN2 * Math.LN2));
+    const k = Math.max(1, Math.round(m / n * Math.LN2));
+    const bits = new Uint8Array(Math.ceil(m / 8));
+    for (const w of words) for (const q of positions(w.normalize('NFC'), m, k)) bits[q >> 3] |= 1 << (q & 7);
+    return { m, k, bits };
+  }
+  function wordSet(data) {
+    if (!data || !data.b64) return null;
+    const raw = atob(data.b64);
+    const bits = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bits[i] = raw.charCodeAt(i);
+    const { m, k } = data;
+    return word => positions(word, m, k).every(q => bits[q >> 3] & (1 << (q & 7)));
+  }
+
   let engine = null;
   const ready = () => engine || (engine = build());
   self.UktiBanglish = {
     convert: text => ready().convert(text),
     classify: text => ready().classify(text),
-    stats: text => ready().stats(text)
+    stats: text => ready().stats(text),
+    repair,
+    wordSet,
+    bloomBuild
   };
 })();

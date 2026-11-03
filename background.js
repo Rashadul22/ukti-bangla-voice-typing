@@ -208,6 +208,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Content script asks for one-off translation (used by the Banglish hotkey
   // when the output mode is English).
+  if (message.type === 'REPAIR_WORDS') {
+    (async () => {
+      try {
+        await ensureOffscreenDocument();
+        const result = await chrome.runtime.sendMessage({ target: 'offscreen', type: 'REPAIR_WORDS', text: message.text });
+        sendResponse(result || { ok: false });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
   if (message.type === 'TRANSLATE') {
     (async () => {
       try {
