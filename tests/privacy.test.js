@@ -27,7 +27,7 @@ test('the install dialog warning is exactly the one the policy discloses', async
   assert.deepEqual(warnings, ['Read and change all your data on all websites']);
 });
 
-const CODE = ['background.js', 'content.js', 'banglish.js', 'offscreen.js', 'popup.js', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.js'];
+const CODE = ['background.js', 'content.js', 'banglish.js', 'offscreen.js', 'popup.js', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.js', 'fx.js'];
 
 test('the extension code makes no network requests of its own', () => {
   const hits = [];

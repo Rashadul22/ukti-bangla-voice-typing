@@ -1141,3 +1141,25 @@ baselines are now shot at rest, as the control's always were.
 `FEATURES.md`. Recommended: Bangla voice commands (spoken punctuation, new
 line, "মুছে দাও"), then voice snippets, and a two-minute check on your
 machine of whether Chrome can recognise Bangla on the device.
+
+# Deep feature research (3 November, later)
+
+Research only, in Bengali, in `FEATURES.md`, which replaces the shorter
+version from earlier today. Findings were weighed by who needs each
+feature, how often, how much it hurts, cost, risk and strength of evidence.
+
+One thing was measured rather than argued: an open (Unlicense) list of
+451,348 Bangla words, used to repair Banglish conversions that are not real
+words, lifts the held-out words from 79/137 (57.7%) to 92/137 (67.2%) and
+held-out sentences from 16/20 to 17/20, with no change on the tuning set.
+The first attempt broke 27 correct words because ড় and য় have two Unicode
+spellings; normalising both sides fixed that. A 532 KB Bloom filter gives
+the same scores as the full 41 MB in-memory set. Scripts are in
+`docs/research/`.
+
+Ranked: 1. Bangla voice commands (punctuation, new line, delete);
+2. word-list Banglish (measured); 3. English words kept in English letters
+for mixed writing; 4. voice snippets; 5 and 6 need a check on the author's
+machine (on-device recognition, alternatives).
+
+Also: `fx.js` added to the files `tests/privacy.test.js` scans.

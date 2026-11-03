@@ -1,87 +1,194 @@
-# What to add next: feature research, 3 November
+# উক্তিতে এরপর কী যোগ করা উচিত: গভীর রিসার্চ ও বিশ্লেষণ
 
-Research only. Nothing here is built. It builds on `RESEARCH.md` (task 8)
-and keeps the same bar: a real user problem, **no new permission, no network
-call, nothing leaves the machine**, no busier control, and still easy to
-understand.
+৩ নভেম্বর। শুধু রিসার্চ, কিছু বানানো হয়নি। একটা জিনিস মেপে দেখা হয়েছে
+(নিচে "পরীক্ষা ১"), কারণ অনুমানের চেয়ে মাপা সংখ্যা ভালো।
 
-## How this was done, and its limits
+## নিয়ম, যেটা দিয়ে সব ফিচার ছাঁকা হয়েছে
 
-Web searches on current voice typing products and Chrome's APIs. Most
-"best dictation extension" pages are SEO lists of little value. Product
-pages and official docs were weighted above them. `developer.chrome.com`
-could not be opened from this session (the network blocks it), so the
-status of Chrome's built-in AI APIs comes from search snippets of that site
-and from MDN. Treat those rows as "check before building".
+1. **প্রাইভেসি:** কোনো সার্ভার নেই, কোনো network call নেই, নতুন
+   permission নেই, কিছু কম্পিউটার থেকে বের হবে না। যেটা এটা ভাঙে, সেটা বাদ।
+2. **কন্ট্রোল ভারী হবে না:** নতুন বাটন যোগ হবে না, যা আছে তার ভেতরে বা
+   পপআপে থাকবে।
+3. **মূল প্রতিশ্রুতি:** যিনি বাংলা টাইপ করতে পারেন না, তিনি বলবেন আর
+   ঠিক লেখাটা বক্সে যাবে।
 
-## What the market does now
+## কীভাবে বিচার করেছি
 
-- **Spoken punctuation and line breaks are standard** in the English tools:
-  Voicemate (updated March 2026) responds to "full stop", "new line" and
-  "new paragraph"
-  ([Voicemate](https://chromeboard.com/extension/voicemate-voice-to-text-goifpingamemmccpmcmkkkhaggjageog));
-  VoiceType lists voice punctuation, custom voice commands and custom names
-  as its key features
-  ([VoiceType](https://chromewebstore.google.com/detail/ilnfjioebpepmbmgkaccfhllddmmppng)).
-  Some tools also undo the last phrase by voice
-  ([Voice Control Pro](https://voicecontrol.pro/blog/voice-to-text-chrome/)).
-- **The leading paid product, Wispr Flow,** sells four things: a personal
-  dictionary that learns when you type over a mistake (Ukti now does this,
-  locally), **snippets** (say a trigger phrase, get a saved block of text),
-  a **command mode** to edit by voice, and tone per app
-  ([Wispr Flow docs](https://docs.wisprflow.ai/articles/5096240724-navigating-the-wispr-flow-app-desktop-ios-and-android),
-  [eesel overview](https://eesel.ai/blog/wispr-flow-overview)). Its
-  dictionary syncs through its servers; Ukti's would not.
-- **On-device speech recognition** is now in the Web Speech API:
-  `processLocally`, `SpeechRecognition.available()` and `install()`
-  ([MDN, available](https://developer.mozilla.org/docs/Web/API/SpeechRecognition/available_static),
-  [MDN, install](https://developer.mozilla.org/docs/Web/API/SpeechRecognition/install_static)).
-  No source says which languages Chrome offers on the device. Whether
-  Bangla is one of them can only be learnt by calling `available()` on a
-  real machine.
-- **Chrome's Prompt API (Gemini Nano)** lists English, Japanese, Spanish,
-  German and French; Bengali is not named
-  ([Chrome docs, via search](https://developer.chrome.com/docs/ai/prompt-api)).
-  Proofreader, Writer and Rewriter appear to still be in trials
-  ([Chrome built-in AI](https://developer.chrome.com/docs/ai/built-in-apis)).
-  So no "AI tidy-up" for Bangla yet.
+শুধু "অন্যদের আছে, তাই আমাদেরও চাই" না। প্রতিটা ফিচারকে এই প্রশ্নগুলো
+দিয়ে মেপেছি:
 
-## Candidates, best first
+- **কতজনের লাগবে:** সব ব্যবহারকারী, নাকি একটা অংশ?
+- **কতবার লাগবে:** প্রতিটা মেসেজে, নাকি মাঝে মাঝে?
+- **কষ্ট কতটা:** না থাকলে লেখা ভুল হয়, নাকি শুধু একটু ধীর?
+- **খরচ ও ঝুঁকি:** বানাতে কতটা লাগবে, আর কী ভাঙতে পারে?
+- **প্রমাণ কতটা শক্ত:** মাপা, গবেষণায় পাওয়া, নাকি শুধু অনুমান?
 
-| # | Feature | What the user gets | Cost | Risk | Bar |
+ব্যবহারকারীর প্রতিটা লেখা একটা ছোট পথ পার হয়: **বলা, শব্দ ঠিক হওয়া,
+যতিচিহ্ন বসা, ইংরেজি শব্দ সামলানো, তারপর পাঠানো।** এই পথের যে ধাপে
+প্রতিদিন সবচেয়ে বেশি কষ্ট, সেখানকার ফিচার আগে।
+
+## যা পাওয়া গেছে
+
+### ব্যবহারকারী আর ভাষা
+
+- **বলা টাইপের চেয়ে অনেক দ্রুত।** Stanford-এর গবেষণায় ফোনে ইংরেজিতে
+  বলা টাইপের চেয়ে ৩ গুণ দ্রুত, ভুল ২০.৪% কম; মান্দারিনে ২.৮ গুণ দ্রুত,
+  ভুল ৬৩.৪% কম
+  ([Stanford](https://news.stanford.edu/stories/2016/08/stanford-study-speech-recognition-faster-texting)).
+  জটিল লিপির ভাষায় সুবিধা বেশি, আর বাংলা লিপি জটিল (৪৯টা অক্ষর, শত শত
+  যুক্তাক্ষর)।
+- **অনেকে বাংলা টাইপ করতে জানেন না।** বাংলা উইকিপিডিয়ার একটা জরিপে
+  ১৭.৫% অংশগ্রহণকারী বলেছেন তাঁরা কম্পিউটারে বাংলা টাইপ করতে জানেন না,
+  আর এরা উইকিপিডিয়া লেখক, সাধারণ মানুষের চেয়ে অভিজ্ঞ
+  ([Signpost](https://signpost.news/2012-08-13/News_and_notes)).
+  Bijoy-এর আলাদা লেআউট শেখা অনেকের কাছে কঠিন ছিল, এ থেকেই বাংলিশ ছড়িয়েছে
+  ([Daily Star](https://www.thedailystar.net/supplements/news/the-promise-and-challenge-bangla-the-digital-age-2048261)).
+- **বাংলা আর ইংরেজি মিশিয়ে লেখা স্বাভাবিক।** চারটা প্ল্যাটফর্মের
+  ১,২০,০০০ শব্দের corpus নিয়ে একটা গবেষণা দেখিয়েছে এই মেশানো এলোমেলো না,
+  নিয়ম মেনে হয়
+  ([Digital Applied Linguistics](https://www.castledown.com/journals/dal/article/view/dal.v3.103118));
+  সোশ্যাল মিডিয়ায় প্রায় ৪০% বাংলা শব্দ রোমান হরফে লেখা হয়
+  ([ACL](https://aclanthology.org/W16-5810.pdf)).
+  ভয়েস টাইপিংয়ে ইংরেজি শব্দ প্রায়ই বাংলা হরফে চলে আসে ("মিটিং")
+  ([vendor page](https://voicetypingai.com/languages/bengali)).
+- **বানানে সবচেয়ে বেশি ভুল হয়** শ/ষ/স, ন/ণ, ি/ী আর ু/ূ-তে, কারণ উচ্চারণে
+  এগুলোর পার্থক্য প্রায় নেই
+  ([UIU thesis](https://dspace.uiu.ac.bd/bitstream/handle/52243/689/Spell%20Checker.pdf?sequence=1&isAllowed=y),
+  [gotranslate](https://www.gotranslate.in/blog/bengali-grammar-checker-online-free)).
+  বাংলিশ থেকে বাংলা করার সময় ঠিক এই জায়গাতেই উক্তির ভুল হয় (পরীক্ষা ১)।
+
+### বাজার
+
+- **ইংরেজির প্রায় সব টুলে মুখে বলা যতিচিহ্ন আর "নতুন লাইন" আছে**
+  ([Voicemate](https://chromeboard.com/extension/voicemate-voice-to-text-goifpingamemmccpmcmkkkhaggjageog),
+  [VoiceType](https://chromewebstore.google.com/detail/ilnfjioebpepmbmgkaccfhllddmmppng)).
+  Gboard-এর ভয়েস টাইপিংয়েও বাংলায় স্বয়ংক্রিয় যতিচিহ্ন নেই বলে ব্যবহারকারীরা
+  লিখেছেন ([GitHub issue](https://github.com/Akshayykadam/PixelBoard/issues/121)).
+  Google-এর টাকা দিয়ে কেনা Cloud API-তে (chirp_2) বাংলার যতিচিহ্ন আছে
+  ([Google Cloud](https://docs.cloud.google.com/speech-to-text/docs/languages)),
+  কিন্তু Chrome-এর বিনা পয়সার Web Speech তা দেয় না। উক্তি এই ফাঁকটা নিজেই,
+  কম্পিউটারের ভেতরেই পূরণ করতে পারে।
+- **Wispr Flow** (সবচেয়ে আলোচিত পেইড টুল) বিক্রি করে নিজের শব্দভান্ডার,
+  স্নিপেট, ভয়েস দিয়ে এডিট আর অ্যাপ অনুযায়ী টোন
+  ([docs](https://docs.wisprflow.ai/articles/5096240724-navigating-the-wispr-flow-app-desktop-ios-and-android),
+  [eesel](https://eesel.ai/blog/wispr-flow-overview)).
+  এর শব্দভান্ডার তাদের সার্ভারে সিঙ্ক হয়; উক্তিরটা কম্পিউটারেই থাকে।
+- **বাংলা কিবোর্ড অ্যাপগুলোর** (Ridmik, Avro) রিভিউতে অভিযোগ: ধীরগতি, ব্যাটারি
+  খরচ, শব্দের সাজেশন নেই, কিছু যুক্তাক্ষরে সমস্যা
+  ([Ridmik reviews](https://justuseapp.com/en/app/1475531051/ridmik-keyboard/reviews)).
+
+### Chrome-এর নতুন API
+
+- **ডিভাইসেই কথা চেনা** (`processLocally`, `available()`, `install()`) এখন
+  Web Speech-এ আছে
+  ([MDN](https://developer.mozilla.org/docs/Web/API/SpeechRecognition/available_static)).
+  বাংলা পাওয়া যায় কিনা কোথাও লেখা নেই; আপনার মেশিনে দুই মিনিটে দেখা যাবে।
+- **Prompt API (Gemini Nano)** stable হয়েছে, কিন্তু ভাষার তালিকায় ইংরেজি,
+  জাপানি, স্প্যানিশ, জার্মান, ফরাসি; বাংলা নেই। Proofreader, Writer, Rewriter
+  এখনো তৈরি হচ্ছে
+  ([DEV, about nine days old](https://dev.to/kenyalba/chromes-prompt-api-is-stable-on-device-ai-for-your-website-no-api-key-and-no-per-token-bill-555e)).
+  তাই "AI দিয়ে বাংলা ঠিক করা" এখন সম্ভব না।
+
+## পরীক্ষা ১: শব্দের তালিকা দিয়ে বাংলিশ রূপান্তর (মেপে দেখা)
+
+**সমস্যা, মাপা:** উক্তির বাংলিশ থেকে বাংলা রূপান্তর যে শব্দগুলো দিয়ে টিউন
+করা, সেখানে ৯৯.৮% ঠিক। কিন্তু **কখনো দেখেনি এমন শব্দে মাত্র ৫৭.৭%**
+(১৩৭টার ৭৯টা)। ভুলগুলোর বেশির ভাগ ঠিক ওই শ/ষ/স, ন/ণ, ত/ট, থ/ঠ জায়গায়:
+"ইতিহাশ", "গনিত", "নাতক", "চিথি", "থিকানা"।
+
+**পরীক্ষা:** একটা উন্মুক্ত (Unlicense, যেকোনো কাজে ব্যবহারযোগ্য) ৪,৫১,৩৪৮
+শব্দের বাংলা তালিকা
+([tahmid02016/bangla-wordlist](https://github.com/tahmid02016/bangla-wordlist))
+নিয়ে নিয়মটা এরকম: রূপান্তরের ফল যদি আসল বাংলা শব্দ না হয়, তাহলে
+সাধারণত গুলিয়ে ফেলা অক্ষরগুলো বদলে দেখা, আর তালিকায় পাওয়া প্রথমটা নেওয়া।
+
+| সেট | এখন | তালিকা দিয়ে |
+|---|---|---|
+| টিউন করা শব্দ | ৪৭৮/৪৭৯ (৯৯.৮%) | ৪৭৮/৪৭৯ (৯৯.৮%), **একটাও ভাঙেনি** |
+| টিউন করা বাক্য | ৪৫/৪৬ (৯৭.৮%) | ৪৫/৪৬ (৯৭.৮%) |
+| **না দেখা শব্দ** | ৭৯/১৩৭ (৫৭.৭%) | **৯২/১৩৭ (৬৭.২%)** |
+| **না দেখা বাক্য** | ১৬/২০ (৮০%) | **১৭/২০ (৮৫%)** |
+
+ঠিক হওয়া উদাহরণ: itihash → ইতিহাস, gonit → গণিত, natok → নাটক,
+chithi → চিঠি, thikana → ঠিকানা, hashi → হাসি, boshun → বসুন,
+sharadin → সারাদিন।
+
+**পথে পাওয়া একটা জিনিস:** প্রথম চেষ্টায় ২৭টা ঠিক শব্দ ভেঙে গিয়েছিল
+(কোথায় → কথাই, বাড়ি → বারি)। কারণ ড়/য় অক্ষর Unicode-এ দুইভাবে লেখা যায়,
+আর তালিকা আর উক্তি দুই রকম লিখছিল। দুই দিক normalise করার পর ভাঙন শূন্য।
+বানানোর সময় এটা মাথায় রাখতে হবে।
+
+**আকার, মাপা:** পুরো তালিকা মেমরিতে রাখলে ৪১ MB লাগে, তৈরি হতে ৫৭১ ms,
+যা প্রতিটা পেজের জন্য অনেক ভারী। কিন্তু **৫৩২ KB-র একটা Bloom filter**
+(শব্দ আছে কিনা বলার একটা ছোট গাণিতিক কাঠামো) দিয়ে **ফল হুবহু একই**
+(সব সংখ্যা উপরের টেবিলের মতো)। এটা শুধু রূপান্তরের সময় লোড হবে, তাই
+পেজ ধীর হবে না।
+
+**আরো উন্নতির জায়গা:** না দেখা ১৩৭টা শব্দের সবগুলোর সঠিক রূপ তালিকায়
+আছে। এখনো ৪৫টা ভুল থাকছে, কারণ বিকল্প তৈরির নিয়ম এখনো সরল। নিয়ম ভালো
+করলে সংখ্যা আরো বাড়বে, আর পুরো ব্যাপারটা মাপা যাবে।
+
+স্ক্রিপ্ট: `docs/research/wl.js`, `bloom.js`, `wl-bloom.js`।
+
+## তালিকা: গুরুত্ব অনুযায়ী
+
+| ক্রম | ফিচার | কার লাগবে, কতবার | প্রমাণ | খরচ | ঝুঁকি |
 |---|---|---|---|---|---|
-| 1 | **Spoken punctuation and new line** | Say "দাঁড়ি", "প্রশ্নবোধক", "নতুন লাইন" and get । ? or a line break. Chrome's Bangla recognition gives almost no punctuation, so today every sentence runs into the next. | Low: a word list in the offscreen pipeline, next to the filler cleaner, with a test corpus like `fillers.tsv` | কমা also means "reduce". Only safe forms (a command said on its own, or at the end of a sentence, or a two-word form such as "কমা দাও"), designed with native speakers. Off by default. | Passes |
-| 2 | **Voice snippets** | Say "আমার ঠিকানা" alone and the saved address goes in. Phone number, email signature, a standard reply. | Low: the same local list and page as the word fixes, matched only when the whole sentence is the trigger | A trigger said in a real sentence must not fire; matching the whole utterance only avoids that | Passes |
-| 3 | **On-device recognition, if Chrome offers Bangla** | The voice never leaves the computer. This would remove the one big privacy caveat. | Medium, *if* available: a check, a setup step to install the pack, a fallback | Experimental API; Bangla may simply not be offered. Needs a 2-minute test on your machine first (below). | Passes; removes a network path |
-| 4 | **Voice commands for editing** | "মুছে দাও" removes the last sentence Ukti wrote, "পাঠাও" sends. | Low for undo (the undo stack already exists), low for send (auto-submit exists) | Same false-trigger risk as #1; whole-utterance only | Passes |
-| 5 | **Bangla or English digits** | ১২৩ or 123, as a setting | Low | Low | Passes, popup only |
-| 6 | **Start and stop sounds** | A soft tone when listening starts and stops, for anyone not looking at the screen, and for screen reader users | Low: Web Audio, generated locally, no files | Some find sounds annoying: a setting, off by default | Passes |
-| 7 | **Session history, in memory only** | The last ten sentences in the preview, to copy again if a box lost them. Gone when the tab closes. | Low to medium | Keeps dictated text around longer; must never touch storage, and the privacy test must check that | Passes, with care |
-| 8 | **Banglish as you type (Avro style)** | Type "ami bhalo achi" and each word becomes Bangla on space, in any box | High: per-word handling inside every kind of editor, which is exactly the insertion engine's hard part | Breaks editors in subtle ways; the engine is on the do-not-regress list | Strong demand, but a project of its own |
-| 9 | Speak English, get Bangla | English speech translated into Bangla on the device | Low to medium: the Translator already does en to bn | No evidence anyone asked | Weak on demand |
-| 10 | Right-click "convert to Bangla" | Convert selected text from the menu | Needs the `contextMenus` permission | Breaks the no-new-permission rule | **Fails** |
-| 11 | AI tidy-up of Bangla | Gemini Nano fixes grammar | High | Bengali not supported by the Prompt API (as listed), heavy model, rewrites the user's words | **Fails for now** |
+| **১** | **বাংলা ভয়েস কমান্ড:** "দাঁড়ি", "প্রশ্নবোধক", "নতুন লাইন", "মুছে দাও" | **সব** ডিক্টেশন ব্যবহারকারী, **প্রতিটা মেসেজে** | বাজারের প্রায় সব টুলে আছে; Chrome বাংলায় যতিচিহ্ন দেয় না | কম | "কমা" মানে কমানোও হয়: শুধু আলাদা করে বলা বা বাক্যের শেষে বলা কমান্ড, শুরুতে বন্ধ, "যেখানে চলা উচিত না" এমন বাক্যের টেস্ট |
+| **২** | **শব্দের তালিকা দিয়ে স্মার্ট বাংলিশ** | যারা বাংলিশ লিখে কনভার্ট করেন, প্রতিটা অচেনা শব্দে | **মাপা: ৫৭.৭% থেকে ৬৭.২%, ভাঙন শূন্য** | মাঝারি (৫৩২ KB, শুধু দরকারে লোড) | Unicode normalise না করলে ঠিক শব্দ ভাঙে (মাপা) |
+| **৩** | **মিশ্র লেখা: ইংরেজি শব্দ ইংরেজি হরফে** ("আমি office এ আছি"), একটা সেটিং | যারা মিশিয়ে লেখেন (গবেষণা বলে এটা খুব সাধারণ), প্রায় প্রতিদিন | গবেষণা: মিশ্র লেখা নিয়ম মেনে হয়, খুব প্রচলিত | মাঝারি: বাংলা হরফে লেখা ইংরেজি শব্দের তালিকা | "কেস" বা "বাস" বাংলা শব্দও হতে পারে; শুরুতে বন্ধ |
+| **৪** | **ভয়েস স্নিপেট:** শুধু "আমার ঠিকানা" বললে সেভ করা লেখা | একটা অংশ, বারবার | Wispr Flow-এর অন্যতম প্রধান ফিচার | কম: শব্দের তালিকার পেজটাই কাজে লাগবে | শুধু পুরো বাক্য মিললে চলবে |
+| **৫** | **ডিভাইসেই কথা চেনা** (যদি Chrome বাংলা দেয়) | সবাই, সবসময় | API আছে; বাংলা অজানা | পাওয়া গেলে মাঝারি | পরীক্ষামূলক API; আগে আপনার মেশিনে ২ মিনিটের পরীক্ষা |
+| **৬** | **ভুল শব্দে ট্যাপ করে বিকল্প বেছে নেওয়া** (`maxAlternatives`) | সবাই, ভুল হলে | Chrome বাংলায় একাধিক বিকল্প দেয় কিনা অজানা | কম থেকে মাঝারি | আগে আপনার মেশিনে পরীক্ষা |
+| ৭ | পশ্চিমবঙ্গের জন্য bn-IN (একটা সেটিং) | ভারতের বাঙালি ব্যবহারকারী | Google-এর ভাষা তালিকায় bn-IN আলাদা আছে | খুব কম | Chrome আসলে আলাদা করে কিনা পরীক্ষা লাগবে |
+| ৮ | বাংলা বা ইংরেজি সংখ্যা (১২৩ / 123) | একটা অংশ | কম | খুব কম | কম |
+| ৯ | শুরু-থামার হালকা শব্দ | যারা স্ক্রিনে তাকান না, স্ক্রিন রিডার ব্যবহারকারী | কম | খুব কম | কারো কাছে বিরক্তিকর: শুরুতে বন্ধ |
+| ১০ | শেষ দশটা বাক্য মেমরিতে, আবার কপি করার জন্য | বক্স হারিয়ে গেলে | কম | কম | কিছুতেই storage-এ যাবে না, টেস্ট লাগবে |
 
-## Recommendation
+### কেন এই ক্রম
 
-1. **Build #1 and #4 together** as "voice commands": a short, fixed list,
-   off by default, whole-utterance or end-of-sentence only, with a test
-   corpus of real sentences that must **not** trigger. This is the biggest
-   everyday gap compared with every English tool, and it is cheap.
-2. **Then #2, snippets.** It reuses the word-fix list and page, so it costs
-   little and matches Wispr Flow's most-praised feature without a server.
-3. **Run the #3 spike on your machine** before any work: open the offscreen
-   document's console and run
-   `SpeechRecognition.available({ langs: ['bn-BD'], processLocally: true })`.
-   If it answers anything other than `"unavailable"`, this becomes the top
-   item, because "your voice stays on your computer" is the strongest
-   promise Ukti could make.
-4. **Quick wins any time:** #5 digits and #6 sounds.
-5. **Not now:** #8 is worth a separate plan of its own; #10 and #11 break the
-   rules or do not support Bangla.
+- **১ নম্বর প্রথম**, কারণ পথের সবচেয়ে চওড়া ফাঁক এটা: সব ব্যবহারকারী,
+  প্রতিটা মেসেজ। দাঁড়ি আর প্রশ্নচিহ্ন ছাড়া প্রতিটা মেসেজ পাঠানোর আগে হাতে
+  ঠিক করতে হয়, যা ভয়েস টাইপিংয়ের মূল সুবিধাটাই কমিয়ে দেয়। খরচ কম, আর
+  ঝুঁকি টেস্ট দিয়ে সামলানো যায়, যেমন filler cleaner-এ করা হয়েছিল।
+- **২ নম্বর দ্বিতীয়**, কারণ **এটাই একমাত্র ফিচার যার উপকার মেপে দেখানো
+  গেছে** (+৯.৫ পয়েন্ট, ভাঙন শূন্য)। আর এটা নতুন বাটন না, যা আছে তাকেই ভালো
+  করে। এক নম্বরের পরে, কারণ বাংলিশ ব্যবহারকারীরা মোট ব্যবহারকারীর একটা অংশ।
+- **৩ নম্বর ইউনিক।** আমার খোঁজে কোনো বাংলা ভয়েস টুলে এটা পাইনি, অথচ
+  বাংলাদেশে মানুষ আসলে এভাবেই লেখে। তবে আগে দুটোর পরে, কারণ এটা নিয়ে
+  বাংলাভাষীদের মতামত লাগবে।
+- **৫ আর ৬** বড় সুযোগ, কিন্তু Chrome আদৌ বাংলায় এগুলো দেয় কিনা না জেনে
+  কাজ শুরু করা ঠিক না। দুটোই আপনার মেশিনে কয়েক মিনিটে জানা যাবে (নিচে)।
 
-## Not verified from here
+### এখন না, কেন
 
-How often people would use each feature; no user data exists. Whether
-Chrome offers Bangla on-device recognition. The Chrome AI API status, from
-search snippets only, because `developer.chrome.com` is blocked in this session.
+- **টাইপ করতে করতে Avro-র মতো বাংলা:** চাহিদা আছে, কিন্তু প্রতিটা এডিটরে
+  প্রতিটা শব্দ বদলাতে হবে। এটা ঠিক ইনসার্শন ইঞ্জিনের সবচেয়ে কঠিন জায়গা,
+  যেটা CLAUDE.md অনুযায়ী ভাঙা যাবে না। এটা আলাদা একটা প্রজেক্ট।
+- **AI দিয়ে বানান বা ব্যাকরণ ঠিক করা:** Chrome-এর মডেলে বাংলা নেই।
+- **রাইট-ক্লিক মেনু:** নতুন permission (`contextMenus`) লাগবে।
+- **লেখা পড়ে শোনানো:** Chrome-এর Google ভয়েস নেটওয়ার্কে চলে; কম্পিউটারে
+  বাংলা ভয়েস আছে কিনা নিশ্চিত না।
+
+## আপনার মেশিনে দুটো ছোট পরীক্ষা (৫ ও ৬ নম্বরের জন্য)
+
+`chrome://extensions` পেজে উক্তির offscreen document-এর console খুলে:
+
+    SpeechRecognition.available({ langs: ['bn-BD'], processLocally: true })
+
+উত্তর `"unavailable"` না হলে ৫ নম্বর সবার উপরে উঠবে।
+
+    'phrases' in SpeechRecognition.prototype
+
+আর ৬ নম্বরের জন্য, `offscreen.js`-এ `maxAlternatives`-কে ৩ করে কিছু বলে
+দেখতে হবে, প্রতিটা ফলাফলে একাধিক বিকল্প আসে কিনা।
+
+## এখান থেকে যা যাচাই করা যায়নি
+
+- কোন ফিচার মানুষ আসলে কতবার ব্যবহার করবে, কারণ ব্যবহারের কোনো ডেটা নেই।
+- পরীক্ষা ১-এর ১৩৭টা না দেখা শব্দ একটা ছোট নমুনা। দিক পরিষ্কার, কিন্তু
+  ঠিক কত পয়েন্ট বাড়বে সেটা বড় নমুনায় একটু আলাদা হতে পারে।
+- Chrome বাংলায় ডিভাইসে কথা চেনে কিনা, একাধিক বিকল্প দেয় কিনা, আর bn-IN
+  আলাদা করে কিনা।
+- developer.chrome.com এই সেশন থেকে খোলা যায় না, তাই Chrome AI-এর অবস্থা
+  সার্চের ফল থেকে নেওয়া।
