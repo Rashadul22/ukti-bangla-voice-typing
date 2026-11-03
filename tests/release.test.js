@@ -10,6 +10,8 @@ const path = require('node:path');
 const { spawnSync, execSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const { ROOT } = require('./helpers');
+// The version this tree ships as; the tests follow it instead of pinning it.
+const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8')).version;
 
 const RUNTIME = ['manifest.json', 'background.js', 'content.js', 'banglish.js', 'offscreen.js',
   'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.html', 'words.js', 'fx.css', 'fx.js', 'data', 'icons', 'LICENSE'];
@@ -32,13 +34,13 @@ test('packager: builds a clean tree', () => {
   const dir = scratch();
   const run = pack(dir);
   assert.equal(run.status, 0, run.stderr + run.stdout);
-  assert.ok(fs.existsSync(path.join(dir, 'dist', 'ukti-1.0.1.zip')));
-  assert.match(run.stdout, /Loaded the built zip as an unpacked extension: version 1\.0\.1/);
+  assert.ok(fs.existsSync(path.join(dir, 'dist', `ukti-${VERSION}.zip`)));
+  assert.ok(run.stdout.includes(`Loaded the built zip as an unpacked extension: version ${VERSION}`), run.stdout);
 });
 
 test('packager: refuses when the two version strings drift', () => {
   const dir = scratch();
-  edit(dir, 'manifest.json', '"version": "1.0.1"', '"version": "1.0.2"');
+  edit(dir, 'manifest.json', `"version": "${VERSION}"`, '"version": "9.9.9"');
   const run = pack(dir);
   assert.notEqual(run.status, 0);
   assert.match(run.stderr, /manifest says 1\.0\.2, setup footer says 1\.0\.1/);
@@ -77,7 +79,7 @@ test('packager: development files stay out of the zip', () => {
   fs.writeFileSync(path.join(dir, 'tests', 'x.test.js'), '');
   const run = pack(dir);
   assert.equal(run.status, 0, run.stderr);
-  const listing = execSync(`unzip -Z1 ${path.join(dir, 'dist', 'ukti-1.0.1.zip')}`, { encoding: 'utf8' }).trim().split('\n');
+  const listing = execSync(`unzip -Z1 ${path.join(dir, 'dist', `ukti-${VERSION}.zip`)}`, { encoding: 'utf8' }).trim().split('\n');
   assert.deepEqual(listing.filter(f => /\.md$|^tests\/|^scripts\/|package\.json/.test(f)), []);
 });
 
@@ -123,8 +125,8 @@ async function upgrade(from, to, saved) {
 
 const current = (version, footer = version) => dir => {
   for (const f of RUNTIME) fs.cpSync(path.join(ROOT, f), path.join(dir, f), { recursive: true });
-  edit(dir, 'manifest.json', '"version": "1.0.1"', `"version": "${version}"`);
-  edit(dir, 'setup.html', 'class="ver">v1.0.1<', `class="ver">v${footer}<`);
+  edit(dir, 'manifest.json', `"version": "${VERSION}"`, `"version": "${version}"`);
+  edit(dir, 'setup.html', `class="ver">v${VERSION}<`, `class="ver">v${footer}<`);
 };
 const released = commit => dir => {
   execSync(`git archive ${commit} | tar -x -C ${dir}`, { cwd: ROOT, shell: '/bin/bash' });

@@ -2812,9 +2812,13 @@
     return false;
   });
 
+  const SESSION_ONLY = new Set(['INTERIM_RESULT', 'FINAL_RESULT', 'LISTENING']);
   chrome.runtime.onMessage.addListener(message => {
     if (message.source !== 'ukti-background') return false;
     if (message.sessionId && message.sessionId !== sessionId) return false;
+    // Words, and the start that shows the panel, must name this frame's own
+    // session. A result with no session is not ours, whoever sent it.
+    if (!message.sessionId && SESSION_ONLY.has(message.type)) return false;
     if (typeof message.epoch === 'number' && message.epoch < liveEpoch) return false;
 
     switch (message.type) {

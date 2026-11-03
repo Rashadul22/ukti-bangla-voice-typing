@@ -823,6 +823,10 @@ function stale(message) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target !== 'offscreen') return false;
+  // Only the service worker drives the microphone. A message from a tab
+  // (a content script, or a renderer that a page has taken over, which can
+  // send anything a content script can) is ignored. tests/security2.test.js
+  if (sender && sender.tab) return false;
 
   if (message.type === 'START_DICTATION') {
     if (stale(message)) return false;   // a stop from after it already ran

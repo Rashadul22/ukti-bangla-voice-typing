@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ukti - Bangla Voice Typing",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Speak in Bangla, get text in any box. Bangla or English output. Also converts typed Banglish to Bangla.",
   "minimum_chrome_version": "138",
   "permissions": [
@@ -68,5 +68,8 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "homepage_url": "https://rashadul.me"
+  "homepage_url": "https://rashadul.me",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; connect-src 'none'"
+  }
 }

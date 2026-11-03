@@ -155,6 +155,15 @@ async function currentShortcuts() {
   return Object.fromEntries(all.map(c => [c.name, c.shortcut || '']));
 }
 
+// Content scripts are less trustworthy than the rest of the extension: a
+// page that takes over its renderer can send any message a content script
+// can. So privileged messages check where they come from, and requests from
+// pages are bounded in size.
+const OFFSCREEN_URL = chrome.runtime.getURL('offscreen.html');
+const fromOffscreen = sender => !!sender && !sender.tab && sender.url === OFFSCREEN_URL;
+const MAX_REPAIR = 20000;
+const MAX_TRANSLATE = 50000;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ---- from content script ----
 
@@ -163,10 +172,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === 'START_DICTATION') {
+  if (message.type === 'START_DICTATION' && message.target !== 'offscreen') {
     (async () => {
       try {
         if (!sender.tab?.id) throw new Error('No originating tab');
+        // The user starts dictation in the tab they are looking at. A tab
+        // in the background asking for the microphone is not the user,
+        // whatever its page says. (Ukti has no "tabs" permission; whether a
+        // tab is active is readable without it.)
+        const tab = await chrome.tabs.get(sender.tab.id).catch(() => null);
+        if (!tab || !tab.active) throw new Error('Not the active tab');
         // How many times dictation was started: a number, nothing else.
         // The popup asks for a store rating once, after real use.
         chrome.storage.local.get({ uses: 0 }).then(({ uses }) =>
@@ -215,6 +230,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Content script asks for one-off translation (used by the Banglish hotkey
   // when the output mode is English).
   if (message.type === 'REPAIR_WORDS') {
+    if (typeof message.text !== 'string' || message.text.length > MAX_REPAIR) {
+      sendResponse({ ok: false, error: 'TOO_LONG' });
+      return false;
+    }
     (async () => {
       try {
         await ensureOffscreenDocument();
@@ -228,6 +247,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'TRANSLATE') {
+    if (typeof message.text !== 'string' || message.text.length > MAX_TRANSLATE) {
+      sendResponse({ ok: false, error: 'TOO_LONG' });
+      return false;
+    }
     (async () => {
       try {
         await ensureOffscreenDocument();
@@ -250,6 +273,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // unrecoverable. Closing it means the next start gets a fresh context,
   // which clears what a plain restart cannot.
   if (message.type === 'RESET_ENGINE') {
+    if (!fromOffscreen(sender)) return false;
     (async () => {
       try {
         if (await hasOffscreenDocument()) {
@@ -275,6 +299,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ---- from offscreen document, forward to the originating tab ----
 
   if (message.source === 'ukti-offscreen') {
+    // Only the offscreen document may speak for the recogniser. Without
+    // this, any tab context could put words into another tab's box.
+    if (!fromOffscreen(sender)) return false;
     if (!message.tabId) return false;
 
     const payload = {

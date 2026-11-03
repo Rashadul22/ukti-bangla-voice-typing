@@ -1,6 +1,6 @@
 {
   "name": "ukti",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "description": "Ukti, Bangla voice typing for Chrome. This file only exists to run the tests.",
   "scripts": {

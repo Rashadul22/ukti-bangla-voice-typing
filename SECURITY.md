@@ -123,3 +123,58 @@ in `buildBar`) plus test plumbing. Per your instructions I have not made it.
 - A closed shadow root on the page's side hiding a password field from
   `deepActiveElement()`. Focus inside a closed root stops at the host, which
   is not editable, so the control does not appear; reasoned, not tested.
+
+## Second pass, 4 November: a compromised renderer, and the network
+
+The first pass was a hostile *page*. This pass assumes worse: a page that
+has taken over its renderer process, which can then send any extension
+message the content script could. Chromium's security team says to treat
+content scripts as less trustworthy for exactly this reason, to validate
+everything they send, and not to let them trigger privileged actions
+([Chromium extensions group](https://groups.google.com/a/chromium.org/g/chromium-extensions/c/0ei-UCHNm34),
+[Duo Labs](https://duo.com/labs/tech-notes/message-passing-and-security-considerations-in-chrome-extensions)).
+The tests send such messages from a tab context, which has the same sender
+shape as a content script (`tests/security2.test.js`).
+
+| Attack | Before | After |
+|---|---|---|
+| A tab context posts a fake recogniser result to another tab, which writes it into that tab's box | **worked** (measured: the words went in) | refused: only the offscreen document may speak for the recogniser (`fromOffscreen`, by `sender.url` and no `sender.tab`) |
+| A tab context drives the offscreen document directly (`target: 'offscreen'`) | **worked** (the microphone started) | refused: the offscreen document obeys only the service worker (no `sender.tab`) |
+| A tab in the background asks for the microphone | **worked** | refused: dictation starts only for the active tab |
+| A result with no session id reaches a listening page | **written in** | ignored: results must name the frame's own session |
+| A huge text sent for repair or translation | ran unbounded | refused at 20,000 (repair) and 50,000 (translate) characters |
+| `RESET_ENGINE` from a tab (closes the recogniser) | **worked** | refused, offscreen only |
+| Any network request from Ukti's own pages | none made (code check only) | **forbidden by Chrome**: `connect-src 'none'` in the manifest CSP; the test makes a fetch and sees Chrome's policy refuse it |
+
+The manifest CSP for extension pages is now
+`script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';
+frame-ancestors 'none'; connect-src 'none'`. It adds no permission and no
+install warning (the pinned warning list in `tests/privacy.test.js` is
+unchanged). It does not affect speech recognition or the translator, which
+are Chrome's own, and it does not cover the content script, which runs under
+the page's policy (the code check still covers that).
+
+### Still true, and why
+
+- **The active tab can still start the microphone without a click**, if its
+  renderer is compromised: the background cannot see a user gesture in a
+  content script. The microphone is then for that same page, Chrome shows
+  its recording indicator, and the page would only get words it could get
+  by asking for the microphone itself.
+- **Nothing is ever 100% secure.** What can be said: every attack listed
+  here and in the first pass has a test that failed before its fix, and the
+  places a page can reach Ukti are written down above.
+
+### New surfaces from this round, checked
+
+- **Repair and translate** take page text; both are now bounded, and both
+  return text that goes in through the same `textContent` and editor paths.
+- **Snippets** are the user's own text from `chrome.storage`; they are
+  inserted as text, never as markup.
+- **The try-it box** runs on Ukti's own page; a website cannot reach it.
+- **"Tell a friend"** writes a fixed sentence, on a click, and nothing else.
+- **`CSS.registerProperty('--ukti-glow-angle')`** is the only thing Ukti adds
+  to the page's own world. A page could register the name first; the ring
+  would then stand still. Cosmetic only.
+- **`data-tone`** on the control's host, when sounds are on, tells a page
+  that the sound setting is on. A page can already tell Ukti is installed.

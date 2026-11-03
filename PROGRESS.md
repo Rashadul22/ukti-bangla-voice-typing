@@ -1295,3 +1295,38 @@ the old code; the ninth is the "commands off" guard).
 - What a real voice says may not match the spellings in the command list.
   I accept two spellings of দাঁড়ি; please say each command once on your
   machine and tell me if one is missed.
+
+## G. Security, second pass
+
+The threat this time is worse than a hostile page: a page that takes over
+its renderer can send any message a content script could. Chromium's
+security team says to treat content scripts as less trustworthy for this
+reason. Measured on the old code, from a tab context:
+
+- a forged recogniser result **was written into another tab's box**;
+- a message straight to the offscreen document **started the microphone**;
+- a tab in the background **could start the microphone**;
+- a result with no session id **was written in**.
+
+All four are now refused, plus size limits on repair (20,000 characters)
+and translate (50,000), and `RESET_ENGINE` only from the offscreen
+document. And Chrome itself now forbids any network from Ukti's pages:
+the manifest CSP has `connect-src 'none'`, and the test makes a fetch and
+watches Chrome refuse it. No new permission, no new install warning.
+`tests/security2.test.js`, 7 tests, all failed first. `SECURITY.md`,
+second pass, has the table and what is still true (nothing is 100%).
+
+Found on the way: my first version of the cross-tab test passed on the old
+code for the wrong reason. Ukti has no `tabs` permission, so tab URLs read
+as null and the test never found the victim tab. Fixed the test, watched
+it fail, then fixed the code.
+
+## H. Launch kit, version 1.1.0
+
+- `store/launch-kit.md`: the Facebook post, a short group post, a
+  30-second video script shot by shot, a press note with where to send it,
+  where and when to post (21 February), and what not to do.
+- Store listings (Bangla and English) list the new features.
+- Version 1.1.0 in `manifest.json`, `package.json` and the setup footer
+  together; `CHANGELOG.md` has the entry. The release tests now follow the
+  manifest's version instead of pinning 1.0.1.

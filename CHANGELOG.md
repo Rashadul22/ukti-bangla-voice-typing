@@ -3,10 +3,33 @@
 Versions follow the `version` in `manifest.json`, which must match the
 footer of the setup page (`scripts/package.js` refuses to build otherwise).
 
-## Unreleased
+## 1.1.0
 
-Work done after 1.0.1, not yet given a version number. Details and the
-measurements behind each item are in `PROGRESS.md`.
+Everything since 1.0.1. Details and the measurements behind each item are
+in `PROGRESS.md`.
+
+- **Spoken commands.** "প্রশ্নবোধক", "নতুন লাইন", "দাঁড়ি চিহ্ন" at the end of
+  a sentence; a bare "দাঁড়ি", "কমা" or "মুছে দাও" when said alone. On by
+  default, with a corpus of ordinary sentences that must not trigger.
+- **Snippets.** Say a phrase alone and a saved text goes in.
+- **Better Banglish spelling.** A 451,348-word public-domain list, shipped as
+  a 704 KB Bloom filter, repairs conversions: held-out words 57.7% to 67.2%.
+- **Choices:** English words in English letters, Bangla or English digits,
+  Bangladesh or West Bengal accent, a soft start and stop sound.
+- **The live preview:** a listening ring that follows the voice and turns
+  amber or red with the state, white live words and grey finished words, a
+  copy of each sentence flying into its box.
+- **Layout and colour:** Bangla text never below 12px and never tracked,
+  a tiered control (the mic, the language pair, undo, the quiet utilities),
+  a three-column setup page with a try-it box and a maker card, light mode
+  for every page, a visible edge on dark sites, red only for recording.
+- **Sharing:** "বন্ধুকে জানান" copies a message; one rating request after
+  real use, once the store link is filled in.
+- **Security:** Chrome now forbids network from Ukti's pages
+  (`connect-src 'none'`); only the offscreen document can speak for the
+  recogniser, only the service worker can drive it, only the active tab can
+  start it, results must name their session, and page requests are bounded.
+- **The maker:** মোঃ রাশেদুল ইসলাম, on the popup and setup page, with LinkedIn.
 
 - **Feedback motion.** A press ripples; the box glows where the words
   landed; a success sends a green ring from its button and a refusal gives
