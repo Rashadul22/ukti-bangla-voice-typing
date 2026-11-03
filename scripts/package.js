@@ -90,6 +90,9 @@ if (!process.env.UKTI_PACKAGE_SKIP_TESTS) {
     { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
   const summary = (run.stdout || '').match(/^# (tests|pass|fail) \d+$/gm) || [];
   console.log('  ' + summary.join(', ').replace(/# /g, ''));
+  // Name what failed, so a flaky test is visible here and not only in a rerun.
+  const failed = ((run.stdout || '').match(/^not ok \d+ - (?!.*# TODO).*$/gm) || []).map(l => l.replace(/^not ok \d+ - /, ''));
+  for (const name of failed) console.log('  failed: ' + name);
   if (run.status !== 0) fail('the test suite failed; run npm test to see which tests');
 }
 stop();

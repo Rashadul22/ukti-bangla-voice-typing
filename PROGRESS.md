@@ -1065,3 +1065,10 @@ In `RESEARCH.md`:
 - **`phrases` (contextual biasing):** is the right tool, but needs on-device Bangla, which I found no sign of **(verify)**.
 - **On-device models:** none documents Bengali. The Prompt API lists English, Japanese and Spanish **(verify)**.
 - **For you to try:** two console lines are in `RESEARCH.md` to check on your machine.
+
+**One flaky test, not identified.**
+- **What happened:** the first `scripts/package.sh` run refused to build because one test failed inside its own run of the suite.
+- **Reruns pass:** both a direct `npm test` straight after and a second packager run passed with 0 failures.
+- **Why it is unknown:** the packager printed only the totals, so I do not know which test it was.
+- **Now:** the packager names every failing test, so the next occurrence will say which one.
+- **Built:** `dist/ukti-1.0.1.zip`, 19 files, 104.1 KB (now with `words.html` and `words.js`), loaded and started.
