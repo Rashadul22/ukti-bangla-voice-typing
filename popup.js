@@ -301,3 +301,22 @@ document.getElementById('openSetup').addEventListener('click', event => {
   chrome.runtime.sendMessage({ type: 'OPEN_SETUP' });
   window.close();
 });
+
+// ---- tell a friend, and the one rating request ----
+
+wireShare(document.getElementById('share'));
+
+const rate = document.getElementById('rate');
+chrome.storage.local.get({ uses: 0, rateDone: false }).then(({ uses, rateDone }) => {
+  if (rateDone || uses < 15 || !self.UKTI_STORE_URL) return;
+  rate.hidden = false;
+});
+function rateAnswered() {
+  rate.hidden = true;
+  chrome.storage.local.set({ rateDone: true });
+}
+document.getElementById('rateGo').addEventListener('click', () => {
+  chrome.tabs.create({ url: self.UKTI_STORE_URL });
+  rateAnswered();
+});
+document.getElementById('rateLater').addEventListener('click', rateAnswered);

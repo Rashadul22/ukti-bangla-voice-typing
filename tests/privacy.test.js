@@ -103,7 +103,7 @@ test('every key in storage is one the policy lists', async () => {
   const listed = ['outputMode', 'cleanFillers', 'autoSubmit', 'uiSize', 'theme', 'enabled',
     'disabledSites', 'uiLang', 'layout', 'buttons', 'showHints', 'useCount', 'barPos',
     'barCorner', 'coachDone', 'replacements', 'setupDone', 'micGranted', 'schema',
-    'showMode', 'allowSites'];
+    'showMode', 'allowSites', 'uses', 'rateDone'];
   const keys = Object.keys(await storage.get(ext.worker));
   assert.deepEqual(keys.filter(k => !listed.includes(k)), []);
   // And the source writes no key outside the list either.

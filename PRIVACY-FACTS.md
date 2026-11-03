@@ -79,6 +79,8 @@ key outside this list appears.
 | `showMode` | when the control appears: smart, every box, or chosen sites only | no |
 | `allowSites` | in "chosen sites only" mode, the sites the user chose (starts with a list of chat, AI and email sites) | **yes, a list of sites the user chose** |
 | `useCount` | how many times a button was used, so the labels can retire | no, a number |
+| `uses` | how many times dictation was started, so the popup can ask for a store rating once after real use | no, a number |
+| `rateDone` | the rating request was answered (either way) and will not appear again | no |
 | `coachDone`, `setupDone`, `micGranted` | first-run flags | no |
 | `schema` | settings version, for migration | no |
 
@@ -93,6 +95,16 @@ Defaults are in `background.js:58` (`getSettings`). Written from
 - **What is stored:** nothing, unless the user presses "yes" on the offer. Then one `{from, to}` pair is added to `replacements`, the same local list as the user's own word fixes, visible and editable in the popup and on the corrections page (`words.html`). "No" is remembered only in the page's memory, for that page.
 - **Export:** writes the list to a file the user saves wherever they choose (`words.js`). Import reads a file the user picks, refuses anything over 1 MB, over 2,000 rules or with a word over 200 characters, and merges by the heard word.
 - **Nothing is sent anywhere.** `tests/privacy.test.js` covers `words.js` as well.
+
+## The try-it box and "tell a friend"
+
+- **The try-it box** on the setup page (step 3) uses the same path as any
+  page: the worker starts the same offscreen recognizer for that tab. What
+  is said shows in the box and is never stored; closing the page stops the
+  microphone (`tests/growth.test.js`).
+- **"Tell a friend"** writes a fixed sentence to the clipboard when pressed.
+  It contains no user text and sends nothing (the test checks the page
+  makes no request).
 
 ## Dictated or converted text that outlives the moment
 

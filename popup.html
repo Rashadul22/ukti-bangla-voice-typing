@@ -232,6 +232,32 @@
   .by { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .by a { color: var(--dim); text-decoration: none; }
   .by .role { color: var(--faint); }
+  .share {
+    all: unset; position: relative; cursor: pointer;
+    color: var(--dim); font: inherit; border-bottom: 1px solid var(--line);
+  }
+  .share:hover { color: var(--ink); }
+  .share:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; border-radius: 4px; }
+  .share::before { content: ''; position: absolute; inset: -13px -4px; }
+
+  /* Once in a lifetime, after real use, and only when there is a store
+     page to send people to (popup.js). */
+  .rate {
+    margin: 0 12px 12px; padding: 12px 14px; border-radius: var(--r-lg);
+    background: linear-gradient(145deg, rgba(124,108,240,.16), rgba(74,168,255,.10));
+    border: 1px solid rgba(124,108,240,.4);
+  }
+  .rate[hidden] { display: none; }
+  .rate b { display: block; font-size: 13.5px; }
+  .rate span { display: block; font-size: 12.5px; color: var(--dim); }
+  .rate-acts { display: flex; gap: 8px; margin-top: 10px; }
+  .rate-acts button {
+    all: unset; cursor: pointer; min-height: 40px; padding: 0 14px; border-radius: 11px;
+    font-size: 13px; font-weight: 650; color: #fff;
+    background: linear-gradient(145deg, var(--brand-ink), #5b4ae0);
+  }
+  .rate-acts button.quiet { color: var(--ink); background: var(--raise); border: 1px solid var(--line); }
+  .rate-acts button:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
   /* The maker's initials until a photo is added. In CSS, so the text a
      screen reader or the language switch sees stays the plain sentence. */
   .avatar {
@@ -343,6 +369,11 @@
   </label>
 </header>
 
+<div class="rate" id="rate" hidden>
+  <div><b>উক্তি ভালো লাগছে?</b><span>স্টোরে একটা রেটিং দিলে আরো মানুষ উক্তি খুঁজে পাবে।</span></div>
+  <div class="rate-acts"><button type="button" id="rateGo">রেটিং দিন</button><button type="button" id="rateLater" class="quiet">এখন না</button></div>
+</div>
+
 <div class="site dimmable">
   <div class="who"><b id="siteName">এই সাইট</b><span id="siteState">চালু আছে</span></div>
   <label class="sw" title="শুধু এই সাইটে চালু বা বন্ধ">
@@ -393,7 +424,7 @@
   </div>
 
   <a href="#" class="cta" id="openSetup">সেটআপ খুলুন</a>
-  <p class="by"><span class="avatar" aria-hidden="true"></span>বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a> <span class="role">· CSE, DIU</span></p>
+  <p class="by"><span class="avatar" aria-hidden="true"></span>বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a> <span class="role">·</span> <button type="button" id="share" class="share">বন্ধুকে জানান</button></p>
 </div>
 
 <div class="pane dimmable" id="look">

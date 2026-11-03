@@ -1222,3 +1222,20 @@ prompt no longer breathes; the ring turns in 6 s (was 3.2 s); one flier at
 a time and none to a box off screen; the ring turns amber while Ukti waits
 (rate limit, offline, reconnecting) and red on an error. `MOTION.md`, third
 pass. `tests/motion2.test.js`, 7 tests, all failed first.
+
+## E. Growth
+
+- **Step ৩ "বলে দেখুন"** on the setup page: press, speak, and the words
+  appear in the box right there, over the same path any page uses (no new
+  permission, no new network path). Closing the page stops the microphone.
+- **"বন্ধুকে জানান"** on the popup and the maker card: copies a short Bangla
+  (or English) sentence about Ukti to the clipboard. It sends nothing; the
+  test watches for requests.
+- **A rating request** in the popup: once in a lifetime, after 15
+  dictations, and only when `UKTI_STORE_URL` (top of the store section in
+  `i18n.js`) is filled in. **Until you publish and paste the store link
+  there, it never appears,** and the share message says to search the
+  store for "Ukti" instead.
+- Two new storage keys, both numbers or flags: `uses` and `rateDone`
+  (listed in `PRIVACY-FACTS.md`, checked by `tests/privacy.test.js`).
+- `tests/growth.test.js`, 7 tests, 6 failed before the change.

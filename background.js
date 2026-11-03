@@ -161,6 +161,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         if (!sender.tab?.id) throw new Error('No originating tab');
+        // How many times dictation was started: a number, nothing else.
+        // The popup asks for a store rating once, after real use.
+        chrome.storage.local.get({ uses: 0 }).then(({ uses }) =>
+          chrome.storage.local.set({ uses: (Number(uses) || 0) + 1 })).catch(() => {});
 
         const settings = await getSettings();
         await ensureOffscreenDocument();

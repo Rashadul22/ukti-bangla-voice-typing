@@ -149,6 +149,22 @@ const UKTI_EN = {
   'বানিয়েছেন': 'Built by',
   'মোঃ রাশেদুল ইসলাম': 'Md Rashadul Islam',
   '· CSE, DIU': '· CSE, DIU',
+  'বন্ধুকে জানান': 'Tell a friend',
+  'কপি হয়েছে, এখন পেস্ট করুন': 'Copied, now paste it',
+  'কপি করা গেল না': 'Could not copy',
+  'উক্তি ভালো লাগছে?': 'Enjoying Ukti?',
+  'স্টোরে একটা রেটিং দিলে আরো মানুষ উক্তি খুঁজে পাবে।': 'A rating on the store helps more people find it.',
+  'রেটিং দিন': 'Rate it',
+  'এখন না': 'Not now',
+  'বলে দেখুন': 'Try it',
+  'বোতামে চেপে বাংলায় কিছু বলুন, লেখাটা এখানেই উঠবে।': 'Press the button and say something in Bangla; it appears right here.',
+  'যেমন: আমি আজকে খুব খুশি': 'For example, say: ami ajke khub khushi',
+  'বলা শুরু করুন': 'Start speaking',
+  'থামান': 'Stop',
+  'শুনছি…': 'Listening…',
+  'আগে ১ নম্বর ধাপে মাইক্রোফোন চালু করুন।': 'Turn on the microphone in step 1 first.',
+  'শুরু করা গেল না।': 'Could not start.',
+  '৩': '3',
   'নির্মাতা': 'The maker',
   'কম্পিউটার সায়েন্স (CSE) শিক্ষার্থী, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি':
     'Computer Science (CSE) student, Daffodil International University',
@@ -223,6 +239,39 @@ function applyLang(root, lang) {
 }
 
 let uktiLang = 'bn';
+
+// The Chrome Web Store page, once Ukti is published. Until then it stays
+// empty: the share message says to search the store instead, and the
+// rating request in the popup never appears (there is nowhere to send
+// people). Fill this in, and nothing else needs to change.
+self.UKTI_STORE_URL = self.UKTI_STORE_URL || '';
+
+// "Tell a friend": a short message for the clipboard, in the page's
+// language. Nothing is sent anywhere; the user pastes it where they like.
+function uktiShareText() {
+  const where = self.UKTI_STORE_URL ||
+    (uktiLang === 'en' ? 'Search "Ukti" on the Chrome Web Store.' : 'Chrome Web Store-এ "Ukti" লিখে খুঁজুন।');
+  return (uktiLang === 'en'
+    ? 'With Ukti you just speak Bangla and it is written into any box on any site, no Bangla typing needed. Free, and nothing you say is kept. '
+    : 'উক্তি দিয়ে বাংলায় বললেই যেকোনো সাইটের বক্সে বাংলা লেখা হয়ে যায়, বাংলা টাইপ জানা লাগে না। একদম ফ্রি, আর কথা কোথাও জমা থাকে না। ') + where;
+}
+
+function wireShare(button) {
+  if (!button) return;
+  const label = 'বন্ধুকে জানান', done = 'কপি হয়েছে, এখন পেস্ট করুন';
+  let timer = null;
+  button.addEventListener('click', async event => {
+    event.preventDefault();
+    try {
+      await navigator.clipboard.writeText(uktiShareText());
+      button.textContent = tr(done, uktiLang);
+    } catch (_) {
+      button.textContent = tr('কপি করা গেল না', uktiLang);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => { button.textContent = tr(label, uktiLang); }, 2500);
+  });
+}
 
 chrome.storage.local.get({ uiLang: 'bn' }).then(({ uiLang }) => {
   uktiLang = uiLang === 'en' ? 'en' : 'bn';
