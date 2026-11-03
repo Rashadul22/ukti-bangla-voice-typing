@@ -61,7 +61,11 @@
       fatalLang: 'এই ব্রাউজারে বাংলা ভয়েস নাই',
       fatalNetwork: 'ইন্টারনেট সমস্যা, বারবার চেষ্টা করেও হলো না। ইন্টারনেট ফিরলে মাইকে আবার চাপুন',
       fatalNoAudio: 'অনেকক্ষণ কিছু শোনা যায়নি, তাই থামানো হলো',
-      fatalOther: code => `সমস্যা হয়েছে (${code})। মাইকে চেপে আবার চেষ্টা করুন`
+      fatalOther: code => `সমস্যা হয়েছে (${code})। মাইকে চেপে আবার চেষ্টা করুন`,
+      teachAsk: (from, to) => `মনে রাখব? পরেরবার "${from}" শুনলে "${to}" লিখব।`,
+      teachYes: 'হ্যাঁ, মনে রাখো',
+      teachNo: 'না',
+      remembered: 'মনে রাখলাম। শব্দগুলো পপআপের "শব্দ" ট্যাবে দেখা ও বদলানো যায়।'
     },
     en: {
       speak: 'Speak to type', stopSpeak: 'Stop listening', startSpeak: 'Start listening',
@@ -99,7 +103,11 @@
       fatalLang: 'This browser has no Bangla speech recognition.',
       fatalNetwork: 'No internet, and retrying did not help. Press the mic again once you are back online.',
       fatalNoAudio: 'Nothing was heard for a long time, so listening stopped.',
-      fatalOther: code => `Something went wrong (${code}). Press the mic to try again.`
+      fatalOther: code => `Something went wrong (${code}). Press the mic to try again.`,
+      teachAsk: (from, to) => `Remember this? Next time "${from}" becomes "${to}".`,
+      teachYes: 'Yes, remember',
+      teachNo: 'No',
+      remembered: 'Remembered. You can see and change it in the Words tab of the popup.'
     }
   };
 
@@ -1420,6 +1428,35 @@
     }
     .coach.on { opacity: 1; transform: none; }
     .coach b { display: block; margin-bottom: .35em; font-size: 1.05em; }
+    /* The offer to remember a correction. Like the welcome card, it sits
+       above the control and takes clicks; it shows only after the user has
+       fixed a word Ukti wrote. */
+    .teach {
+      position: fixed;
+      max-width: min(26rem, 70vw);
+      padding: calc(var(--unit) * .75) calc(var(--unit) * .95);
+      border-radius: calc(var(--unit) * 1.1);
+      background: var(--glass); color: var(--ink);
+      border: 1px solid var(--edge);
+      box-shadow: 0 calc(var(--unit) * .4) calc(var(--unit) * 1.2) var(--drop);
+      font-family: system-ui, "Noto Sans Bengali", sans-serif;
+      font-size: calc(var(--unit) * .86); line-height: 1.5;
+      opacity: 0; transform: translateY(calc(var(--unit) * .5));
+      transition: opacity .22s ease, transform .28s var(--spring);
+      pointer-events: none; visibility: hidden;
+    }
+    .teach.on { opacity: 1; transform: none; pointer-events: auto; visibility: visible; }
+    .teach .acts { display: flex; gap: .5em; margin-top: .6em; flex-wrap: wrap; }
+    .teach button {
+      all: unset; cursor: pointer; position: relative;
+      padding: .35em 1em; border-radius: 999px; font-size: .92em;
+      transform: none; opacity: 1;
+    }
+    .teach button::before { content: ''; position: absolute; inset: -5px -4px; }
+    .teach button.yes { background: #2563eb; color: #fff; }
+    .teach button.no { border: 1px solid var(--edge); color: var(--ink); }
+    .teach button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+
     .coach button {
       all: unset; cursor: pointer; margin-top: .7em;
       padding: .35em 1em; border-radius: 999px;
@@ -1667,6 +1704,147 @@
       onClick();
     });
     return button;
+  }
+
+  // ------------------------------------------------ learning from corrections
+  // After dictation, Ukti watches the one box it just wrote into, for two
+  // minutes, and compares that box's text with what it wrote. If the user
+  // replaced one to three of Ukti's own words with others, it offers once,
+  // in one click, to remember the correction. Nothing else is watched:
+  // not the user's own typing, not other boxes, not other pages. Nothing is
+  // stored unless the user says yes, and it is stored only in the same
+  // local list as the user's own word fixes, where it can be seen, changed
+  // and deleted. Nothing leaves the machine.
+  const WATCH_MS = 120000;
+  const WATCH_EVENTS = ['input', 'beforeinput', 'compositionend'];
+  const SETTLE_MS = 1200;
+  let watching = null;
+  const declined = new Set();     // pairs the user said no to, on this page
+  const words = text => text.split(/\s+/).filter(Boolean);
+  const bare = w => w.replace(/^[,।?!.;:"'()\[\]]+|[,।?!.;:"'()\[\]]+$/g, '');
+
+  function stopWatching() {
+    if (!watching) return;
+    clearTimeout(watching.timer);
+    for (const type of WATCH_EVENTS) watching.box.removeEventListener(type, watching.onInput);
+    watching = null;
+  }
+
+  function watchInsert(box, before) {
+    // One dictation can insert several segments into the same box; they all
+    // count as Ukti's words, measured from the text before the first one.
+    const base = watching && watching.box === box && Date.now() < watching.until ? watching.base : before;
+    stopWatching();
+    if (!box.isConnected) return;
+    // The snapshot of what Ukti wrote is taken at once, so the user's first
+    // keystrokes can never be mistaken for Ukti's words. An editor that
+    // settles a moment later (re-rendering from its own model) is allowed
+    // for by taking it again at 120 ms, but only if nothing was typed since.
+    const snap = () => {
+      const wrote = words(existingText(box));
+      const was = words(base);
+      let p = 0;
+      while (p < was.length && p < wrote.length && was[p] === wrote[p]) p++;
+      let q = 0;
+      while (q < was.length - p && q < wrote.length - p && was[was.length - 1 - q] === wrote[wrote.length - 1 - q]) q++;
+      return { wrote, range: [p, wrote.length - q] };     // Ukti's words, as indexes into `wrote`
+    };
+    const first = snap();
+    if (first.range[1] <= first.range[0]) return;
+    const w = { box, base, ...first, until: Date.now() + WATCH_MS, timer: 0, typed: false };
+    w.onInput = () => {
+      w.typed = true;
+      clearTimeout(w.timer);
+      w.timer = setTimeout(() => checkCorrection(w), SETTLE_MS);
+    };
+    // Editors that own their model (Lexical, as on WhatsApp) take every
+    // keystroke at beforeinput and update the page themselves, so no input
+    // event ever fires there. Listening to both, on this one box only.
+    for (const type of WATCH_EVENTS) box.addEventListener(type, w.onInput);
+    watching = w;
+    setTimeout(() => {
+      if (watching !== w || w.typed || !box.isConnected) return;
+      const later = snap();
+      if (later.range[1] > later.range[0]) Object.assign(w, later);
+    }, 120);
+  }
+
+  function checkCorrection(w) {
+    if (watching !== w) return;
+    if (Date.now() > w.until || !w.box.isConnected) { stopWatching(); return; }
+    const now = words(existingText(w.box));
+    const was = w.wrote;
+    let p = 0;
+    while (p < was.length && p < now.length && was[p] === now[p]) p++;
+    let q = 0;
+    while (q < was.length - p && q < now.length - p && was[was.length - 1 - q] === now[now.length - 1 - q]) q++;
+    const gone = was.slice(p, was.length - q);
+    const came = now.slice(p, now.length - q);
+    // A correction swaps words for words. A pure deletion or insertion is
+    // not one, and a rewrite of more than three words is not a word fix.
+    if (!gone.length || !came.length || gone.length > 3 || came.length > 3) return;
+    // Only Ukti's own words count.
+    if (p < w.range[0] || was.length - q > w.range[1]) return;
+    const from = gone.map(bare).join(' ').trim();
+    const to = came.map(bare).join(' ').trim();
+    if (!from || !to || from === to) return;
+    if (declined.has(from + '\u0000' + to)) return;
+    offerToRemember(from, to);
+  }
+
+  let teachCard = null;
+  let teachTimer = 0;
+  function offerToRemember(from, to) {
+    if (isOff()) return;
+    buildBar();
+    if (!teachCard) {
+      teachCard = document.createElement('div');
+      teachCard.className = 'teach';
+      teachCard.setAttribute('role', 'group');
+      teachCard.setAttribute('aria-live', 'polite');
+      const msg = document.createElement('span');
+      msg.className = 'msg';
+      const acts = document.createElement('div');
+      acts.className = 'acts';
+      const yes = makeButton('', '', 'yes', () => answer(true));
+      const no = makeButton('', '', 'no', () => answer(false));
+      acts.append(yes, no);
+      teachCard.append(msg, acts);
+      shadow.appendChild(teachCard);
+    }
+    teachCard.dataset.from = from;
+    teachCard.dataset.to = to;
+    teachCard.querySelector('.msg').textContent = t('teachAsk', from, to);
+    for (const [cls, key] of [['yes', 'teachYes'], ['no', 'teachNo']]) {
+      const b = teachCard.querySelector('button.' + cls);
+      b.textContent = t(key);
+      b.title = t(key);
+      b.setAttribute('aria-label', t(key));
+    }
+    const r = bar.getBoundingClientRect();
+    teachCard.style.right = Math.round(window.innerWidth - r.right) + 'px';
+    teachCard.style.bottom = Math.round(window.innerHeight - r.top + 14) + 'px';
+    teachCard.classList.add('on');
+    clearTimeout(teachTimer);
+    teachTimer = setTimeout(() => teachCard?.classList.remove('on'), 15000);
+  }
+
+  async function answer(remember) {
+    if (!teachCard) return;
+    const from = teachCard.dataset.from, to = teachCard.dataset.to;
+    teachCard.classList.remove('on');
+    clearTimeout(teachTimer);
+    if (!remember) { declined.add(from + '\u0000' + to); return; }
+    try {
+      const { replacements = [] } = await chrome.storage.local.get({ replacements: [] });
+      // The same heard word is corrected once: a new answer replaces the old.
+      const next = replacements.filter(r => r && r.from !== from);
+      next.push({ from, to });
+      await chrome.storage.local.set({ replacements: next });
+      declined.add(from + '\u0000' + to);    // do not ask about it again
+      showIndicator(t('remembered'));
+      hideIndicator(3500);
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------- feedback fx
@@ -2387,6 +2565,7 @@
         const needsSpace = before.length > 0 && !/\s$/.test(before);
         insertText(target, (needsSpace ? ' ' : '') + message.text);
         landed(target);
+        watchInsert(target, before);
 
         showIndicator(t('listening'), null, true);
 

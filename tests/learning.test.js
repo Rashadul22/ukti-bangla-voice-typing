@@ -34,7 +34,7 @@ async function dictate(page, text) {
   await command(ext, page, 'toggle-dictation');
   assert.ok(await waitFor(() => off.eval('__fake.live().length === 1')), 'not listening');
   await off.eval(`__fake.say(${JSON.stringify(text)})`);
-  await waitFor(() => page.evaluate(t => mimic.el.value.includes(t.split(' ')[0]) || mimic.el.value.length > 0, text));
+  await waitFor(() => page.evaluate(() => (mimic.model() || '').length > 0));
   await command(ext, page, 'toggle-dictation');
   await waitFor(() => off.eval('state.desired === false'));
 }
@@ -151,5 +151,45 @@ test('the offer is in English when the setting is English, and keyboard reachabl
     }, H);
     assert.equal(roles.live, 'polite');
     assert.ok(roles.buttons.every(i => i >= 0));
+  } finally { await page.close(); }
+});
+
+// Contenteditable editors: plain, and one that takes only pastes and typing
+// and so fires no input event (WhatsApp's Lexical works this way). The
+// Quill-like mimic is not here: dictation does not reach it at all, which is
+// an insertion-engine finding written up in PROGRESS.md, not a learning one.
+for (const kind of ['plain', 'model-paste']) {
+  test(`${kind}: correcting a dictated word offers to remember it`, async () => {
+    const page = await open(`${kind}.html`);
+    try {
+      await dictate(page, 'আমার নাম রাসাদুল');
+      assert.ok(await waitFor(async () => (await page.evaluate(() => mimic.model())) === 'আমার নাম রাসাদুল'),
+        await page.evaluate(() => mimic.model()));
+      // Select the word with a Range, as a mouse would, then type over it.
+      await page.evaluate(w => {
+        const el = mimic.el; el.focus();
+        const node = el.firstChild, at = node.textContent.indexOf(w);
+        const r = document.createRange(); r.setStart(node, at); r.setEnd(node, at + w.length);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      }, 'রাসাদুল');
+      await page.waitForTimeout(50);
+      await page.keyboard.type('রাশাদুল', { delay: 30 });
+      const offer = await waitFor(() => teach(page), { timeout: 5000 });
+      assert.ok(offer && offer.includes('"রাসাদুল"') && offer.includes('"রাশাদুল"'), String(offer));
+    } finally { await page.close(); }
+  });
+}
+
+// FINDING, not fixed: dictation into the Quill-like mimic (the archetype CLAUDE.md
+// gives for Gemini) leaves the box empty. insertText() tries a synthetic paste,
+// checks at once, and this editor reverts that paste a tick later. replaceAll()
+// verifies after a turn; the dictation path does not. The insertion engine is
+// off limits without hand testing on the real Gemini, so this stays a todo.
+nodeTest.test('quill: dictated words stay in the box', { todo: 'insertion engine; needs a hand test on Gemini, see PROGRESS.md', timeout: 60000 }, async () => {
+  const page = await open('quill.html');
+  try {
+    await dictate(page, 'আমার নাম রাসাদুল');
+    assert.ok(await waitFor(async () => (await page.evaluate(() => mimic.model())) === 'আমার নাম রাসাদুল', { timeout: 3000 }),
+      `model: "${await page.evaluate(() => mimic.model())}"`);
   } finally { await page.close(); }
 });
