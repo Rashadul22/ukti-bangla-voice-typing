@@ -925,3 +925,79 @@ gave a jumble or an error; undo worked.
 **Could not verify from here:** Chrome's real translator. The stand-in
 returns fixed sentences; the real one may phrase things differently, which
 is why the classify tests use eight varied sentences, not only these two.
+
+---
+
+# Why a different word appears: the split, measured first
+
+**The complaint:** the user says one thing and a different word appears.
+
+## Where our code touches dictated words
+
+The speech service returns **Bangla script directly** (`lang = 'bn-BD'`,
+`offscreen.js`). So **our Banglish transliteration is not in the dictation
+path at all**; it runs only when someone presses অ on typed Banglish. Between
+the speech service and the box, our code does two things to every dictated
+segment (`processSegment` in `offscreen.js`):
+- the **filler cleaner** (`cleanFillers`, **on by default**)
+- the user's **replacement list**
+
+## The split
+
+| Cause | Dictation, Bangla | Dictation, English | Typed Banglish (অ) | Measured | Ours to fix |
+|---|---|---|---|---|---|
+| 1. Google's recognition mishears | yes | yes | no | not from here | no |
+| 2. Our transliteration | **no** | no | yes | 57.7% held-out word accuracy (task 2) | yes |
+| 3. Chrome's translation | no | yes | with EN | not from here | no |
+| **4. Our filler cleaner** | **yes, by default** | yes | no | **23 of 25 legitimate sentences damaged** | **yes** |
+| 5. Replacement rules applied as substrings | yes | yes | no | a rule "কি = কী" damages 8 of 628 corpus words | yes |
+
+## Cause 4, measured
+
+`tests/corpus/fillers.tsv` holds 33 spoken sentences: 25 with a legitimate
+use of a pattern the cleaner removes, and 8 with a real filler. Run through
+the real `cleanFillers()`:
+- **Legitimate uses left intact: 2 of 25.** The patterns have no word boundaries, so they match inside words:
+  - "আর কিছু লাগবে" (anything else?) becomes **"ছু লাগবে"**
+  - "সে কি বলেছে" becomes **"সে ছে"**
+  - "আমি বুঝলাম না" becomes **"আমি ম না"**
+  - "আপনি কি বলেন" becomes **"আপনি ন"**
+  - "সে আর কিনবে না" becomes **"সে নবে না"**
+  - "আমি ইয়েমেনে থাকি" becomes **"আমি মেনে থাকি"**
+  - "মনে হচ্ছে যে আজ বৃষ্টি হবে" loses "হচ্ছে যে" and its meaning
+- **Real fillers cleaned right: 6 of 8**; the other two leave a space before the punctuation.
+- **On the task 2 corpus's own correct Bangla:** 1 of 628 words damaged, "বুঝলাম" to "ম". The corpus is built from Banglish, so it rarely holds these phrases; the targeted set is the better measure.
+
+## Cause 5, measured
+
+A user who writes "কি = কী" (a common spelling preference) turns "কিছু"
+into "কীছু", "কিন্তু" into "কীন্তু" and "থাকি" into "থাকী". That is 8 of 628
+corpus words.
+
+## Causes 1 and 3, from published work (not verified for Google's own systems)
+
+- Bangla recognition word error rates of about 5 to 11% are reported for
+  systems fine-tuned on clean read speech
+  ([wav2vec 2.0, 11.27%](https://dspace.aiub.edu/jspui/handle/123456789/2661),
+  [Bengali Common Voice](https://arxiv.org/pdf/2206.14053)). I found no
+  figure for Google's Web Speech service, and real conversational speech is
+  harder than read speech.
+- English to Bengali machine translation scores about 50 chrF++ for Google
+  on FLORES-200 ([arXiv 2404.13813](https://arxiv.org/pdf/2404.13813)).
+  Translation errors only matter in English output mode.
+
+## Which dominates
+
+For dictation into Bangla, the only causes are 1, 4 and 5.
+- Cause 4 is on by default, fires on some of the most common words in spoken Bangla, and produces wrong words that are not even words ("ছু", "ম", "ছে").
+- I cannot measure cause 1 from here and will not collect dictation to do so.
+
+So the claim I can support: **every time the user says one of these common
+phrases, cause 4 alone guarantees a wrong word**, and it is the only cause
+that is ours, measurable and fixable today. Cause 1 is real and permanent,
+and is what the local learning below is for.
+
+**Order of work, following from this:**
+1. fix the filler cleaner
+2. apply replacements as whole words
+3. build learning on top
