@@ -18,9 +18,12 @@
    Each block rises out of a light blur, one after another. --i is its
    place in the order, set by fx.js. */
 .fx-in {
-  animation: fx-in .6s var(--spring-soft) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation: fx-in var(--fx-dur, .6s) var(--spring-soft) both;
+  animation-delay: calc(var(--i, 0) * var(--fx-step, 45ms));
 }
+/* The popup opens many times a day, so its entrance is a quick settle
+   (0.33 s in all) rather than a show (the setup page's 0.8 s). */
+.fx-quick { --fx-dur: .26s; --fx-step: 12ms; }
 @keyframes fx-in {
   from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(6px); }
   to   { opacity: 1; transform: none; filter: blur(0); }
@@ -80,7 +83,7 @@
    This was a view transition first, but its overlay swallowed presses made
    while it ran (measured: the switch did not respond 0.3 s after a tab
    change), so the pane animates itself and nothing covers the page. */
-.pane.on { animation: fx-pane-in .4s var(--spring-soft); }
+.pane.on { animation: fx-pane-in .28s var(--spring-soft); }
 @keyframes fx-pane-in { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
 
 @media (prefers-reduced-motion: reduce) {

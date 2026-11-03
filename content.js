@@ -705,6 +705,10 @@
     hintSpan.hidden = !empty;
   }
 
+  function setPreviewState(state) {
+    if (preview && preview.classList.contains('on')) preview.dataset.state = state;
+  }
+
   function scrollToEnd() {
     if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
   }
@@ -756,6 +760,7 @@
     if (preview) {
       preview.classList.remove('on');
       preview.style.removeProperty('--lvl');
+      delete preview.dataset.state;
     }
     for (const f of shadow?.querySelectorAll('.fly') || []) f.remove();
     resetPreview();
@@ -788,6 +793,7 @@
 
     lastWords = words;
     paintHint();
+    setPreviewState('listen');   // speech is arriving, so all is well
     scrollToEnd();
   }
 
@@ -811,9 +817,13 @@
   // lands, and under reduced motion it never runs.
   function flyToBox(text, box) {
     if (calm() || !shadow || !preview || !box?.isConnected) return;
+    // One at a time: quick sentences would otherwise stack up fliers.
+    if (shadow.querySelector('.fly')) return;
     const from = (doneSpan.lastChild || preview).getBoundingClientRect();
     const to = box.getBoundingClientRect();
     if (!from.width || !to.width) return;
+    // A box out of sight has nowhere visible to land.
+    if (to.bottom < 0 || to.top > innerHeight || to.right < 0 || to.left > innerWidth) return;
     const fly = document.createElement('div');
     fly.className = 'fly';
     fly.textContent = text;
@@ -855,6 +865,7 @@
     if (dots) indicator.insertAdjacentHTML('beforeend', DOTS);
     indicator.className =
       'toast on' + (tone === 'error' ? ' err' : tone === 'busy' ? ' busy' : '');
+    setPreviewState(tone === 'error' ? 'error' : tone === 'busy' ? 'wait' : 'listen');
   }
 
   function hideIndicator(delay = 1200) {
@@ -1664,16 +1675,29 @@
     }
     .preview.on::before {
       opacity: calc(.55 + var(--lvl) * .45);
-      animation: glow-turn 3.2s linear infinite;
+      /* 6 s a turn: slow enough to sit at the edge of the eye during a
+         long dictation without pulling at it (was 3.2 s). */
+      animation: glow-turn 6s linear infinite;
+    }
+    /* The ring's colour is the state, because the eye is on the preview,
+       not on the small notice under the mic: amber while it waits for the
+       network or the speech service, red on an error. */
+    .preview[data-state="wait"]::before {
+      background: conic-gradient(from var(--ukti-glow-angle),
+        rgb(245, 158, 11), #fbbf24, #f97316, rgb(245, 158, 11));
+    }
+    .preview[data-state="error"]::before {
+      background: conic-gradient(from var(--ukti-glow-angle),
+        rgb(239, 68, 68), #f87171, #fb7185, rgb(239, 68, 68));
     }
     @keyframes glow-turn { to { --ukti-glow-angle: 360deg; } }
 
     .preview .hint {
-      color: var(--ink); opacity: .55; font-style: normal;
-      animation: hint-breathe 2.4s ease-in-out infinite;
+      /* Still. It used to breathe, which is one more thing moving at the
+         edge of the eye while someone gathers their words. */
+      color: var(--ink); opacity: .6; font-style: normal;
     }
     .preview .hint[hidden] { display: none; }
-    @keyframes hint-breathe { 0%, 100% { opacity: .4 } 50% { opacity: .72 } }
 
     /* Two colours, nothing else: what is being said now is solid and
        bright, what is finished is a clearly quieter colour. Real colours,

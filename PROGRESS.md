@@ -1214,3 +1214,11 @@ G security, H marketing kit and zip. Each step below as it is finished.
   red as the live mic. It is now the usual panel with a red bar on its
   leading edge; a wait has an amber bar.
 - `tests/colour.test.js`, 9 tests, 6 failed before the change.
+
+## D. Motion
+
+Popup entrance 870 ms to 332 ms; the logo glint only on the setup page; the
+prompt no longer breathes; the ring turns in 6 s (was 3.2 s); one flier at
+a time and none to a box off screen; the ring turns amber while Ukti waits
+(rate limit, offline, reconnecting) and red on an error. `MOTION.md`, third
+pass. `tests/motion2.test.js`, 7 tests, all failed first.

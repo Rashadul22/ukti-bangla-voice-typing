@@ -213,3 +213,17 @@ finished sentence fades from the live colour to the finished one in
 0.6 s. The ring and the flier are unchanged, as asked. Three new tests in
 `tests/preview.test.js` (one per theme) failed first on the shimmer and
 check the contrast numbers above.
+
+## Third pass, 3 to 4 November: what repeats is short and calm
+
+| Change | Before | After |
+|---|---|---|
+| Popup entrance (opened many times a day) | 870 ms to settle | 332 ms (0.26 s, 12 ms apart) |
+| Logo glint | every popup open | setup page only |
+| "বলুন, শুনছি…" prompt | breathing, forever | still |
+| Listening ring | 3.2 s a turn | 6 s a turn |
+| Flier | one per sentence, even stacked | one at a time; none to a box off screen |
+| Ring colour | always purple and blue | amber while waiting (rate limit, offline, reconnecting), red on an error, back to purple when speech arrives |
+| Tab switch in the popup | 0.4 s | 0.28 s |
+
+`tests/motion2.test.js`, 7 tests, all 7 failed before the change.

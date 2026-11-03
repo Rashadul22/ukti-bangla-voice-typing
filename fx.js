@@ -3,6 +3,9 @@
 // Nothing here touches settings, storage or the network.
 (() => {
   const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The popup is opened many times a day: a quick entrance, and no glint.
+  const quick = /popup\.html$/.test(location.pathname);
+  if (quick) document.documentElement.classList.add('fx-quick');
 
   // Entrance order: the selectors are tried on every page, so each page
   // gets the ones it has, top to bottom.
@@ -21,7 +24,7 @@
     });
   }
 
-  for (const m of document.querySelectorAll('.mark')) m.classList.add('fx-glint');
+  if (!quick) for (const m of document.querySelectorAll('.mark')) m.classList.add('fx-glint');
   for (const b of document.querySelectorAll('.cta, .card button, main button, main .btn')) b.classList.add('fx-shine');
 
   // The spotlight follows the pointer only while it is over a card.
