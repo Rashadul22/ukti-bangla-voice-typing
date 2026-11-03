@@ -15,7 +15,12 @@ const DEFAULTS = {
   autoSubmit: false,
   replacements: [],
   showMode: 'smart',
-  allowSites: []
+  allowSites: [],
+  voiceCommands: true,
+  mixedEnglish: false,
+  sounds: false,
+  digits: 'asis',
+  recogLang: 'bn-BD'
 };
 
 // A starting point for "chosen sites only": where people write the most.
@@ -144,6 +149,11 @@ const btnUndo = buttonToggle('btnUndo', 'undo');
 const showHints = toggle('showHints', 'showHints');
 const cleanFillers = toggle('cleanFillers', 'cleanFillers');
 const autoSubmit = toggle('autoSubmit', 'autoSubmit');
+const voiceCommands = toggle('voiceCommands', 'voiceCommands');
+const mixedEnglish = toggle('mixedEnglish', 'mixedEnglish');
+const sounds = toggle('sounds', 'sounds');
+const paintDigits = segment('digitsSeg', 'digits');
+const paintRecog = segment('recogSeg', 'recogLang');
 
 // ---- custom replacements ----
 
@@ -211,6 +221,11 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   showHints.checked = settings.showHints === true;
   cleanFillers.checked = settings.cleanFillers !== false;
   autoSubmit.checked = !!settings.autoSubmit;
+  voiceCommands.checked = settings.voiceCommands !== false;
+  mixedEnglish.checked = !!settings.mixedEnglish;
+  sounds.checked = !!settings.sounds;
+  paintDigits(settings.digits || 'asis', false);
+  paintRecog(settings.recogLang || 'bn-BD', false);
   replacements.value = rulesToText(settings.replacements);
   repaintSegments();
 });
@@ -320,3 +335,8 @@ document.getElementById('rateGo').addEventListener('click', () => {
   rateAnswered();
 });
 document.getElementById('rateLater').addEventListener('click', rateAnswered);
+
+document.getElementById('openSnips').addEventListener('click', event => {
+  event.preventDefault();
+  chrome.tabs.create({ url: chrome.runtime.getURL('words.html') + '#snippets' });
+});

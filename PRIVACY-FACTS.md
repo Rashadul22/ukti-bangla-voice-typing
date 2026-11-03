@@ -81,6 +81,10 @@ key outside this list appears.
 | `useCount` | how many times a button was used, so the labels can retire | no, a number |
 | `uses` | how many times dictation was started, so the popup can ask for a store rating once after real use | no, a number |
 | `rateDone` | the rating request was answered (either way) and will not appear again | no |
+| `voiceCommands`, `mixedEnglish`, `sounds` | on or off | no |
+| `digits` | `asis`, `bn` or `en` | no |
+| `recogLang` | `bn-BD` or `bn-IN`, the accent Chrome's recogniser is asked for | no |
+| `snippets` | the user's own "say this = put this" texts | **yes, typed by the user** |
 | `coachDone`, `setupDone`, `micGranted` | first-run flags | no |
 | `schema` | settings version, for migration | no |
 

@@ -503,6 +503,35 @@
       <input type="checkbox" id="cleanFillers"><div class="track"></div></label>
     <label class="sw"><span>বলা শেষে পাঠিয়ে দাও</span>
       <input type="checkbox" id="autoSubmit"><div class="track"></div></label>
+    <label class="sw"><span>মুখে বলা কমান্ড</span>
+      <input type="checkbox" id="voiceCommands"><div class="track"></div></label>
+    <p class="hint">প্রশ্নবোধক, নতুন লাইন, দাঁড়ি চিহ্ন। শুধু "দাঁড়ি", "কমা" বা "মুছে দাও" একা বললে।</p>
+    <label class="sw"><span>ইংরেজি শব্দ ইংরেজি হরফে</span>
+      <input type="checkbox" id="mixedEnglish"><div class="track"></div></label>
+    <label class="sw"><span>শুরু আর থামার শব্দ</span>
+      <input type="checkbox" id="sounds"><div class="track"></div></label>
+  </div>
+
+  <div class="group">
+    <div class="label">লেখার ধরন</div>
+    <div class="field">
+      <span>সংখ্যা</span>
+      <div class="seg" id="digitsSeg">
+        <div class="pill"></div>
+        <button data-v="asis">যেমন বলা</button>
+        <button data-v="bn">১২৩</button>
+        <button data-v="en">123</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>উচ্চারণ</span>
+      <div class="seg" id="recogSeg">
+        <div class="pill"></div>
+        <button data-v="bn-BD">বাংলাদেশ</button>
+        <button data-v="bn-IN">পশ্চিমবঙ্গ</button>
+      </div>
+    </div>
+    <a href="#" id="openSnips" class="change">স্নিপেট: একটা কথা বললে পুরো লেখা</a>
   </div>
 </div>
 

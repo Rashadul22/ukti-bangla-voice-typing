@@ -148,7 +148,8 @@
     buttons: { banglish: true, english: true, undo: true, grip: true },
     enabled: true, disabledSites: [],
     showMode: 'smart',          // 'smart' | 'always' | 'sites'
-    allowSites: []              // the sites chosen in 'sites' mode
+    allowSites: [],             // the sites chosen in 'sites' mode
+    sounds: false               // a soft tone on start and stop
   };
   let settings = { ...DEFAULTS };
 
@@ -703,6 +704,32 @@
     hintSpan.textContent = t('speakNow');
     const empty = !doneSpan.childNodes.length && !liveSpan.childNodes.length;
     hintSpan.hidden = !empty;
+  }
+
+  // A soft rising tone when listening starts, falling when it stops, for
+  // anyone not looking at the screen. Off unless chosen. Generated here,
+  // no files; if the page has had no click yet Chrome keeps the audio
+  // suspended and nothing plays, which is fine. data-tone on the host is
+  // the one trace, so a test can see it played.
+  let toneContext = null;
+  function tone(up) {
+    if (!settings.sounds) return;
+    try {
+      toneContext = toneContext || new AudioContext();
+      if (toneContext.state === 'suspended') toneContext.resume().catch(() => {});
+      const t0 = toneContext.currentTime;
+      const osc = toneContext.createOscillator(), gain = toneContext.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(up ? 660 : 880, t0);
+      osc.frequency.exponentialRampToValueAtTime(up ? 880 : 520, t0 + .12);
+      gain.gain.setValueAtTime(.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(.08, t0 + .02);
+      gain.gain.exponentialRampToValueAtTime(.0001, t0 + .18);
+      osc.connect(gain).connect(toneContext.destination);
+      osc.start(t0);
+      osc.stop(t0 + .2);
+      if (shadow) shadow.host.dataset.tone = up ? "start" : "stop";
+    } catch (_) {}
   }
 
   function setPreviewState(state) {
@@ -2794,6 +2821,7 @@
       case 'LISTENING':
         if (starting && !wanted) break;   // already pressed off again
         listening = true;
+        tone(true);
         paintMic();
         showPreview();
         showIndicator(t('listening'), null, true);
@@ -2807,11 +2835,18 @@
         break;
 
       case 'FINAL_RESULT': {
-        if (!message.text) break;
+        // "মুছে দাও" said alone: take back the last thing Ukti wrote.
+        if (message.action === 'undo') {
+          if (target?.isConnected) undoLast();
+          break;
+        }
+        const punct = typeof message.punct === 'string' ? message.punct : '';
+        const said = (message.text || '') + punct;
+        if (!said) break;
 
         // Show it first. Even if the box has gone, the user can still see
         // and copy what they said instead of losing it.
-        commitToPreview(message.text);
+        commitToPreview(said);
 
         if (!target || !target.isConnected) {
           showIndicator(t('boxGone'), 'error');
@@ -2822,9 +2857,10 @@
         pushUndo(target);
 
         const before = existingText(target);
-        const needsSpace = before.length > 0 && !/\s$/.test(before);
-        insertText(target, (needsSpace ? ' ' : '') + message.text);
-        flyToBox(message.text, target);
+        // A mark said on its own sticks to the word before it: no space.
+        const needsSpace = !!message.text && before.length > 0 && !/\s$/.test(before);
+        insertText(target, (needsSpace ? ' ' : '') + said);
+        if (message.text) flyToBox(said, target);
         landed(target);
         watchInsert(target, before);
 
@@ -2898,6 +2934,7 @@
         break;
 
       case 'STOPPED':
+        if (listening) tone(false);
         listening = false;
         paintMic();
         hidePreview();

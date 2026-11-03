@@ -1,0 +1,31 @@
+# Voice commands. Columns: what said (one final segment) TAB text TAB punct TAB action
+# "keep" rows are ordinary speech that must pass through untouched.
+# Bare দাঁড়ি and কমা are ordinary words (beard; reduce), so they are a
+# command only when said alone, after a pause.
+cmd	দাঁড়ি		।	
+cmd	দাড়ি		।	
+cmd	কমা		,	
+cmd	প্রশ্নবোধক		?	
+cmd	প্রশ্নবোধক চিহ্ন		?	
+cmd	বিস্ময়সূচক		!	
+cmd	নতুন লাইন		\n	
+cmd	নতুন অনুচ্ছেদ		\n\n	
+cmd	মুছে দাও			undo
+cmd	মুছে ফেলো			undo
+cmd	তুমি কেমন আছো প্রশ্নবোধক	তুমি কেমন আছো	?	
+cmd	আমি ভালো আছি দাঁড়ি চিহ্ন	আমি ভালো আছি	।	
+cmd	আমি ভালো আছি ফুলস্টপ	আমি ভালো আছি	।	
+cmd	কী সুন্দর বিস্ময়সূচক চিহ্ন	কী সুন্দর	!	
+cmd	প্রথম কথা কমা চিহ্ন	প্রথম কথা	,	
+cmd	আজকের মতো এখানেই নতুন লাইন	আজকের মতো এখানেই	\n	
+keep	ওর অনেক বড় দাঁড়ি আছে
+keep	দামটা একটু কমা
+keep	আমার দাঁড়ি
+keep	দাঁড়ি কাটতে হবে
+keep	দাম কমা বাড়া চলছে
+keep	নতুন লাইনে দাঁড়াও
+keep	প্রশ্নবোধক চিহ্নটা কোথায় বসবে বলো তো
+keep	ওটা মুছে দাও না কেন
+keep	তুমি কি মুছে দিয়েছ
+keep	কমা আর দাঁড়ির পার্থক্য কী
+keep	আমি নতুন লাইনের বাস ধরেছি

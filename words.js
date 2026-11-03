@@ -135,3 +135,38 @@ document.getElementById('importFile').addEventListener('change', async event => 
 });
 
 load();
+
+// ---- snippets: say the trigger alone, the saved text goes in ----
+
+const MAX_SNIPPETS = 200;
+const MAX_SNIPPET = 2000;
+const snipList = document.getElementById('snipList');
+const snipCount = document.getElementById('snipCount');
+
+function snipsToText(snips) {
+  return (snips || []).map(s => `${s.say} = ${s.text}`).join('\n');
+}
+function textToSnips(text) {
+  return text.split('\n').map(line => {
+    const at = line.indexOf('=');
+    if (at === -1) return null;
+    const say = line.slice(0, at).trim().slice(0, MAX_LEN);
+    const out = line.slice(at + 1).trim().slice(0, MAX_SNIPPET);
+    return say && out ? { say, text: out } : null;
+  }).filter(Boolean).slice(0, MAX_SNIPPETS);
+}
+async function loadSnips() {
+  const { snippets } = await chrome.storage.local.get({ snippets: [] });
+  if (document.activeElement !== snipList) snipList.value = snipsToText(Array.isArray(snippets) ? snippets : []);
+  snipCount.textContent = uktiLang === 'en' ? `${(snippets || []).length} snippets` : `${(snippets || []).length}টা স্নিপেট`;
+}
+let snipTimer = 0;
+snipList.addEventListener('input', () => {
+  clearTimeout(snipTimer);
+  snipTimer = setTimeout(async () => {
+    await chrome.storage.local.set({ snippets: textToSnips(snipList.value) });
+    loadSnips();
+  }, 400);
+});
+chrome.storage.onChanged.addListener(changes => { if (changes.snippets || changes.uiLang) loadSnips(); });
+loadSnips();

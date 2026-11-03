@@ -1261,3 +1261,37 @@ comes within 1.5 s.
 In a real box, "bishesh shokal" now becomes বিশেষ সকাল (was বিশেশ শকাল)
 and "thakur" ঠাকুর (was থাকুর). `tests/wordlist.test.js`, 5 tests, all
 failed first.
+
+## F2 to F7. Voice commands, snippets, English words, digits, accent, sounds
+
+All in the offscreen pipeline (`processSegment`), each a pure function
+tested on its own (`tests/pipeline.test.js`) and end to end with the fake
+recogniser in a real box (`tests/commands.test.js`, 9 tests, 8 failed on
+the old code; the ninth is the "commands off" guard).
+
+- **Voice commands, on by default.** At the end of a sentence:
+  প্রশ্নবোধক (?), বিস্ময়সূচক (!), দাঁড়ি চিহ্ন or ফুলস্টপ (।), কমা চিহ্ন (,),
+  নতুন লাইন, নতুন অনুচ্ছেদ. Said alone: দাঁড়ি, কমা, মুছে দাও (takes back the
+  last sentence). Bare দাঁড়ি (beard) and কমা (reduce) are ordinary words,
+  so they count only alone; `tests/corpus/commands.tsv` has 11 ordinary
+  sentences ("দামটা একটু কমা", "ওর অনেক বড় দাঁড়ি আছে", ...) that must not
+  trigger, and none does. In English output, । becomes a full stop.
+- **Snippets.** Say the trigger alone and the saved text goes in,
+  untranslated. Edited on the corrections page (new card), stored in
+  `snippets`. Said inside a sentence, nothing happens (tested).
+- **English words in English letters, off by default.** About 80 loanwords
+  (অফিসে becomes "office এ", ফোনের "phone এর"); words that are also Bangla
+  (বাস, বস, কল, কেস, ডাক্তার) are left out on purpose, and tested.
+- **Digits:** as spoken, ১২৩, or 123.
+- **Accent:** Bangladesh (bn-BD, default) or West Bengal (bn-IN). Whether
+  Chrome's recogniser treats the two differently could not be checked from
+  here; the setting is passed through, which is tested.
+- **Start and stop sound, off by default.** A short generated tone, no
+  files. Chrome keeps page audio silent until the page has had a click, so
+  a start from the keyboard shortcut on a fresh page may be silent.
+- **Not built:** the in-memory history of the last ten sentences. Left for
+  later; the preview already keeps the words on screen when the box goes.
+- New storage keys listed in `PRIVACY-FACTS.md` and the privacy test.
+- What a real voice says may not match the spellings in the command list.
+  I accept two spellings of দাঁড়ি; please say each command once on your
+  machine and tell me if one is missed.

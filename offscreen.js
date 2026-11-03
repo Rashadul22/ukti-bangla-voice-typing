@@ -196,6 +196,96 @@ function applyReplacements(text, replacements) {
   return out;
 }
 
+// ---------------------------------------------------------- voice commands
+// Chrome's Bangla recognition gives almost no punctuation, so these words
+// become marks. Bare দাঁড়ি (also "beard") and কমা (also "reduce") are
+// ordinary words, so on their own they count only when they are the whole
+// segment, said alone after a pause. The unambiguous names also count at
+// the end of a sentence. tests/corpus/commands.tsv holds both kinds,
+// including ordinary sentences that must not trigger.
+const ALONE = new Map([
+  ['দাঁড়ি', '।'], ['দাড়ি', '।'], ['কমা', ','], ['মুছে দাও', 'undo'], ['মুছে ফেলো', 'undo'], ['মুছে ফেল', 'undo']
+]);
+const AT_END = [
+  ['প্রশ্নবোধক চিহ্ন', '?'], ['প্রশ্নবোধক', '?'], ['প্রশ্নচিহ্ন', '?'],
+  ['বিস্ময়সূচক চিহ্ন', '!'], ['বিস্ময়সূচক', '!'], ['বিস্ময়বোধক চিহ্ন', '!'], ['বিস্ময়বোধক', '!'],
+  ['দাঁড়ি চিহ্ন', '।'], ['দাড়ি চিহ্ন', '।'], ['ফুলস্টপ', '।'], ['ফুল স্টপ', '।'],
+  ['কমা চিহ্ন', ','], ['নতুন লাইন', '\n'], ['নতুন অনুচ্ছেদ', '\n\n'], ['নতুন প্যারা', '\n\n']
+].map(([words, mark]) => [words.normalize('NFC'), mark]);
+
+function voiceCommand(raw) {
+  const text = String(raw || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+  const alone = ALONE.get(text);
+  if (alone === 'undo') return { text: '', punct: '', action: 'undo' };
+  if (alone) return { text: '', punct: alone, action: '' };
+  for (const [words, mark] of AT_END) {
+    if (text === words) return { text: '', punct: mark, action: '' };
+    if (text.endsWith(' ' + words)) return { text: text.slice(0, -words.length - 1), punct: mark, action: '' };
+  }
+  return { text: raw, punct: '', action: '' };
+}
+
+// ---------------------------------------------------------------- snippets
+// Say the trigger on its own and the saved text goes in. Only the whole
+// segment matches, so a trigger said inside a sentence stays a sentence.
+function applySnippets(raw, snippets) {
+  if (!Array.isArray(snippets) || !snippets.length) return null;
+  const said = String(raw || '').normalize('NFC').replace(/[।,?!.]+$/, '').replace(/\s+/g, ' ').trim();
+  for (const s of snippets) {
+    if (!s || !s.say || typeof s.text !== 'string') continue;
+    if (String(s.say).normalize('NFC').replace(/\s+/g, ' ').trim() === said) return s.text;
+  }
+  return null;
+}
+
+// ------------------------------------------------- English in English letters
+// For people who write mixed, as most chat in Bangladesh is written: "আমি
+// office এ আছি". Only loanwords that are not also Bangla words: বাস (live),
+// কল (tap), কেস, ডাক্তার and the like are left out on purpose. The Bangla
+// ending is kept, apart: অফিসে becomes "office এ".
+const LOANWORDS = {
+  'অফিস': 'office', 'মিটিং': 'meeting', 'ফোন': 'phone', 'মোবাইল': 'mobile', 'কম্পিউটার': 'computer',
+  'ল্যাপটপ': 'laptop', 'ইমেইল': 'email', 'ইমেল': 'email', 'ফেসবুক': 'Facebook', 'ইউটিউব': 'YouTube',
+  'হোয়াটসঅ্যাপ': 'WhatsApp', 'গুগল': 'Google', 'ইন্টারনেট': 'internet', 'ওয়াইফাই': 'WiFi', 'লিংক': 'link',
+  'পাসওয়ার্ড': 'password', 'অনলাইন': 'online', 'অফলাইন': 'offline', 'প্রজেক্ট': 'project', 'রিপোর্ট': 'report',
+  'প্রেজেন্টেশন': 'presentation', 'ক্লাস': 'class', 'এক্সাম': 'exam', 'অ্যাসাইনমেন্ট': 'assignment',
+  'টিচার': 'teacher', 'ডেডলাইন': 'deadline', 'লোকেশন': 'location', 'ডেলিভারি': 'delivery', 'অর্ডার': 'order',
+  'প্রোডাক্ট': 'product', 'পেমেন্ট': 'payment', 'মেসেজ': 'message', 'ম্যাসেজ': 'message', 'ভিডিও': 'video',
+  'অ্যাপ': 'app', 'ডাউনলোড': 'download', 'আপলোড': 'upload', 'শেয়ার': 'share', 'পোস্ট': 'post',
+  'কমেন্ট': 'comment', 'লাইক': 'like', 'গ্রুপ': 'group', 'চ্যাট': 'chat', 'সফটওয়্যার': 'software',
+  'ডেভেলপার': 'developer', 'ইউনিভার্সিটি': 'university', 'হোমওয়ার্ক': 'homework', 'টিকেট': 'ticket',
+  'টিকিট': 'ticket', 'চার্জ': 'charge', 'ব্যাটারি': 'battery', 'সার্ভার': 'server', 'ওয়েবসাইট': 'website',
+  'ব্রাউজার': 'browser', 'এক্সটেনশন': 'extension', 'অ্যাকাউন্ট': 'account', 'প্রোফাইল': 'profile',
+  'সেটিংস': 'settings', 'আপডেট': 'update', 'নোটিফিকেশন': 'notification', 'স্ক্রিনশট': 'screenshot',
+  'ফাইল': 'file', 'ফোল্ডার': 'folder', 'প্রিন্ট': 'print', 'সিভি': 'CV', 'ইন্টারভিউ': 'interview',
+  'জব': 'job', 'স্যালারি': 'salary', 'টিম': 'team', 'ক্লায়েন্ট': 'client'
+};
+const LOAN_KEYS = Object.keys(LOANWORDS).map(k => k.normalize('NFC')).sort((a, b) => b.length - a.length);
+// Endings, longest first. A vowel-sign ending is written as its letter.
+const ENDINGS = [['গুলো', 'গুলো'], ['টাও', 'টাও'], ['য়ের', 'এর'], ['য়ে', 'এ'], ['ের', 'এর'], ['টা', 'টা'],
+  ['টি', 'টি'], ['কে', 'কে'], ['তে', 'তে'], ['র', 'র'], ['ে', 'এ'], ['ও', 'ও']].map(([a, b]) => [a.normalize('NFC'), b]);
+
+function mixEnglish(raw) {
+  return String(raw || '').normalize('NFC').replace(/[ঀ-৿]+/g, word => {
+    if (LOANWORDS[word]) return LOANWORDS[word];
+    for (const base of LOAN_KEYS) {
+      if (!word.startsWith(base)) continue;
+      const rest = word.slice(base.length);
+      const end = ENDINGS.find(([e]) => e === rest);
+      if (end) return `${LOANWORDS[base]} ${end[1]}`;
+    }
+    return word;
+  });
+}
+
+// ------------------------------------------------------------------ digits
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+function fixDigits(text, mode) {
+  if (mode === 'bn') return String(text).replace(/[0-9]/g, d => BN_DIGITS[d]);
+  if (mode === 'en') return String(text).replace(/[০-৯]/g, d => String(BN_DIGITS.indexOf(d)));
+  return text;
+}
+
 // Translator processes sequentially and can reject large input with
 // QuotaExceededError, so long dictation is sent in sentence-sized chunks.
 function chunkText(text, maxLen = 900) {
@@ -256,7 +346,19 @@ async function processSegment(rawText) {
   text = applyReplacements(text, settings.replacements);
   if (!text) return;
 
-  if (settings.outputMode === 'english') {
+  // A snippet is the user's own text: it goes in as saved, untranslated.
+  const snippet = applySnippets(text, settings.snippets);
+  if (snippet != null) { emit('FINAL_RESULT', { text: snippet }); return; }
+
+  let punct = '';
+  if (settings.voiceCommands !== false) {
+    const command = voiceCommand(text);
+    if (command.action) { emit('FINAL_RESULT', { text: '', action: command.action }); return; }
+    text = command.text;
+    punct = command.punct;
+  }
+
+  if (text && settings.outputMode === 'english') {
     try {
       text = await toEnglish(text);
     } catch (error) {
@@ -266,9 +368,14 @@ async function processSegment(rawText) {
       });
       // Fall back to inserting the Bangla rather than losing the user's words.
     }
+    if (punct === '।') punct = '.';
+  } else if (text && settings.mixedEnglish) {
+    text = mixEnglish(text);
   }
+  text = fixDigits(text, settings.digits);
+  if (!text && !punct) return;
 
-  emit('FINAL_RESULT', { text });
+  emit('FINAL_RESULT', { text, punct });
 }
 
 // ------------------------------------------------------------ audio meter
@@ -521,7 +628,7 @@ function startAttempt() {
     return;
   }
 
-  recognition.lang = CONFIG.lang;
+  recognition.lang = state.settings?.recogLang === 'bn-IN' ? 'bn-IN' : CONFIG.lang;
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;

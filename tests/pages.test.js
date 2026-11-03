@@ -37,13 +37,14 @@ const readable = page => page.evaluate(() => {
 });
 
 const BENGALI = /[ঀ-৿]/;
+// The digits choice shows ১২৩ as its own sample, like the অ button.
 // The replacements box shows a Bengali spelling fix as its example. That is
 // sample data in the language being fixed, not interface text.
 const EXEMPT = new Set(['replacements@placeholder']);
 // The tab title is checked on its own, below, as a known gap.
 const leftovers = items =>
   items.filter(([where, text]) =>
-    !EXEMPT.has(where) && BENGALI.test(text.replace(/\(অ\)|^অ$/g, '')));
+    !EXEMPT.has(where) && BENGALI.test(text.replace(/\(অ\)|^অ$|^[০-৯]+$/g, '')));
 
 const settle = page => page.waitForTimeout(400);
 

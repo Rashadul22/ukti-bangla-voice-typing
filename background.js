@@ -75,7 +75,13 @@ async function getSettings() {
     replacements: [],          // [{from, to}]
     showMode: 'smart',         // when the control appears: 'smart' | 'always' | 'sites'
     allowSites: [],            // in 'sites' mode, the only sites Ukti works on
-    setupDone: false
+    setupDone: false,
+    voiceCommands: true,       // দাঁড়ি, প্রশ্নবোধক, নতুন লাইন, মুছে দাও (safe forms only)
+    snippets: [],              // [{say, text}]: say the trigger alone, get the text
+    mixedEnglish: false,       // অফিসে -> "office এ", for people who write mixed
+    digits: 'asis',            // 'asis' | 'bn' | 'en'
+    recogLang: 'bn-BD',        // 'bn-BD' | 'bn-IN'
+    sounds: false              // a soft tone when listening starts and stops
   };
   const stored = await chrome.storage.local.get(defaults);
   return { ...defaults, ...stored };
@@ -277,6 +283,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sessionId: message.sessionId,
       epoch: message.epoch,
       text: message.text,
+      punct: message.punct,
+      action: message.action,
       error: message.error,
       detail: message.detail
     };
