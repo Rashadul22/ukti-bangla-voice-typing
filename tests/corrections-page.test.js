@@ -30,7 +30,7 @@ test('every correction is listed', async () => {
   try {
     const text = await page.inputValue('#list');
     assert.equal(text.trim(), 'রাসাদুল = রাশাদুল\nকি = কী');
-    assert.match(await page.textContent('#count'), /2/);
+    assert.match(await page.textContent('#count'), /2|২/);
   } finally { await page.close(); }
 });
 

@@ -86,6 +86,14 @@ Defaults are in `background.js:58` (`getSettings`). Written from
 `popup.js`, `setup.js:56`, `setup.js:139`, `background.js:97` and the guarded
 `save()` in `content.js`.
 
+## Learning from corrections
+
+- **What is watched:** after Ukti writes dictated words into a box, it listens to that one box's edit events (`input`, `beforeinput`, `compositionend`) for two minutes, and compares the box's text with what it wrote (`watchInsert`, `checkCorrection` in `content.js`). No other box, page or keystroke is watched.
+- **What counts as a correction:** one to three of Ukti's own words replaced by others. A deletion, an insertion, the user's own words, or a larger rewrite is ignored.
+- **What is stored:** nothing, unless the user presses "yes" on the offer. Then one `{from, to}` pair is added to `replacements`, the same local list as the user's own word fixes, visible and editable in the popup and on the corrections page (`words.html`). "No" is remembered only in the page's memory, for that page.
+- **Export:** writes the list to a file the user saves wherever they choose (`words.js`). Import reads a file the user picks, refuses anything over 1 MB, over 2,000 rules or with a word over 200 characters, and merges by the heard word.
+- **Nothing is sent anywhere.** `tests/privacy.test.js` covers `words.js` as well.
+
 ## Dictated or converted text that outlives the moment
 
 - **The undo stack** (`pushUndo`, `content.js:791`) holds a copy of the box's

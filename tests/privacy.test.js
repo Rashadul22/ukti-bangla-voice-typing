@@ -27,7 +27,7 @@ test('the install dialog warning is exactly the one the policy discloses', async
   assert.deepEqual(warnings, ['Read and change all your data on all websites']);
 });
 
-const CODE = ['background.js', 'content.js', 'banglish.js', 'offscreen.js', 'popup.js', 'setup.js', 'i18n.js'];
+const CODE = ['background.js', 'content.js', 'banglish.js', 'offscreen.js', 'popup.js', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.js'];
 
 test('the extension code makes no network requests of its own', () => {
   const hits = [];
@@ -54,7 +54,7 @@ test('the extension code never writes to the console', () => {
 
 test('the pages load nothing from outside the extension', () => {
   const hits = [];
-  for (const f of ['popup.html', 'setup.html', 'offscreen.html']) {
+  for (const f of ['popup.html', 'setup.html', 'offscreen.html', 'words.html']) {
     const html = fs.readFileSync(path.join(EXT, f), 'utf8');
     // Things that load by themselves. A plain <a href> to the author's site
     // loads nothing until the user clicks it, so it is not counted.

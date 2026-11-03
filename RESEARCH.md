@@ -150,3 +150,40 @@ for the words that are also ordinary words.
 add hidden state), #8 (heavy, uncertain for Bengali, and rewrites the user's
 words). **#5** has real demand but is a different product; if built, it
 belongs in the popup or behind a hotkey, never on the bar.
+
+## Addendum, 3 November: biasing recognition, and correcting it locally
+
+Research only, nothing built. Same limits as above: primary pages on
+developer.chrome.com and developer.mozilla.org could not be opened from this
+session, so claims from search summaries are marked **(verify)**.
+
+**Grammars (`SpeechGrammarList`): a dead end.** Chrome exposes the
+interface but its speech back end ignores grammars, and the specification
+is moving to remove them as underspecified and unsupported
+([WICG speech-api #57](https://github.com/WICG/speech-api/issues/57),
+[polyfill discussion](https://github.com/msub2/sepia-speechrecognition-polyfill/issues/1)).
+
+**Contextual biasing (`SpeechRecognition.phrases`): the right tool, not
+available to us yet.**
+- **The API:** the specification adds `SpeechRecognitionPhrase` objects (a phrase and a boost) set on `recognition.phrases`. MDN marks it experimental ([MDN](https://developer.mozilla.org/docs/Web/API/SpeechRecognitionPhrase)).
+- **On-device only in Chrome?** One secondary source says Chrome supports biasing only for on-device recognition (`processLocally = true`). **(verify)**
+- **No Bangla on-device found:** nothing found says on-device Bangla recognition exists. If it ever does, the corrections a user has taught Ukti are exactly the list to boost, and that would stop the mishearing at the source instead of fixing it after.
+
+**Check on your own Chrome, in the offscreen document's console:**
+
+    'phrases' in SpeechRecognition.prototype
+    SpeechRecognition.available({ langs: ['bn-BD'], processLocally: true })
+
+**Alternatives (`maxAlternatives`):** Ukti asks for 1. If Chrome returns
+several for Bangla, the correction card could offer them as one-click
+choices. Whether Chrome returns more than one in continuous mode is
+**(verify)**.
+
+**On-device models to correct a mistranscription:** none that handles
+Bangla, as far as found.
+- **Prompt API:** the documented languages are English, Japanese and Spanish (some localised pages also list German and French), and output is text only ([Prompt API](https://developer.chrome.com/docs/ai/prompt-api)). **(verify for Bengali)**
+- **Proofreader:** was in an origin trial.
+- **Translator and Language Detector:** they do not correct text.
+
+**Conclusion:** today the only fully local lever is what was built, learned
+replacements. Watch `phrases` with on-device Bangla.

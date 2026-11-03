@@ -1001,3 +1001,67 @@ and is what the local learning below is for.
 1. fix the filler cleaner
 2. apply replacements as whole words
 3. build learning on top
+
+---
+
+# Local learning, 3 November
+
+The split came first (section above).
+
+## Fixed: causes 4 and 5, both ours
+
+- **Filler cleaner:**
+  - fillers now match whole words only
+  - the tag fillers count only at the end of a clause
+  - "কি বলে" and "হচ্ছে যে" are dropped, since they are grammar
+  - **25 of 25** legitimate sentences intact (was 2), **8 of 8** fillers cleaned (was 6), 0 of 628 corpus words damaged (was 1)
+- **Replacements:** applied to whole words, so "কি = কী" no longer touches "কিছু"; phrases of several words still match. This changes how existing manual rules apply, deliberately, since a rule eating the inside of other words is never wanted.
+
+## What counts as "the user corrected a word"
+
+| Signal | Chosen? | Why |
+|---|---|---|
+| Replacing a word Ukti just wrote | **built** | reliable and narrow: only the box Ukti just wrote into, only for 2 minutes, only edit events on that box, only a swap of 1 to 3 of Ukti's own words |
+| Adding a rule by hand | already there | explicit; same store |
+| Undo then retype | rejected | people retype whole sentences, so the corrected word cannot be told; it would mean watching typing that is not Ukti's |
+| Watching all typing | rejected | that is watching everything the user types |
+| A "teach" shortcut on a selected word | rejected | undiscoverable, and a new key |
+
+Ignored on purpose: deletions, insertions, edits outside Ukti's words,
+rewrites over 3 words, and a pair already declined on this page.
+
+## The flow
+
+1. The user fixes the word as they normally would.
+2. A card asks: "Remember this? Next time X becomes Y". In Bengali: মনে রাখব? পরেরবার X শুনলে Y লিখব।
+3. **One click on "Yes, remember"** stores it. Nothing is stored before that.
+4. The next dictation applies it.
+
+## Where it lives
+
+- The same local `replacements` list.
+- The popup's Words tab, plus a new page, `words.html` (linked from that tab), with every correction editable and deletable.
+- Export to a dated JSON file, and import of that or plain "heard = becomes" text: merged by the heard word, with files over 1 MB, over 2,000 rules or with words over 200 characters refused, and nothing changed on a refusal.
+- No server, no network call, no permission (the download is an ordinary link).
+- `PRIVACY-FACTS.md` and the policy (both languages) now say exactly what is watched and stored.
+
+## Found on the way, two of them real
+
+- **Lexical-style editors (WhatsApp) fire no `input` event when typed in:** they take every keystroke at `beforeinput`. The watcher listens to `beforeinput` and `compositionend` too; without that, learning would never trigger on WhatsApp.
+- **Dictation into the Quill-like mimic (the archetype CLAUDE.md gives for Gemini) leaves the box empty.** `insertText()` tries a synthetic paste and checks immediately; this editor accepts the paste and reverts it a tick later. Only `replaceAll()` (conversion) has the async per-strategy check from CLAUDE.md item 1, and the dictation path does not. I did not change the insertion engine, as instructed. The mimic may be stricter than the real Gemini. **Please dictate a sentence into Gemini and see whether it stays.** Recorded as a `todo` test in `tests/learning.test.js`.
+
+## Tests, written first
+
+- `tests/cleaning.test.js`: 5 tests, all failed before.
+- `tests/learning.test.js`: 9 tests (5 failed before; the 4 that passed guard the no-offer cases), plus the Gemini-shape todo.
+- `tests/corrections-page.test.js`: 8 tests, all failed before.
+- The popup's Words tab gained one link, so its two baselines were refreshed.
+- Suite: 275 tests, 274 pass, 1 todo.
+
+## Research, not built
+
+In `RESEARCH.md`:
+- **Grammars:** ignored by Chrome, and being removed from the specification.
+- **`phrases` (contextual biasing):** is the right tool, but needs on-device Bangla, which I found no sign of **(verify)**.
+- **On-device models:** none documents Bengali. The Prompt API lists English, Japanese and Spanish **(verify)**.
+- **For you to try:** two console lines are in `RESEARCH.md` to check on your machine.

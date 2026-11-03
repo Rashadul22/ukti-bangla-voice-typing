@@ -11,7 +11,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const FILES = ['manifest.json', 'background.js', 'content.js', 'banglish.js', 'offscreen.js',
-  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'icons'];
+  'offscreen.html', 'popup.html', 'popup.js', 'setup.html', 'setup.js', 'i18n.js', 'shortcuts.js', 'words.html', 'words.js', 'icons'];
 
 const MUTANTS = [
   { id: '1a', what: 'replaceAll tries only the paste strategy',

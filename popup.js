@@ -289,6 +289,13 @@ siteOn.addEventListener('change', async () => {
   paintPower(master.checked, next);
 });
 
+// The full list, with export and import. A page of its own, because a file
+// chooser opened from the popup closes the popup.
+document.getElementById('openWords').addEventListener('click', event => {
+  event.preventDefault();
+  chrome.tabs.create({ url: chrome.runtime.getURL('words.html') });
+});
+
 document.getElementById('openSetup').addEventListener('click', event => {
   event.preventDefault();
   chrome.runtime.sendMessage({ type: 'OPEN_SETUP' });
