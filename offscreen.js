@@ -143,35 +143,55 @@ async function getTranslator(from, to) {
 }
 
 // Spoken Bangla is full of fillers that a literal translator renders as
-// noise. This is deliberately conservative: only patterns that are almost
-// never meaningful content get removed.
+// noise. Measured 3 November, the old patterns damaged 23 of 25 ordinary
+// sentences (tests/corpus/fillers.tsv): they had no word boundaries, so
+// "বুঝলা" ate the start of "বুঝলাম" and left "ম", and "আর কি" turned
+// "আর কিছু" into "ছু". So now a filler is only ever a whole word, and the
+// ones that are also ordinary grammar count only where they are fillers.
+//
+//   ইয়ে                 anywhere, as a word of its own
+//   মানে মানে (মানে...)  two or more in a row
+//   আর কি, বুঝলা, বুঝছো  only at the end of a clause, where they are tags:
+//                        "ও আসবে আর কি" loses it, "তুমি আর কি চাও" keeps it
+//
+// "কি বলে" and "হচ্ছে যে" are gone from the list: "সে কি বলে" and "মনে
+// হচ্ছে যে" are grammar, and no rule tells them from the filler use.
+const LETTER = '\\p{L}\\p{M}\\p{N}';
+const START = `(?<![${LETTER}])`;
+const END = `(?![${LETTER}])`;
+const CLAUSE_END = `(?=\\s*(?:[,।?!.;:]|$))`;
 const FILLER_PATTERNS = [
-  /\s*হচ্ছে\s+যে\s*/g,
-  /\s*যে\s+হচ্ছে\s*/g,
-  /\s*আর\s+কি\s*/g,
-  /\s*বুঝলা\s*/g,
-  /\s*বুঝছো\s*/g,
-  /\s*কি\s+বলে\s*/g,
-  /\s*ইয়ে\s*/g,
-  /\s*(মানে\s+){2,}/g
+  new RegExp(`${START}ইয়ে${END}`, 'gu'),
+  new RegExp(`${START}মানে(?:\\s+মানে)+${END}`, 'gu'),
+  new RegExp(`${START}আর\\s+কি${END}${CLAUSE_END}`, 'gu'),
+  new RegExp(`${START}(?:বুঝলা|বুঝছো)${END}${CLAUSE_END}`, 'gu')
 ];
 
 function cleanFillers(text) {
   let out = text;
-  for (const pattern of FILLER_PATTERNS) {
-    out = out.replace(pattern, ' ');
-  }
-  return out.replace(/\s{2,}/g, ' ').trim();
+  for (const pattern of FILLER_PATTERNS) out = out.replace(pattern, ' ');
+  return out
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,।?!.;:])/g, '$1')    // no space left before punctuation
+    .trim();
 }
 
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// The user's own corrections, applied to whole words only. As plain
+// substrings, a rule "কি = কী" also turned "কিছু" into "কীছু" and "থাকি"
+// into "থাকী" (8 of 628 corpus words). A rule of several words still
+// matches as a phrase. The pattern is built from the user's text escaped, so
+// no rule can be a regular expression that hangs the extension.
 function applyReplacements(text, replacements) {
   if (!Array.isArray(replacements) || replacements.length === 0) return text;
   let out = text;
   for (const rule of replacements) {
     if (!rule || !rule.from) continue;
-    // Plain string replacement, case-sensitive. No regex, so a user cannot
-    // accidentally write a pattern that hangs the extension.
-    out = out.split(rule.from).join(rule.to ?? '');
+    const pattern = new RegExp(`${START}${escapeRegExp(rule.from)}${END}`, 'gu');
+    out = out.replace(pattern, () => rule.to ?? '');
   }
   return out;
 }
