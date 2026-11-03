@@ -35,10 +35,13 @@ async function setup(ext, { size = [1280, 720], lang = 'bn', scheme = 'dark', zo
 
 // The floating control. `state`: collapsed, open, preview, toast-info,
 // toast-error, coach. `theme`: glass, dark, light. `bg`: the host page.
-async function control(ext, base, { state = 'collapsed', theme = 'glass', bg = 'light', lang = 'bn', off = null } = {}) {
+async function control(ext, base, { state = 'collapsed', theme = 'glass', bg = 'light', lang = 'bn', off = null, reduced = false } = {}) {
   await storage.set(ext.worker, { uiLang: lang, theme, layout: 'compact', coachDone: state !== 'coach', barPos: null, barCorner: 'auto' });
   const page = await ext.context.newPage();
   await page.setViewportSize({ width: 1280, height: 720 });
+  // Reduced motion from the start keeps the feedback effects (MOTION.md) out
+  // of the picture, so a baseline is the design at rest and nothing else.
+  if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`${base}/${bg === 'dark' ? 'dark' : 'textarea'}.html`);
   await page.waitForFunction(() => window.mimic);
   await page.click('#ed');

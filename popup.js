@@ -70,6 +70,14 @@ function swatches(id, key) {
     button.addEventListener('click', () => {
       paint(button.dataset.v);
       chrome.storage.local.set({ [key]: button.dataset.v });
+      // The chosen swatch pops once (CSS, so reduced motion turns it off).
+      const chip = button.querySelector('.chip');
+      if (chip) {
+        chip.classList.remove('pop');
+        void chip.offsetWidth;
+        chip.classList.add('pop');
+        chip.addEventListener('animationend', () => chip.classList.remove('pop'), { once: true });
+      }
     });
   });
 

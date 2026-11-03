@@ -40,7 +40,7 @@ const SURFACES = [
   ['setup-1280x720-en-zoom200', () => S.setup(ext, { size: [1280, 720], lang: 'en', zoom: 2 })],
   ...['collapsed', 'open', 'preview', 'toast-info', 'toast-error', 'coach'].flatMap(state =>
     [['glass', 'light'], ['dark', 'dark'], ['light', 'light']].map(([theme, bg]) =>
-      [`control-${state}-${theme}-on-${bg}`, () => S.control(ext, base, { state, theme, bg, off })]))
+      [`control-${state}-${theme}-on-${bg}`, () => S.control(ext, base, { state, theme, bg, off, reduced: true })]))
 ];
 
 const BASELINES = path.join(__dirname, 'ui', 'baselines', process.platform);

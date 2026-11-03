@@ -810,3 +810,40 @@ following the system setting. The popup works with a palette swap: 0 new
 contrast failures on main, 1 on Look. The setup page does not: the mockup
 shows 11 failures, because the setup page hard-codes many colours instead of
 using its variables. So this is real work, and the mockup shows where.
+
+---
+
+# Motion, 3 November
+
+Feedback motion, added without changing the design. Full write-up with
+sources in `MOTION.md`; frames in `docs/motion/`.
+
+**Added:**
+- **On the control:** a ripple on every press; a glow on the box where the words landed; a green ring on success; a shake on a refusal; one ring when listening starts; and the mic tilting toward the pointer, with a following highlight (the 3D).
+- **In the popup:** a press-in on tabs, segments and swatches; switch thumbs that stretch while held; a pop on the chosen swatch.
+- **On the setup page:** a pop on a step's badge when it is completed, and a sheen on a downloading pack.
+
+**The design did not change, measured:** all 27 screenshot baselines from
+the UI audit pass unchanged. To make that a strict check, the control's
+surfaces are now opened with reduced motion from the start, so no effect is
+caught mid-flight. On the first full run, the three "info toast" surfaces had
+caught the new success glow (1.37% of pixels); that was the effect, not the
+design.
+
+**Found on the way:** the stylesheet's hover scale (`1.09`) and press scale
+(`.93`) for the control's buttons have never applied, because
+`.bar.on button` out-ranks both. Left alone: reviving them would change the
+look you settled. The ripple is now the press feedback.
+
+**Rules kept:**
+- every effect is event-driven and ends; idle is still zero, by the performance tests
+- transform and opacity only
+- no blur
+- off under reduced motion, where the toast and colours still carry the meaning
+- the shadow root returns to its resting size
+
+**Tests.** `tests/motion.test.js`, 11 tests (9 failed before the code).
+Suite: 227 tests, 227 pass.
+
+**For you to judge by hand:** how it feels, the tilt above all. If it wants
+to be calmer, it is one number in `tilt()`.

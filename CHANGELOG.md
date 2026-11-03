@@ -8,6 +8,12 @@ footer of the setup page (`scripts/package.js` refuses to build otherwise).
 Work done after 1.0.1, not yet given a version number. Details and the
 measurements behind each item are in `PROGRESS.md`.
 
+- **Feedback motion.** A press ripples; the box glows where the words
+  landed; a success sends a green ring from its button and a refusal gives
+  it a short shake; the mic sends out one ring when it starts listening and
+  leans toward the pointer while hovered. Small press feedback in the popup
+  and on the setup page. All of it is off with reduced motion, and nothing
+  runs at idle. The design at rest is unchanged.
 - **Readability and reach.** Grey labels, hints and footers in the popup and
   setup page, white text on the purple buttons, the welcome card's button and
   the light theme's shortcut labels now meet 4.5:1 contrast (they measured

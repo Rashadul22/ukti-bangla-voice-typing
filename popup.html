@@ -253,6 +253,18 @@
   .cta:hover { filter: brightness(1.14); }
   .cta:active { transform: scale(.985); }
 
+  /* ------------------------------------------------- feedback motion
+     Pressing a tab, a segment or a swatch sinks it a little; a switch's
+     thumb stretches while it is held, the way a finger squashes it; a
+     chosen swatch pops once. All under 0.4s, all off with reduced motion. */
+  .tabs button, .seg button, .theme { transition-property: color, background, border-color, transform; }
+  .tabs button:active, .seg button:active, .theme:active { transform: scale(.96); transition-duration: .12s; }
+  .track::after { transition: transform .32s var(--ease), background .28s var(--ease), width .2s var(--ease); }
+  .sw:active .track::after { width: 22px; }
+  .sw:active input:checked + .track::after { transform: translateX(14px); }
+  .chip.pop { animation: chip-pop .36s var(--ease); }
+  @keyframes chip-pop { 0% { transform: scale(.82); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
   /* ----------------------------------------------------- hit areas
      Targets under 40px that stand alone get a larger invisible hit area,
      so a finger can land on them without the layout changing. Measured:

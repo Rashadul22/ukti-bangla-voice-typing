@@ -698,6 +698,9 @@
       shadow.appendChild(indicator);
     }
     clearTimeout(hideTimer);
+    // A refusal or a failure shakes the button it answers. The toast, in red,
+    // stays the message; the shake only says "that did not happen".
+    if (tone === 'error' && !calm()) { shake(feedbackButton(null)); acted = null; }
     indicator.textContent = label;
     if (dots) indicator.insertAdjacentHTML('beforeend', DOTS);
     indicator.className =
@@ -972,6 +975,7 @@
       countUse();
       if (!(await putBack(box, selected, self.UktiBanglish.convert(source)))) return;
       showIndicator(t('doneBangla'));
+      succeeded(box, banglishButton);
       hideIndicator();
       return;
     }
@@ -993,6 +997,7 @@
     countUse();
     if (!(await putBack(box, selected, reply.text))) return;
     showIndicator(t('doneBangla'));
+    succeeded(box, banglishButton);
     hideIndicator();
   }
 
@@ -1040,6 +1045,7 @@
     countUse();
     if (!(await putBack(box, selected, reply.text))) return;
     showIndicator(t('doneEnglish'));
+    succeeded(box, englishButton);
     hideIndicator();
   }
 
@@ -1066,6 +1072,7 @@
     }
 
     showIndicator(t('undone'));
+    succeeded(entry.element, undoButton);
     hideIndicator();
   }
 
@@ -1073,6 +1080,7 @@
 
   let bar = null;
   let micButton = null;
+  let banglishButton = null, englishButton = null, undoButton = null;
   let shadow = null;
   let preview = null;
   let hostEl = null;
@@ -1465,6 +1473,72 @@
       30%           { opacity: 1;   transform: translateY(-.16em); }
     }
 
+    /* ---- Feedback motion (MOTION.md). Event-driven, short, transform and
+       opacity only, and gone when done: nothing here runs at idle. Each
+       effect is a fixed element over its target, so the buttons' own
+       transforms and contents are never touched. */
+    .ripple, .pulse, .burst, .landed {
+      position: fixed; pointer-events: none; box-sizing: border-box;
+    }
+    .ripple { border-radius: 999px; overflow: hidden; }
+    .ripple i {
+      position: absolute; border-radius: 50%;
+      background: rgba(255, 255, 255, .34);
+      transform: scale(0); opacity: 1;
+      animation: ripple .46s cubic-bezier(.2, 0, 0, 1) forwards;
+    }
+    :host([data-theme="light"]) .ripple i { background: rgba(29, 34, 48, .14); }
+    @keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+    /* A success: a green ring leaves the button. */
+    .pulse {
+      border-radius: 999px; border: 2px solid rgba(52, 211, 153, .85);
+      animation: pulse .52s cubic-bezier(.2, 0, 0, 1) forwards;
+    }
+    @keyframes pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+
+    /* Listening has begun: one red ring, then the live halo takes over. */
+    .burst {
+      border-radius: 999px; border: 2px solid rgba(239, 68, 68, .75);
+      animation: burst .6s cubic-bezier(.2, 0, 0, 1) forwards;
+    }
+    @keyframes burst { from { transform: scale(1); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
+
+    /* Where the words landed: a brief glow on the box itself. */
+    .landed {
+      border: 2px solid rgba(96, 165, 250, .9);
+      box-shadow: 0 0 0 4px rgba(96, 165, 250, .22);
+      animation: landed .75s ease-out forwards;
+    }
+    @keyframes landed {
+      0% { opacity: 0; transform: scale(1.015); }
+      25% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+
+    /* A refusal: a short, sharp shake. The red toast says why. */
+    .bar.on button.shake { animation: shake .32s cubic-bezier(.36, .07, .19, .97) both; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(3px); }
+    }
+
+    /* Depth: the mic leans toward the pointer while hovered, and a soft
+       highlight follows it. At rest nothing differs. */
+    .bar.on .main:not(.live):hover {
+      transform: perspective(240px) rotateX(calc(var(--rx, 0) * 1deg)) rotateY(calc(var(--ry, 0) * 1deg));
+    }
+    .bar.dragging .main { transform: none !important; }
+    .main:not(.live)::before {
+      content: ''; position: absolute; inset: 0; border-radius: 999px; pointer-events: none;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, .2), transparent 62%);
+      opacity: 0; transition: opacity .2s ease;
+    }
+    .main:not(.live):hover::before { opacity: 1; }
+
     @media (prefers-reduced-motion: reduce) {
       /* Everything, not a chosen few: the rows, the tips, the preview and
          the listening halo all moved before, measured. */
@@ -1507,9 +1581,107 @@
       // That is not the user, and the mic button must not obey it.
       if (!event.isTrusted) return;
       if (suppressClick) return;
+      acted = { button, at: Date.now() };
+      ripple(button, event);
       onClick();
     });
     return button;
+  }
+
+  // ---------------------------------------------------------- feedback fx
+  // See MOTION.md. None of these run under prefers-reduced-motion, where the
+  // toast and the colours carry the meaning on their own.
+
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let acted = null;   // the button the user last pressed, for its feedback
+
+  // The button an outcome belongs to: the one just pressed, else the one
+  // named, else the mic, so a shortcut used while collapsed still answers.
+  function feedbackButton(named) {
+    const shown = b => b && b.getBoundingClientRect().width > 0 &&
+      getComputedStyle(b.closest('.row') || b).visibility === 'visible';
+    if (acted && Date.now() - acted.at < 8000 && shown(acted.button)) return acted.button;
+    if (shown(named)) return named;
+    return shown(micButton) ? micButton : null;
+  }
+
+  // A short-lived element laid over `rect`, removed when its animation ends.
+  function overlay(cls, rect, ms, fill) {
+    if (calm() || !shadow || !rect || !rect.width) return null;
+    const el = document.createElement('div');
+    el.className = cls;
+    el.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
+    fill?.(el);
+    shadow.appendChild(el);
+    const gone = () => el.remove();
+    el.addEventListener('animationend', gone, { once: true });
+    setTimeout(gone, ms + 250);
+    return el;
+  }
+
+  function ripple(button, event) {
+    const r = button.getBoundingClientRect();
+    overlay('ripple', r, 460, el => {
+      const dot = document.createElement('i');
+      // From the press point; a keyboard press has no point, so the centre.
+      const x = event.clientX ? event.clientX - r.left : r.width / 2;
+      const y = event.clientY ? event.clientY - r.top : r.height / 2;
+      const size = 2 * Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y));
+      dot.style.cssText = `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px`;
+      el.append(dot);
+      dot.addEventListener('animationend', () => el.remove(), { once: true });
+    });
+  }
+
+  function pulse(button) {
+    if (button) overlay('pulse', button.getBoundingClientRect(), 520);
+  }
+
+  function landed(box) {
+    if (!box?.isConnected) return;
+    overlay('landed', box.getBoundingClientRect(), 750, el => {
+      el.style.borderRadius = getComputedStyle(box).borderRadius;
+    });
+  }
+
+  function shake(button) {
+    if (!button || calm()) return;
+    button.classList.remove('shake');
+    void button.offsetWidth;            // restart if it is already shaking
+    button.classList.add('shake');
+    button.addEventListener('animationend', () => button.classList.remove('shake'), { once: true });
+  }
+
+  // A success: the box glows where the words went, the button answers.
+  function succeeded(box, named) {
+    landed(box);
+    pulse(feedbackButton(named));
+    acted = null;
+  }
+
+  // The mic leans toward the pointer while hovered. Only while hovered, so
+  // nothing runs at idle, and never under reduced motion.
+  function tilt(button) {
+    let frame = 0;
+    const reset = () => {
+      cancelAnimationFrame(frame);
+      for (const [k, v] of [['--rx', '0'], ['--ry', '0'], ['--mx', '50%'], ['--my', '30%']]) button.style.setProperty(k, v);
+    };
+    button.addEventListener('pointermove', event => {
+      if (calm() || listening || bar.classList.contains('dragging')) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const r = button.getBoundingClientRect();
+        const x = Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)) - 0.5;
+        const y = Math.min(1, Math.max(0, (event.clientY - r.top) / r.height)) - 0.5;
+        button.style.setProperty('--ry', (x * 16).toFixed(2));     // at most 8 degrees
+        button.style.setProperty('--rx', (-y * 16).toFixed(2));
+        button.style.setProperty('--mx', ((x + 0.5) * 100).toFixed(0) + '%');
+        button.style.setProperty('--my', ((y + 0.5) * 100).toFixed(0) + '%');
+      });
+    });
+    button.addEventListener('pointerleave', reset);
+    reset();
   }
 
   function buildBar() {
@@ -1537,9 +1709,11 @@
       toggleDictation();
     });
     micButton.setAttribute('aria-pressed', 'false');
+    tilt(micButton);
     const banglish = makeButton('অ', t('toBangla'), 'small', convertBanglish);
     const english = makeButton('EN', t('toEnglish'), 'small en', convertToEnglish);
     const undo = makeButton(ICONS.undo, t('undo'), 'small', undoLast);
+    banglishButton = banglish; englishButton = english; undoButton = undo;
 
     const grip = makeButton(ICONS.grip, t('move'), 'small grip', () => {});
     // Dragging is a pointer gesture with no keyboard meaning; the popup's
@@ -1958,8 +2132,12 @@
     maybeCoach();
   }
 
+  let wasLive = false;
   function paintMic() {
     if (!micButton) return;
+    // The moment listening begins, one ring goes out; the halo follows.
+    if (listening && !wasLive) overlay('burst', micButton.getBoundingClientRect(), 600);
+    wasLive = listening;
     micButton.classList.toggle('live', listening);
     if (!listening) micButton.style.setProperty('--lvl', 0);
     micButton.innerHTML = listening ? ICONS.stop : ICONS.mic;
@@ -2122,6 +2300,7 @@
         const before = existingText(target);
         const needsSpace = before.length > 0 && !/\s$/.test(before);
         insertText(target, (needsSpace ? ' ' : '') + message.text);
+        landed(target);
 
         showIndicator(t('listening'), null, true);
 

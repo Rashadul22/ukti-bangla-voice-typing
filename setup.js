@@ -20,8 +20,15 @@ function setStatus(node, text, kind) {
   node.appendChild(document.createTextNode(text));
 }
 
-function markDone(step) {
+// `fresh` when the user has just completed the step, so the badge pops once;
+// a step found already done when the page opens does not.
+function markDone(step, fresh = false) {
+  if (step.classList.contains('done')) return;
   step.classList.add('done');
+  if (fresh) {
+    step.classList.add('just');
+    step.querySelector('.num')?.addEventListener('animationend', () => step.classList.remove('just'), { once: true });
+  }
 }
 
 // ------------------------------------------------------------- microphone
@@ -55,7 +62,7 @@ micButton.addEventListener('click', async () => {
 
     await chrome.storage.local.set({ micGranted: true });
     setStatus(micStatus, tr('হয়ে গেছে, মাইক্রোফোন চালু।', uktiLang), 'ok');
-    markDone(micStep);
+    markDone(micStep, true);
   } catch (error) {
     micButton.disabled = false;
     const message =
@@ -81,8 +88,8 @@ const PACKS = [
 
 const packDone = new Set();
 
-function checkAllPacks() {
-  if (packDone.size === PACKS.length) markDone(packStep);
+function checkAllPacks(fresh = false) {
+  if (packDone.size === PACKS.length) markDone(packStep, fresh);
 }
 
 for (const pack of PACKS) {
@@ -135,7 +142,7 @@ for (const pack of PACKS) {
       setStatus(status, tr('হয়ে গেছে। পরীক্ষা: \u201C', uktiLang) + out + '\u201D', 'ok');
       setTimeout(() => bar.classList.remove('show'), 900);
       packDone.add(pack.button);
-      checkAllPacks();
+      checkAllPacks(true);
       await chrome.storage.local.set({ setupDone: true });
     } catch (error) {
       button.disabled = false;
