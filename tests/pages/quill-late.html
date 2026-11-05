@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>quill, late paste</title>
+<script src="mimic.js"></script>
+<!-- Gemini's Quill, as the author saw it: one dictated line came out twice.
+     Quill's clipboard takes a paste, then inserts it on a timer a moment
+     later. The browser's own insertText is kept (the model follows the
+     DOM). A check made at the moment of the paste sees nothing, so the
+     next strategy also writes, and then the late paste lands as well. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  const observer = new MutationObserver(() => { model = el.innerText.replace(/\n+$/, ''); });
+  const render = caret => { el.textContent = model; observer.takeRecords(); if (caret != null) placeCaret(el, caret); };
+  observer.observe(el, { childList: true, characterData: true, subtree: true });
+
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    const [s, en] = liveOffsets(el, model.length);
+    setTimeout(() => { model = model.slice(0, s) + text + model.slice(en); render(s + text.length); }, 1);
+  });
+
+  window.mimic = {
+    el, kind: 'quill-late',
+    model: () => model,
+    setText(s) { el.textContent = s; observer.takeRecords(); model = s; el.focus(); placeCaret(el, s.length); }
+  };
+</script>

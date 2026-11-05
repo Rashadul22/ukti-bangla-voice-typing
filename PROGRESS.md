@@ -1396,3 +1396,33 @@ removed mid-dictation" in the same file. A first guess at the cause (calls
 from an orphaned page that never answer) made it worse and was reverted. The
 zip was built with the test gate skipped, so this is a known open item:
 the flaky reload test still needs its cause found.
+
+## 5 November: one dictated line came out twice on Gemini, three times on WhatsApp
+
+Reported by the author on the real sites; Claude.ai was fine.
+
+**Cause.** The dictation path (`insertText` into a rich editor) tried a
+synthetic paste, checked at once whether the box had changed, and if not
+tried the browser's insertText and then a direct Range insert. Gemini's
+Quill takes a paste on a timer, and WhatsApp's Lexical commits a task later,
+so the check at once saw nothing, the next strategy wrote too, and then the
+late paste landed as well. CLAUDE.md item 1 says exactly this for
+`replaceAll`; the dictation path had never been given the same treatment.
+
+**Reproduced first.** Two new mimics: `tests/pages/quill-late.html` (paste
+applied 1 ms later) and `tests/pages/lexical-async.html` (paste and typed
+inserts applied a task later). Both gave "আমি ভালো আছিআমি ভালো আছি".
+
+**Fix.** `insertDictated()`: one strategy at a time, each checked after a
+frame and 35 ms (the same wait `replaceAll` uses); the next is tried only if
+the box did not change. Final sentences go in through a queue, one after the
+other, so a quick second sentence cannot overtake the first.
+
+**Measured.** `tests/dictation-editors.test.js`, 8 editor archetypes, a
+sentence and then two quick ones: 2 failed before (quill-late doubled, and
+the old quill page lost the words), 8 pass after. The long-standing todo
+"quill: dictated words stay in the box" now passes and is a real test. Full
+suite: 391 tests, 391 pass, 0 todo.
+
+**Not verified from here:** the real Gemini and WhatsApp. The mimics copy
+the timing the author described; please dictate one line on each and check.

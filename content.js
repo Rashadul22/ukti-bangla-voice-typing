@@ -492,6 +492,33 @@
     }
   }
 
+  // Dictation into a rich editor, one strategy at a time, each verified a
+  // moment later rather than at once. The same lesson as replaceAll (CLAUDE.md
+  // item 1), which the dictation path had not learnt: Gemini's Quill takes a
+  // synthetic paste on a timer, and WhatsApp's Lexical commits a task later.
+  // Checked at once, the paste looked like a failure, so the next strategy
+  // wrote too, and then the paste landed as well: one sentence came out twice
+  // on Gemini and three times on WhatsApp (tests/pages/quill-late.html,
+  // lexical-async.html). Now a strategy counts if the box has changed after
+  // the wait; only if it has not is the next one tried. A paste that lands
+  // and is then thrown away (tests/pages/quill.html) also reads as "not
+  // kept" after the wait, which fixes the words that used to vanish there.
+  let dictationQueue = Promise.resolve();
+  async function insertDictated(element, text) {
+    if (!element || !element.isConnected) return false;
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      return insertIntoNative(element, text);
+    }
+    for (const only of ['paste', 'command', 'range']) {
+      const before = existingText(element);
+      try { insertIntoEditable(element, text, null, only); } catch (_) {}
+      await nextTurn(35);
+      if (!element.isConnected) return false;
+      if (existingText(element) !== before) return true;
+    }
+    return false;
+  }
+
   function insertText(element, text) {
     if (!element || !element.isConnected) return false;
 
@@ -3011,22 +3038,27 @@
           break;
         }
 
-        pushUndo(target);
-
-        const before = existingText(target);
-        // A mark said on its own sticks to the word before it: no space.
-        const needsSpace = !!message.text && before.length > 0 && !/\s$/.test(before);
-        insertText(target, (needsSpace ? ' ' : '') + said);
-        if (message.text) flyToBox(said, target);
-        landed(target);
-        watchInsert(target, before);
+        // One sentence at a time: each insertion now waits to see whether
+        // the editor kept it, so the next must not start until it is done.
+        const box = target;
+        const words = !!message.text;
+        dictationQueue = dictationQueue.then(async () => {
+          if (!box.isConnected) return;
+          pushUndo(box);
+          const before = existingText(box);
+          // A mark said on its own sticks to the word before it: no space.
+          const needsSpace = words && before.length > 0 && !/\s$/.test(before);
+          await insertDictated(box, (needsSpace ? ' ' : '') + said);
+          if (words) flyToBox(said, box);
+          landed(box);
+          watchInsert(box, before);
+          if (settings.autoSubmit) {
+            stopDictation();
+            setTimeout(() => submitBox(box), 120);
+          }
+        }).catch(() => {});
 
         showIndicator(t('listening'), null, true);
-
-        if (settings.autoSubmit) {
-          stopDictation();
-          setTimeout(() => submitBox(target), 120);
-        }
         break;
       }
 

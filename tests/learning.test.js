@@ -180,12 +180,12 @@ for (const kind of ['plain', 'model-paste']) {
   });
 }
 
-// FINDING, not fixed: dictation into the Quill-like mimic (the archetype CLAUDE.md
-// gives for Gemini) leaves the box empty. insertText() tries a synthetic paste,
-// checks at once, and this editor reverts that paste a tick later. replaceAll()
-// verifies after a turn; the dictation path does not. The insertion engine is
-// off limits without hand testing on the real Gemini, so this stays a todo.
-nodeTest.test('quill: dictated words stay in the box', { todo: 'insertion engine; needs a hand test on Gemini, see PROGRESS.md', timeout: 60000 }, async () => {
+// Was a finding: dictation into the Quill-like mimic (the archetype CLAUDE.md
+// gives for Gemini) left the box empty, because the dictation path checked a
+// synthetic paste at once and this editor reverts it a tick later.
+// Fixed on 5 November: dictation now verifies each strategy after a wait
+// (insertDictated), so a paste that lands and is reverted no longer counts.
+nodeTest.test('quill: dictated words stay in the box', { timeout: 60000 }, async () => {
   const page = await open('quill.html');
   try {
     await dictate(page, 'আমার নাম রাসাদুল');
