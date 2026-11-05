@@ -839,38 +839,167 @@
     scrollToEnd();
   }
 
-  // A copy of the sentence travels from the preview into the box it went
-  // to. Decoration only: the words are already in the box by the time it
-  // lands, and under reduced motion it never runs.
+  // ---------------------------------------------------------- the flight
+  // When a sentence is final, its words fly from the preview into the box.
+  // Each word lifts off from exactly where it sits in the preview (the
+  // shared-element idea: the thing the eye was reading is the thing that
+  // moves), travels its own arc, staggered so the sentence pours in rather
+  // than jumping, with a two-ghost comet trail, and lands at the box's text
+  // cursor, where a small spark marks the spot. Decoration only: the words
+  // are already in the box by the time they land. Transform and opacity
+  // only, one flight at a time, all gone within about a second, and never
+  // under reduced motion. tests/flight.test.js
+
+  const FLY_MS = 520;
+  const MAX_CHIPS = 12;
+
+  // Where the inserted words end: the caret, after the insertion. A
+  // textarea or input does not expose caret coordinates, so a hidden mirror
+  // with the same box and text measures it (the usual technique).
+  function caretPoint(box) {
+    const b = box.getBoundingClientRect();
+    const fallback = { x: b.left + Math.min(24, b.width / 4), y: b.top + Math.min(b.height / 2, 28) };
+    try {
+      if (box.tagName === 'TEXTAREA' || (box.tagName === 'INPUT' && box.type !== 'password')) {
+        return fieldCaret(box) || fallback;
+      }
+      const sel = (box.ownerDocument || document).getSelection();
+      if (sel && sel.rangeCount && box.contains(sel.getRangeAt(0).endContainer)) {
+        const r = sel.getRangeAt(0).cloneRange();
+        r.collapse(false);
+        const rect = r.getClientRects()[0] || r.getBoundingClientRect();
+        if (rect && (rect.height || rect.left)) return { x: rect.left, y: rect.top + rect.height / 2 };
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  function fieldCaret(el) {
+    const cs = getComputedStyle(el);
+    const m = document.createElement('div');
+    const copy = ['boxSizing', 'width', 'height', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderStyle',
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'wordSpacing',
+      'textTransform', 'textIndent', 'tabSize', 'direction'];
+    for (const k of copy) m.style[k] = cs[k];
+    const r = el.getBoundingClientRect();
+    Object.assign(m.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, visibility: 'hidden',
+      overflow: 'hidden', borderColor: 'transparent', pointerEvents: 'none',
+      whiteSpace: el.tagName === 'TEXTAREA' ? 'pre-wrap' : 'pre', overflowWrap: 'break-word' });
+    const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : el.value.length;
+    m.textContent = el.value.slice(0, end);
+    const mark = document.createElement('span');
+    mark.textContent = '​';
+    m.appendChild(mark);
+    shadow.appendChild(m);
+    const k = mark.getBoundingClientRect();
+    m.remove();
+    if (!k.height) return null;
+    return {
+      x: Math.min(r.right - 4, Math.max(r.left + 2, k.left - el.scrollLeft)),
+      y: Math.min(r.bottom - 4, Math.max(r.top + 4, k.top - el.scrollTop + k.height / 2))
+    };
+  }
+
+  // The words of the last segment, each with the rectangle it occupies in
+  // the preview. More than MAX_CHIPS words are grouped into that many
+  // chips, so a long sentence still flies as a handful.
+  function wordSpots() {
+    const seg = doneSpan && doneSpan.lastElementChild;
+    const node = seg && seg.firstChild;
+    if (!node || node.nodeType !== 3) return [];
+    const words = [...node.nodeValue.matchAll(/\S+/g)];
+    const spots = words.map(m => {
+      const range = document.createRange();
+      range.setStart(node, m.index);
+      range.setEnd(node, m.index + m[0].length);
+      return { text: m[0], rect: range.getClientRects()[0] };
+    }).filter(s => s.rect && s.rect.width);
+    if (spots.length <= MAX_CHIPS) return spots;
+    const per = Math.ceil(spots.length / MAX_CHIPS), out = [];
+    for (let i = 0; i < spots.length; i += per) {
+      const group = spots.slice(i, i + per);
+      out.push({ text: group.map(g => g.text).join(' '), rect: group[0].rect });
+    }
+    return out;
+  }
+
   function flyToBox(text, box) {
     if (calm() || !shadow || !preview || !box?.isConnected) return;
-    // One at a time: quick sentences would otherwise stack up fliers.
-    if (shadow.querySelector('.fly')) return;
-    const from = (doneSpan.lastChild || preview).getBoundingClientRect();
+    if (shadow.querySelector('.fly')) return;          // one flight at a time
     const to = box.getBoundingClientRect();
-    if (!from.width || !to.width) return;
-    // A box out of sight has nowhere visible to land.
+    if (!to.width) return;
     if (to.bottom < 0 || to.top > innerHeight || to.right < 0 || to.left > innerWidth) return;
+    const spots = wordSpots();
+    if (!spots.length) return;
+    const end = caretPoint(box);
+
     const fly = document.createElement('div');
     fly.className = 'fly';
-    fly.textContent = text;
-    fly.style.left = `${from.left}px`;
-    fly.style.top = `${from.top}px`;
     shadow.appendChild(fly);
-    const dx = Math.round(to.left + Math.min(24, to.width / 4) - from.left);
-    const dy = Math.round(to.top + Math.min(to.height / 2, 28) - from.top);
-    const gone = () => fly.remove();
-    if (!fly.animate) { gone(); return; }
-    const anim = fly.animate([
-      { transform: 'translate(0,0) scale(1)', opacity: 0, filter: 'blur(0)' },
-      { opacity: 1, offset: .15 },
-      { transform: `translate(${dx * .55}px, ${dy * .55 - 30}px) scale(.85)`, opacity: .9, offset: .6 },
-      { transform: `translate(${dx}px, ${dy}px) scale(.5)`, opacity: 0, filter: 'blur(3px)' },
-    ], { duration: 640, easing: 'cubic-bezier(.45,0,.2,1)' });
-    anim.onfinish = gone;
-    anim.oncancel = gone;
-    setTimeout(gone, 900);
+    const step = Math.min(40, 200 / spots.length);
+    const anims = [];
+
+    spots.forEach((spot, i) => {
+      const sx = spot.rect.left, sy = spot.rect.top;
+      // Land so the chip's left edge meets the caret, vertically centred.
+      const ex = end.x - spot.rect.width * .25, ey = end.y - spot.rect.height / 2;
+      const dx = ex - sx, dy = ey - sy;
+      // The arc: a quadratic curve whose control point rises above the
+      // straight line, more for a longer trip, a little more for later
+      // words, so the chips fan out instead of following one rail.
+      const dist = Math.hypot(dx, dy);
+      const lift = Math.min(140, 40 + dist * .28) + i * 4;
+      // Never above the window: the highest point of a quadratic is about
+      // half way to its control point, so the control point may rise at
+      // most twice the room there is (less a margin).
+      const room = Math.min(sy, ey) - 10;
+      const cx = dx * .5 - Math.sign(dx || 1) * 16;
+      const cy = Math.max(Math.min(0, dy) - lift, -2 * room + Math.min(0, dy));
+      const frames = [];
+      for (let k = 0; k <= 10; k++) {
+        const t = k / 10, u = 1 - t;
+        const x = 2 * u * t * cx + t * t * dx, y = 2 * u * t * cy + t * t * dy;
+        const scale = t < .25 ? 1 + t * .32 : 1.08 - (t - .25) * .7;     // lift a touch, then shrink to .55
+        frames.push({ transform: `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${scale.toFixed(3)})`,
+          opacity: t < .78 ? 1 : 1 - (t - .78) / .22, offset: t });
+      }
+      const make = (cls, delay, alpha) => {
+        const el = document.createElement(cls === 'fly-w' ? 'span' : 'i');
+        el.className = cls;
+        if (cls === 'fly-w') el.textContent = spot.text; else el.dataset.t = spot.text;
+        el.style.left = `${sx}px`;
+        el.style.top = `${sy}px`;
+        el.style.font = getComputedStyle(seg0()).font;
+        if (alpha != null) el.style.setProperty('--a', alpha);
+        fly.appendChild(el);
+        if (el.animate) anims.push(el.animate(frames, { duration: FLY_MS, delay, easing: 'cubic-bezier(.5, 0, .25, 1)', fill: 'both' }));
+        return el;
+      };
+      make('fly-t', i * step + 60, .16);
+      make('fly-t', i * step + 30, .34);
+      make('fly-w', i * step);
+      if (i < spots.length - 1) fly.appendChild(document.createTextNode(' '));
+    });
+
+    // The spark, as the last word arrives.
+    const landAt = (spots.length - 1) * step + FLY_MS * .92;
+    const spark = document.createElement('div');
+    spark.className = 'fly-spark';
+    spark.style.left = `${end.x}px`;
+    spark.style.top = `${end.y}px`;
+    for (let k = 0; k < 6; k++) {
+      const dot = document.createElement('i');
+      dot.style.setProperty('--r', `${k * 60}deg`);
+      spark.appendChild(dot);
+    }
+    const sparkTimer = setTimeout(() => { if (fly.isConnected) shadow.appendChild(spark); }, landAt);
+
+    const total = landAt + 300;
+    const gone = () => { clearTimeout(sparkTimer); for (const a of anims) a.cancel(); fly.remove(); spark.remove(); };
+    setTimeout(gone, total);
   }
+  const seg0 = () => doneSpan.lastElementChild || doneSpan;
 
   const DOTS = '<span class="dots"><i></i><i></i><i></i></span>';
 
@@ -1767,15 +1896,39 @@
       border-radius: 1px;
       animation: caret 1.1s steps(1) infinite;
     }
-    .fly {
-      position: fixed; z-index: 2; pointer-events: none;
-      max-width: 22em; white-space: nowrap; overflow: hidden; text-overflow: clip;
-      padding: .1em .5em; border-radius: .6em;
-      font: 500 calc(var(--unit) * 1.02) / 1.5 inherit;
-      color: #fff; background: linear-gradient(120deg, #7c6cf0, #4aa8ff);
-      box-shadow: 0 .3em 1em rgba(124, 108, 240, .45);
-      will-change: transform, opacity;
+    /* The flight (flyToBox). A full-window layer; each chip is placed on
+       its word in the preview and moved by transform only. */
+    .fly { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: visible; }
+    .fly-w, .fly-t {
+      position: fixed; margin: 0; white-space: nowrap; pointer-events: none;
+      transform-origin: 0 50%; will-change: transform, opacity;
+      color: var(--live-ink);
+      text-shadow: 0 0 .5em rgba(124, 108, 240, .9), 0 0 1.4em rgba(74, 168, 255, .55);
     }
+    .fly-w {
+      padding: 0 .12em; margin-left: -.12em; border-radius: .35em;
+      background: linear-gradient(120deg, rgba(124, 108, 240, .38), rgba(74, 168, 255, .26));
+      box-shadow: 0 0 0 1px rgba(150, 136, 255, .35), 0 .25em .9em rgba(124, 108, 240, .35);
+    }
+    /* Trail ghosts: the same word, fainter and softer, a beat behind. Their
+       text is drawn by CSS so the flight's text is the sentence once. */
+    .fly-t { opacity: var(--a); filter: blur(1.5px); font-style: normal; }
+    .fly-t::before { content: attr(data-t); }
+    /* The landing spark: a ring and six sparks from the caret. */
+    .fly-spark { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 3; }
+    .fly-spark::before {
+      content: ''; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(150, 136, 255, .9);
+      box-shadow: 0 0 12px rgba(124, 108, 240, .7);
+      animation: spark-ring .3s ease-out forwards;
+    }
+    .fly-spark i {
+      position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%;
+      background: #b9b0ff; box-shadow: 0 0 6px #7c6cf0;
+      transform: rotate(var(--r)) translateX(0); animation: spark-dot .3s ease-out forwards;
+    }
+    @keyframes spark-ring { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
+    @keyframes spark-dot { from { transform: rotate(var(--r)) translateX(2px); opacity: 1; } to { transform: rotate(var(--r)) translateX(16px); opacity: 0; } }
     @keyframes caret { 0%,50% { opacity: 1 } 50.01%,100% { opacity: 0 } }
 
     /* Label chips that explain each button. */

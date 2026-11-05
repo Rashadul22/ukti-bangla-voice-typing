@@ -1379,3 +1379,10 @@ guarded that item. New mimic `tests/pages/limit.html`: a box that cuts input
 past six characters, as counters on some sites do. The conversion lands and
 is cut short; the real code reports "this box refused the change", the
 mutant says "done". With the new test in `tests/editors.test.js`: 16 of 16.
+
+## 5 November: the flight into the box, rebuilt
+
+Words now fly one by one from their place in the preview, on arcs, with a
+comet trail, into the box's text cursor, with a spark on landing.
+`MOTION.md`, fourth pass. `tests/flight.test.js`, 5 tests, each watched
+failing first.

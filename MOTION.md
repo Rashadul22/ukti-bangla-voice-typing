@@ -227,3 +227,36 @@ check the contrast numbers above.
 | Tab switch in the popup | 0.4 s | 0.28 s |
 
 `tests/motion2.test.js`, 7 tests, all 7 failed before the change.
+
+## Fourth pass, 5 November: the flight into the box
+
+Asked for: the sentence flying from the preview into the chat box, more
+beautiful and modern.
+
+**What it borrows.** The shared-element idea: the thing the eye was reading
+is the thing that moves, from its real place (FLIP: measure first and last,
+animate the difference with transform). Android's guidance for shared text
+is to keep it from reflowing in flight and to give it an arc by keyframes
+([Android, shared elements](https://developer.android.com/develop/ui/compose/animation/shared-elements/customize),
+[FLIP](https://creativebloq.com/features/create-animations-with-the-flip-technique));
+and stagger, so a group moves as one gesture.
+
+**What it does now.**
+- Each word lifts off from exactly where it sits in the preview (tested:
+  within 8 px), as its own chip, up to 12 chips (a longer sentence is
+  grouped).
+- Each flies its own arc, a quadratic curve sampled into keyframes, rising
+  more for a longer trip and fanning out slightly per word; staggered, at
+  most 200 ms from first word to last.
+- A two-ghost comet trail behind each word, softer and fainter.
+- They land at the box's text cursor (for a textarea, measured with a hidden
+  mirror of the box), where a ring and six sparks mark the spot. Tested: the
+  spark within 14 px of the caret in a contenteditable, on the right line
+  in a textarea.
+- The arc never leaves the window; with the box at the very top, a chip
+  used to go 17 px above it.
+- 520 ms a word, all gone in about a second, transform and opacity only,
+  one flight at a time, nothing under reduced motion.
+
+`tests/flight.test.js`, 5 tests; the first four failed on the old flier,
+the fifth with only the arc cap removed. Frames: `docs/motion/flight-frames.png`.
