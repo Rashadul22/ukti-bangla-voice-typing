@@ -1,0 +1,54 @@
+# Publishes a GitHub Release when a version tag is pushed (git tag v1.2.0 &&
+# git push origin v1.2.0). The zip is built by scripts/package.js, which
+# refuses to build unless the version is in step, every referenced file
+# exists and the whole test suite passes, and then proves the built zip loads.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The tag matches the manifest version
+        run: |
+          v=$(node -p "require('./manifest.json').version")
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME but manifest says $v"; exit 1; }
+
+      - name: Install the test browser
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Test and build the zip
+        run: node scripts/package.js
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          awk -v v="## $v" '$0==v{on=1;next} /^## /{if(on)exit} on' CHANGELOG.md > notes.md
+          cat >> notes.md <<'NOTES'
+
+          ## Install
+
+          Download `ukti-*.zip` below, unzip it, then in Chrome open
+          `chrome://extensions`, turn on Developer mode, press Load unpacked
+          and choose the folder. Step by step: https://uktibangla.app/en/install/
+          NOTES
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/ukti-*.zip --title "Ukti ${GITHUB_REF_NAME#v}" --notes-file notes.md
