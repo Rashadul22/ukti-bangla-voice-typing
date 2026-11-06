@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><title>box focused before the content script loads</title>
+<!-- Chat sites focus their composer while the page settles, which is before
+     a document_idle content script exists, so no focusin ever reaches it. -->
+<textarea id="ed" autofocus rows="3" cols="60"></textarea>
+<script>
+  const el = document.getElementById('ed');
+  el.focus();
+  window.mimic = { el, kind: 'textarea', model: () => el.value,
+    setText(s) { el.value = s; el.focus(); el.setSelectionRange(s.length, s.length); } };
+</script>

@@ -14,6 +14,24 @@ const UKTI_EN = {
   'বাংলিশ → বাংলা': 'Banglish to Bangla',
   'লেখাটা ইংরেজি': 'Make the text English',
   'ফেরত নিন': 'Undo',
+  'শর্টকাট বদলান': 'Change shortcuts',
+  'সব শব্দ, ফাইলে রাখা বা আনা': 'All words, save to or load from a file',
+  'উক্তির শব্দ': "Ukti's words",
+  'আপনার নিজের লেখা আর উক্তির মনে রাখা সব শব্দ, এখানেই।': 'Every word fix, the ones you wrote and the ones Ukti remembered, in one place.',
+  'বদলালে নিজে থেকেই জমা হয়। মুছতে চাইলে লাইনটা মুছে দিন। সব আপনার কম্পিউটারেই থাকে, কোথাও পাঠানো হয় না।':
+    'Changes are saved as you type. Delete a line to delete it. Everything stays on your computer and is sent nowhere.',
+  'ফাইলে রাখুন': 'Save to a file',
+  'ফাইল থেকে আনুন': 'Load from a file',
+  'শব্দের তালিকা': 'The list of words',
+  'কখন দেখাবে': 'When it shows',
+  'স্মার্ট': 'Smart',
+  'সব বক্সে': 'Every box',
+  'বাছাই সাইটে': 'Chosen sites',
+  'স্মার্ট: লেখার বক্সে আসে, সার্চ বক্সে আসে না যদি না বাংলিশ লেখেন, আর বক্স ছেড়ে গেলে লুকিয়ে যায়। বাছাই সাইটে: শুধু যেসব সাইটে ওপরের "এই সাইট" সুইচ চালু করবেন।':
+    'Smart: appears in writing boxes, not in search boxes unless you type Banglish, '
+    + 'and hides when you leave the box. Chosen sites: only on the sites where you '
+    + 'turn on the "This site" switch above.',
+  'সেট করা নাই': 'Not set',
   'বাংলা': 'Bangla',
 
   // ---- popup, header and site switch
@@ -100,6 +118,10 @@ const UKTI_EN = {
     '"Automatic" means it comes and sits beside the box you are writing in. '
     + 'You can also drag it by the microphone button, and bring it back from here.',
 
+  'কথা লেখায় বদলাতে Chrome আপনার কণ্ঠ Google এর সার্ভারে পাঠায়। উক্তি নিজে কোনো কথা জমা রাখে না, কোথাও পাঠায়ও না।':
+    "To turn speech into text, Chrome sends your voice to Google's servers. "
+    + 'Ukti itself saves none of what you say and sends nothing anywhere.',
+
   // ---- setup page, status messages
   'অনুমতি দেওয়া আছে।': 'Permission granted.',
   'অনুমতি চাওয়া হচ্ছে…': 'Asking for permission…',
@@ -118,9 +140,55 @@ const UKTI_EN = {
   'ডাউনলোড শুরু করতে বাটনে সরাসরি চাপ দিতে হবে। আবার চেষ্টা করুন।':
     'The download has to start from a direct press on the button. Try again.',
 
+  'নিজে থেকে: যে বক্সে লিখছেন তার পাশে বসে। মাইক টেনেও সরানো যায়।':
+    'On its own: it sits beside the box you are writing in. You can also drag the mic.',
+  'স্মার্ট: লেখার বক্সে আসে, বক্স ছাড়লে লুকায়। বাছাই সাইটে: যেখানে "এই সাইট" চালু করবেন।':
+    'Smart: appears in writing boxes and hides when you leave. Chosen sites: only where "This site" is on.',
+
   // ---- credit
   'বানিয়েছেন': 'Built by',
-  'মোঃ রাশাদুল ইসলাম': 'Md Rashadul Islam',
+  'মোঃ রাশেদুল ইসলাম': 'Md Rashadul Islam',
+  '· CSE, DIU': '· CSE, DIU',
+  'বন্ধুকে জানান': 'Tell a friend',
+  'মুখে বলা কমান্ড': 'Spoken commands',
+  'প্রশ্নবোধক, নতুন লাইন, দাঁড়ি চিহ্ন। শুধু "দাঁড়ি", "কমা" বা "মুছে দাও" একা বললে।':
+    'Say "proshnobodhok" (?), "notun line" or "dari chinho" (।) at the end. A bare "dari", "koma" or "muchhe dao" (undo) only when said alone.',
+  'ইংরেজি শব্দ ইংরেজি হরফে': 'English words in English letters',
+  'শুরু আর থামার শব্দ': 'A sound on start and stop',
+  'লেখার ধরন': 'Writing',
+  'সংখ্যা': 'Numbers',
+  'যেমন বলা': 'As spoken',
+  'উচ্চারণ': 'Accent',
+  'বাংলাদেশ': 'Bangladesh',
+  'পশ্চিমবঙ্গ': 'West Bengal',
+  'স্নিপেট: একটা কথা বললে পুরো লেখা': 'Snippets: say a phrase, get a whole text',
+  'স্নিপেট: যা বলবেন = যা বসবে': 'Snippets: what you say = what goes in',
+  'স্নিপেটের তালিকা': 'The list of snippets',
+  'আমার ঠিকানা = বাড়ি ১২, রোড ৩, ঢাকা': 'my address = House 12, Road 3, Dhaka',
+  'শুধু বাম পাশের কথাটা একা বললে ডান পাশের লেখাটা বসবে। বাক্যের ভেতরে বললে কিছু হবে না।':
+    'Say the left side on its own and the right side goes in. Said inside a sentence, nothing happens.',
+  'কপি হয়েছে, এখন পেস্ট করুন': 'Copied, now paste it',
+  'কপি করা গেল না': 'Could not copy',
+  'উক্তি ভালো লাগছে?': 'Enjoying Ukti?',
+  'স্টোরে একটা রেটিং দিলে আরো মানুষ উক্তি খুঁজে পাবে।': 'A rating on the store helps more people find it.',
+  'রেটিং দিন': 'Rate it',
+  'এখন না': 'Not now',
+  'বলে দেখুন': 'Try it',
+  'বোতামে চেপে বাংলায় কিছু বলুন, লেখাটা এখানেই উঠবে।': 'Press the button and say something in Bangla; it appears right here.',
+  'যেমন: আমি আজকে খুব খুশি': 'For example, say: ami ajke khub khushi',
+  'বলা শুরু করুন': 'Start speaking',
+  'থামান': 'Stop',
+  'শুনছি…': 'Listening…',
+  'আগে ১ নম্বর ধাপে মাইক্রোফোন চালু করুন।': 'Turn on the microphone in step 1 first.',
+  'শুরু করা গেল না।': 'Could not start.',
+  '৩': '3',
+  'নির্মাতা': 'The maker',
+  'কম্পিউটার সায়েন্স (CSE) শিক্ষার্থী, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি':
+    'Computer Science (CSE) student, Daffodil International University',
+  'যারা বাংলা টাইপ করতে পারেন না, তারাও যেন নিজের ভাষায় সহজে লিখতে পারেন, সেজন্যই উক্তি। একদম ফ্রি, আর আপনার কথা কোথাও জমা থাকে না।':
+    'Ukti is for everyone who cannot type Bangla, so they can still write in their own language with ease. Completely free, and nothing you say is kept anywhere.',
+  'LinkedIn এ যোগাযোগ': 'Contact on LinkedIn',
+  'রাসেদুল = রাশেদুল': 'রাসেদুল = রাশেদুল',
 
   // ---- setup, step numbers shown in the badges
   '১': '1',
@@ -163,7 +231,10 @@ function applyLang(root, lang) {
 
     if (node.__bn == null) node.__bn = node.nodeValue;
     const original = node.__bn;
-    const next = lang === 'en' ? tr(original, 'en') : original;
+    // The lookup ignores surrounding whitespace, but the page needs it: a
+    // phrase followed by a link lost its space ("Built byMd Rashadul Islam").
+    const lead = original.match(/^\s*/)[0], trail = original.match(/\s*$/)[0];
+    const next = lang === 'en' ? lead + tr(original.trim(), 'en') + trail : original;
     if (node.nodeValue !== next) node.nodeValue = next;
   }
 
@@ -176,10 +247,48 @@ function applyLang(root, lang) {
     }
   }
 
+  // The tab title is what a screen reader announces for the page, and it
+  // stayed Bengali in English mode.
+  if (document.__bnTitle == null) document.__bnTitle = document.title;
+  document.title = lang === 'en' ? tr(document.__bnTitle, 'en') : document.__bnTitle;
+
   document.documentElement.lang = lang === 'en' ? 'en' : 'bn';
 }
 
 let uktiLang = 'bn';
+
+// The Chrome Web Store page, once Ukti is published. Until then it stays
+// empty: the share message says to search the store instead, and the
+// rating request in the popup never appears (there is nowhere to send
+// people). Fill this in, and nothing else needs to change.
+self.UKTI_STORE_URL = self.UKTI_STORE_URL || '';
+
+// "Tell a friend": a short message for the clipboard, in the page's
+// language. Nothing is sent anywhere; the user pastes it where they like.
+function uktiShareText() {
+  const where = self.UKTI_STORE_URL ||
+    (uktiLang === 'en' ? 'Search "Ukti" on the Chrome Web Store.' : 'Chrome Web Store-এ "Ukti" লিখে খুঁজুন।');
+  return (uktiLang === 'en'
+    ? 'With Ukti you just speak Bangla and it is written into any box on any site, no Bangla typing needed. Free, and nothing you say is kept. '
+    : 'উক্তি দিয়ে বাংলায় বললেই যেকোনো সাইটের বক্সে বাংলা লেখা হয়ে যায়, বাংলা টাইপ জানা লাগে না। একদম ফ্রি, আর কথা কোথাও জমা থাকে না। ') + where;
+}
+
+function wireShare(button) {
+  if (!button) return;
+  const label = 'বন্ধুকে জানান', done = 'কপি হয়েছে, এখন পেস্ট করুন';
+  let timer = null;
+  button.addEventListener('click', async event => {
+    event.preventDefault();
+    try {
+      await navigator.clipboard.writeText(uktiShareText());
+      button.textContent = tr(done, uktiLang);
+    } catch (_) {
+      button.textContent = tr('কপি করা গেল না', uktiLang);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => { button.textContent = tr(label, uktiLang); }, 2500);
+  });
+}
 
 chrome.storage.local.get({ uiLang: 'bn' }).then(({ uiLang }) => {
   uktiLang = uiLang === 'en' ? 'en' : 'bn';

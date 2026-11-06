@@ -7,6 +7,21 @@ const OFFSCREEN_PATH = 'offscreen.html';
 
 let creatingOffscreen = null;
 
+const ENDINGS = new Set(['STOPPED', 'FATAL', 'STUCK', 'TAKEN_OVER']);
+
+// Stops dictation if the offscreen document is running the session named.
+// The offscreen side ignores a stop for any other session or tab.
+async function stopSession(which) {
+  try {
+    if (!(await hasOffscreenDocument())) return;
+    await chrome.runtime.sendMessage({ target: 'offscreen', type: 'STOP_DICTATION', ...which });
+  } catch (_) {}
+}
+
+// Closing the tab is the one ending a page cannot report itself. Needs no
+// permission: onRemoved gives the id, which is all that is compared.
+chrome.tabs.onRemoved.addListener(tabId => stopSession({ tabId }));
+
 async function hasOffscreenDocument() {
   const url = chrome.runtime.getURL(OFFSCREEN_PATH);
   const contexts = await chrome.runtime.getContexts({
@@ -58,7 +73,15 @@ async function getSettings() {
     barCorner: 'auto',         // auto: sit beside the box being typed in
     coachDone: false,          // first-run card has been seen
     replacements: [],          // [{from, to}]
-    setupDone: false
+    showMode: 'smart',         // when the control appears: 'smart' | 'always' | 'sites'
+    allowSites: [],            // in 'sites' mode, the only sites Ukti works on
+    setupDone: false,
+    voiceCommands: true,       // দাঁড়ি, প্রশ্নবোধক, নতুন লাইন, মুছে দাও (safe forms only)
+    snippets: [],              // [{say, text}]: say the trigger alone, get the text
+    mixedEnglish: false,       // অফিসে -> "office এ", for people who write mixed
+    digits: 'asis',            // 'asis' | 'bn' | 'en'
+    recogLang: 'bn-BD',        // 'bn-BD' | 'bn-IN'
+    sounds: false              // a soft tone when listening starts and stops
   };
   const stored = await chrome.storage.local.get(defaults);
   return { ...defaults, ...stored };
@@ -107,13 +130,62 @@ chrome.storage.onChanged.addListener(changes => {
   if (changes.uiLang) paintActionTitle();
 });
 
+// Keyboard shortcuts come through chrome.commands, so the user can see and
+// change them at chrome://extensions/shortcuts. They used to be caught by
+// the content script on every page, which took Ctrl+Shift+Z (redo in Docs
+// and Figma) and Chrome's own Ctrl+Shift+B from everyone. The command goes to
+// every frame of the tab; only the frame holding focus in a box Ukti handles
+// acts on it (content.js, runCommand).
+async function handleCommand(command, tab) {
+  let id = tab?.id;
+  if (id == null) {
+    const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    id = active?.id;
+  }
+  if (id == null) return;
+  chrome.tabs.sendMessage(id, { source: 'ukti-command', command }).catch(() => {
+    // chrome:// pages, the store, a page opened before install: no script.
+  });
+}
+chrome.commands.onCommand.addListener(handleCommand);
+
+// The shortcuts as currently bound, for the labels on the floating control.
+async function currentShortcuts() {
+  const all = await chrome.commands.getAll();
+  return Object.fromEntries(all.map(c => [c.name, c.shortcut || '']));
+}
+
+// Content scripts are less trustworthy than the rest of the extension: a
+// page that takes over its renderer can send any message a content script
+// can. So privileged messages check where they come from, and requests from
+// pages are bounded in size.
+const OFFSCREEN_URL = chrome.runtime.getURL('offscreen.html');
+const fromOffscreen = sender => !!sender && !sender.tab && sender.url === OFFSCREEN_URL;
+const MAX_REPAIR = 20000;
+const MAX_TRANSLATE = 50000;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ---- from content script ----
 
-  if (message.type === 'START_DICTATION') {
+  if (message.type === 'GET_SHORTCUTS') {
+    currentShortcuts().then(sendResponse, () => sendResponse({}));
+    return true;
+  }
+
+  if (message.type === 'START_DICTATION' && message.target !== 'offscreen') {
     (async () => {
       try {
         if (!sender.tab?.id) throw new Error('No originating tab');
+        // The user starts dictation in the tab they are looking at. A tab
+        // in the background asking for the microphone is not the user,
+        // whatever its page says. (Ukti has no "tabs" permission; whether a
+        // tab is active is readable without it.)
+        const tab = await chrome.tabs.get(sender.tab.id).catch(() => null);
+        if (!tab || !tab.active) throw new Error('Not the active tab');
+        // How many times dictation was started: a number, nothing else.
+        // The popup asks for a store rating once, after real use.
+        chrome.storage.local.get({ uses: 0 }).then(({ uses }) =>
+          chrome.storage.local.set({ uses: (Number(uses) || 0) + 1 })).catch(() => {});
 
         const settings = await getSettings();
         await ensureOffscreenDocument();
@@ -124,6 +196,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           tabId: sender.tab.id,
           frameId: sender.frameId,
           sessionId: message.sessionId,
+          epoch: message.epoch,
           settings
         });
 
@@ -141,7 +214,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (await hasOffscreenDocument()) {
           await chrome.runtime.sendMessage({
             target: 'offscreen',
-            type: 'STOP_DICTATION'
+            type: 'STOP_DICTATION',
+            sessionId: message.sessionId,
+            epoch: message.epoch
           });
         }
         sendResponse({ ok: true });
@@ -154,7 +229,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Content script asks for one-off translation (used by the Banglish hotkey
   // when the output mode is English).
+  if (message.type === 'REPAIR_WORDS') {
+    if (typeof message.text !== 'string' || message.text.length > MAX_REPAIR) {
+      sendResponse({ ok: false, error: 'TOO_LONG' });
+      return false;
+    }
+    (async () => {
+      try {
+        await ensureOffscreenDocument();
+        const result = await chrome.runtime.sendMessage({ target: 'offscreen', type: 'REPAIR_WORDS', text: message.text });
+        sendResponse(result || { ok: false });
+      } catch (error) {
+        sendResponse({ ok: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
   if (message.type === 'TRANSLATE') {
+    if (typeof message.text !== 'string' || message.text.length > MAX_TRANSLATE) {
+      sendResponse({ ok: false, error: 'TOO_LONG' });
+      return false;
+    }
     (async () => {
       try {
         await ensureOffscreenDocument();
@@ -177,6 +273,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // unrecoverable. Closing it means the next start gets a fresh context,
   // which clears what a plain restart cannot.
   if (message.type === 'RESET_ENGINE') {
+    if (!fromOffscreen(sender)) return false;
     (async () => {
       try {
         if (await hasOffscreenDocument()) {
@@ -202,13 +299,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ---- from offscreen document, forward to the originating tab ----
 
   if (message.source === 'ukti-offscreen') {
+    // Only the offscreen document may speak for the recogniser. Without
+    // this, any tab context could put words into another tab's box.
+    if (!fromOffscreen(sender)) return false;
     if (!message.tabId) return false;
 
     const payload = {
       source: 'ukti-background',
       type: message.type,
       sessionId: message.sessionId,
+      epoch: message.epoch,
       text: message.text,
+      punct: message.punct,
+      action: message.action,
       error: message.error,
       detail: message.detail
     };
@@ -217,7 +320,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof message.frameId === 'number') options.frameId = message.frameId;
 
     chrome.tabs.sendMessage(message.tabId, payload, options).catch(() => {
-      // Tab closed or content script gone. Nothing to do.
+      // Nobody is there any more: the tab navigated, the frame was removed,
+      // or the content script was orphaned by an update. The microphone must
+      // not keep running for it. The end-of-session messages are left alone,
+      // or stopping a dead session would answer itself forever.
+      if (ENDINGS.has(message.type)) return;
+      stopSession({ sessionId: message.sessionId });
     });
     return false;
   }

@@ -53,6 +53,13 @@ the code before changing the surrounding lines.
 6. **No `host_permissions`.** The popup asks the content script for the hostname
    rather than reading `tab.url`. This is what keeps "read your data on all
    websites" out of the install dialog. Do not reintroduce it.
+   **Correction, measured 2026-11-03:** it does not keep the warning out.
+   Chrome's own `getPermissionWarningsByManifest` returns "Read and change all
+   your data on all websites" for the manifest as shipped, because the
+   content script's `matches` count as host access. With the content script
+   removed the list is empty. The rule still stands, since reading `tab.url`
+   would need the `tabs` permission on top. `tests/privacy.test.js` pins the
+   current warning list.
 
 7. **No resident `backdrop-filter`.** Blurred layers forced a recomposite on
    every page movement and made Gemini hang on paste. Blur is applied only to
@@ -100,6 +107,14 @@ it and watch the test go from failing to passing.** Reasoning from documentation
 produced several fixes that passed in isolation and failed in sequence.
 
 Do not report a fix you have not watched fail first.
+
+The suite lives in `tests/`. `npm test` runs the browser tests against the
+mimic editors plus the Banglish corpus floors. `npm run corpus` prints the
+corpus scores (`-- --failures` lists the dev misses). `npm run test:mutants`
+puts known bugs back one at a time and checks the suite notices each. Tune
+the Banglish engine against `tests/corpus/words.tsv` and `sentences.tsv`
+only; the `heldout-*` files and the English list after `HELD-OUT` are for
+reporting, and adding their words to the dictionary makes the number a lie.
 
 ## Rules
 

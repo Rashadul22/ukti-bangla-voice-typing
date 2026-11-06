@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>editor that lets a synthetic paste land then reverts it</title>
+<script src="mimic.js"></script>
+<!-- Quill / Gemini archetype. The model follows the DOM through a
+     MutationObserver, so execCommand edits are kept. A real paste is
+     handled properly. A synthetic paste is allowed to land in the DOM and
+     is then rewritten from the model a task later, so a check made at the
+     moment of the write reports a success that is already doomed. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  const render = caret => {
+    el.textContent = model;
+    observer.takeRecords();
+    if (caret != null) placeCaret(el, caret);
+  };
+  const observer = new MutationObserver(() => { model = el.innerText.replace(/\n+$/, ''); });
+  observer.observe(el, { childList: true, characterData: true, subtree: true });
+
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    const [s, en] = liveOffsets(el, model.length);
+    if (e.isTrusted) {
+      model = model.slice(0, s) + text + model.slice(en);
+      render(s + text.length);
+      return;
+    }
+    // Lands in the DOM without the model hearing about it...
+    const r = getSelection().getRangeAt(0);
+    r.deleteContents();
+    r.insertNode(document.createTextNode(text));
+    observer.takeRecords();
+    // ...and is rewritten from the model a tick later.
+    setTimeout(() => render(model.length), 0);
+  });
+
+  window.mimic = {
+    el, kind: 'quill',
+    model: () => model,
+    setText(s) { el.textContent = s; observer.takeRecords(); model = s; el.focus(); placeCaret(el, s.length); }
+  };
+</script>

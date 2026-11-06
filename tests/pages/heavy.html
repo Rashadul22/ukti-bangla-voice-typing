@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>heavy page</title>
+<!-- A synthetic stand-in for a heavy real page: a cloud session cannot fetch
+     one. About 20,000 elements, deep nesting, a chat composer at the end. -->
+<div id="feed"></div>
+<textarea id="ed" rows="3" cols="60"></textarea>
+<script>
+  const feed = document.getElementById('feed');
+  for (let i = 0; i < 1000; i++) {
+    const post = document.createElement('article');
+    post.innerHTML = '<header><img alt=""><b>user ' + i + '</b><time>now</time></header>' +
+      '<div><p>' + 'lorem ipsum dolor sit amet '.repeat(8) + '</p><ul><li>a</li><li>b</li><li>c</li></ul></div>' +
+      '<footer><button>like</button><button>reply</button><span>12</span><span>3</span></footer>';
+    feed.append(post);
+  }
+  const el = document.getElementById('ed');
+  window.mimic = { el, kind: 'textarea', model: () => el.value, setText(s) { el.value = s; el.focus(); } };
+</script>

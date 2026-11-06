@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><title>sensitive fields</title>
+<input id="password" type="password">
+<input id="otp" type="text" autocomplete="one-time-code" name="otp">
+<input id="pin" type="text" name="pin">
+<input id="cvv" type="text" name="cvv">
+<input id="card" type="text" autocomplete="cc-number" name="cardnumber">
+<input id="cc" type="tel" name="creditcard">
+<input id="number" type="number">
+<input id="ok" type="text" name="message">
+<script>window.mimic = { el: document.getElementById('ok'), kind: 'textarea', model: () => document.getElementById('ok').value };</script>

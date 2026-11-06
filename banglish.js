@@ -9,6 +9,13 @@
 (function () {
   'use strict';
 
+  // Everything below is built on first use, not on load. This file runs in
+  // every frame of every page, including ad iframes that never hold a text
+  // box, and building the dictionary there cost each of them heap for
+  // nothing. The body keeps its original indentation so its history stays
+  // readable; it is the inside of build().
+  function build() {
+
   const HASANTA = '্';
 
   // Banglish writers mix English in constantly ("amar computer e", "ekta
@@ -58,6 +65,10 @@
     complete correct wrong true false enough almost together another both
     pdf doc docx excel word powerpoint png jpg mp3 mp4 url api ml html css
     javascript python java php sql json
+    love miss help delete money online status train bus bike hotel burger
+    gift song game football match player sad tired late sure brother sister
+    uncle bro dude plan point issue system font paste print submit messenger
+    imo chat call cash cake car cut copy restaurant birthday honey
   `.trim().split(/\s+/));
 
   // A word list alone is far too small to recognise English prose, so
@@ -69,7 +80,15 @@
     /(?:tion|sion|ment|ness|able|ible|ology|ically|ance|ence|ious|eous)$/,
     /ck|ght|ph(?![aeiou])|wh|qu/,     // quick, night, graph, when
     /ea|oa|ie/,                       // read, boat, field
-    /([bcdfgmprtz])\1/                // coffee, matter, bubble
+    // A doubled consonant. c is left out because Banglish writes cch for
+    // চ্ছ (icche, jacchi); the bare-c rule below catches coffee anyway.
+    /([bdfgmprtz])\1/,                // matter, bubble
+    // Banglish uses c almost only inside ch and cch. A c before anything
+    // else is English: car, cake, copy, cancel, picture.
+    /c(?![ch])/,
+    // A consonant then a final y: family, reply, party, copy. Banglish ends
+    // a word in y only after a vowel (kothay, hoy, chay).
+    /[^aeiouy]y$/
   ];
 
   // Shapes that only hint. Two of them, or one plus a long word, is enough.
@@ -213,12 +232,51 @@
     sunte: 'শুনতে', sunte2: 'শুনতে', suni: 'শুনি',
     porlam: 'পড়লাম', porchi: 'পড়ছি', porbo: 'পড়বো', pori: 'পড়ি',
     dekhbo: 'দেখবো', jabo: 'যাবো', pabo: 'পাবো', dibo: 'দিবো',
-    nibo: 'নিবো', khabo: 'খাবো', hobo: 'হবো', debo: 'দেবো'
+    nibo: 'নিবো', khabo: 'খাবো', hobo: 'হবো', debo: 'দেবো',
+
+    tin: 'তিন',
+
+    // The letters Latin cannot tell apart: ট/ত, ড/দ, ড়/র, ী/ি, ূ/ু, ষ/শ/স,
+    // the silent final vowel, and a first-syllable ো that the inherent
+    // vowel rule writes as nothing.
+    tomra: 'তোমরা', oder: 'ওদের', koto: 'কত', kon: 'কোন', konta: 'কোনটা',
+    kono: 'কোনো', eta: 'এটা', ota: 'ওটা', oke: 'ওকে', mota: 'মোটা',
+    nil: 'নীল', dal: 'ডাল', mach: 'মাছ', mangsho: 'মাংস', dim: 'ডিম',
+    poisa: 'পয়সা', dokan: 'দোকান', nodi: 'নদী', pahar: 'পাহাড়',
+    brishti: 'বৃষ্টি', rod: 'রোদ', batash: 'বাতাস', gach: 'গাছ',
+    biral: 'বিড়াল', sondha: 'সন্ধ্যা', porshu: 'পরশু', proshno: 'প্রশ্ন',
+    uttor: 'উত্তর', golpo: 'গল্প', chobi: 'ছবি', porikkha: 'পরীক্ষা',
+    chakri: 'চাকরি', shorir: 'শরীর', chokh: 'চোখ', pet: 'পেট',
+    bhalobasha: 'ভালোবাসা', bhalobashi: 'ভালোবাসি', valobashi: 'ভালোবাসি',
+    bhalobasi: 'ভালোবাসি', valobasi: 'ভালোবাসি',
+    dukkho: 'দুঃখ', sopno: 'স্বপ্ন', shopno: 'স্বপ্ন', jibon: 'জীবন',
+    jete: 'যেতে', poro: 'পড়ো', chay: 'চায়', kandi: 'কাঁদি', chand: 'চাঁদ',
+    pach: 'পাঁচ', choy: 'ছয়', samne: 'সামনে', pichone: 'পিছনে',
+    kache: 'কাছে', ektu: 'একটু', hothat: 'হঠাৎ', bishoy: 'বিষয়',
+    onko: 'অংক', bhasha: 'ভাষা', bhasa: 'ভাষা', porashona: 'পড়াশোনা',
+    lekhapora: 'লেখাপড়া', chatro: 'ছাত্র', chatri: 'ছাত্রী',
+    biswas: 'বিশ্বাস', bishwas: 'বিশ্বাস', oshukh: 'অসুখ', osudh: 'ওষুধ',
+    oshudh: 'ওষুধ', daktar: 'ডাক্তার', bashay: 'বাসায়', ashol: 'আসল',
+    sasta: 'সস্তা', chere: 'ছেড়ে', shothik: 'সঠিক', kapor: 'কাপড়',
+    chosma: 'চশমা', ghori: 'ঘড়ি', dorja: 'দরজা', kisu: 'কিছু',
+    borsha: 'বর্ষা', eid: 'ঈদ', puja: 'পূজা', uphar: 'উপহার',
+    shubho: 'শুভ', shuvo: 'শুভ', khoma: 'ক্ষমা', dokkhin: 'দক্ষিণ',
+    purbo: 'পূর্ব', poschim: 'পশ্চিম', jaiga: 'জায়গা', jayga: 'জায়গা',
+    basa: 'বাসা', bari: 'বাড়ি', bangladesh: 'বাংলাদেশ', take: 'তাকে'
+  };
+
+  // Verb stems. Only the verb endings consult these: "ash" gives ashbo,
+  // ashlam, ashche and asho with স rather than শ. They are kept out of
+  // COMMON on purpose, because a bare stem as a word misleads the noun
+  // classifiers: with kha in COMMON, "khata" (খাতা) split as খা + টা.
+  const STEMS = {
+    ash: 'আস', esh: 'এস', bosh: 'বস', path: 'পাঠ', ja: 'যা', kha: 'খা',
+    bhalobash: 'ভালোবাস', valobash: 'ভালোবাস'
   };
 
   // Longest match wins, so three-character keys are tried first.
   const CONSONANTS = {
-    kkh: 'ক্ষ', ngg: 'ঙ্গ', chh: 'ছ', jny: 'জ্ঞ',
+    kkh: 'ক্ষ', ngg: 'ঙ্গ', chh: 'ছ', jny: 'জ্ঞ', cch: 'চ্ছ',
     kh: 'খ', gh: 'ঘ', Ng: 'ঙ', ch: 'চ', jh: 'ঝ', NG: 'ঞ',
     Th: 'ঠ', Dh: 'ঢ', th: 'থ', dh: 'ধ', ph: 'ফ', bh: 'ভ',
     sh: 'শ', Sh: 'ষ', Rh: 'ঢ়', zh: 'ঝ', ngo: 'ং',
@@ -268,6 +326,9 @@
   function lookup(word) {
     const lower = word.toLowerCase();
     if (hasKey(COMMON, lower)) return COMMON[lower];
+    // A known English word is not folded into a Bangla one: "money" would
+    // otherwise lose its y and become mone (মনে).
+    if (ENGLISH.has(lower)) return null;
     const folded = normalise(word);
     if (hasKey(COMMON, folded)) return COMMON[folded];
     return null;
@@ -281,13 +342,15 @@
   // word that merely happens to end this way: "chinta" is চিন্তা, not
   // চিন + টা, and "anguli" is আঙুলি, not আন + গুলি. Verb endings are
   // exempt, because a nasal stem there is ordinary (sunlam, janbo).
+  const CLASSIFIER = 1;
+  const KNOWN = 2;
   const SUFFIXES = [
-    ['gulokey', 'গুলোকে', 1], ['gulake', 'গুলাকে', 1], ['gulor', 'গুলোর', 1],
-    ['gulo', 'গুলো', 1], ['gula', 'গুলা', 1], ['guli', 'গুলি', 1],
-    ['takey', 'টাকে', 1], ['take', 'টাকে', 1], ['tare', 'টারে', 1],
-    ['tao', 'টাও', 1], ['tay', 'টায়', 1], ['tar', 'টার', 1],
-    ['khana', 'খানা', 1], ['khani', 'খানি', 1],
-    ['ta', 'টা', 1], ['ti', 'টি', 1],
+    ['gulokey', 'গুলোকে', CLASSIFIER], ['gulake', 'গুলাকে', CLASSIFIER], ['gulor', 'গুলোর', CLASSIFIER],
+    ['gulo', 'গুলো', CLASSIFIER], ['gula', 'গুলা', CLASSIFIER], ['guli', 'গুলি', CLASSIFIER],
+    ['takey', 'টাকে', CLASSIFIER], ['take', 'টাকে', CLASSIFIER], ['tare', 'টারে', CLASSIFIER],
+    ['tao', 'টাও', CLASSIFIER], ['tay', 'টায়', CLASSIFIER], ['tar', 'টার', CLASSIFIER],
+    ['khana', 'খানা', CLASSIFIER], ['khani', 'খানি', CLASSIFIER],
+    ['ta', 'টা', CLASSIFIER], ['ti', 'টি', CLASSIFIER],
 
     // Verb endings. Bangla keeps the inherent vowel between the stem and
     // these, so "dekh" + "lam" is দেখলাম and never দেখ্লাম. Without this
@@ -302,8 +365,50 @@
     ['ben', 'বেন'], ['bo', 'বো'], ['be', 'বে'], ['bi', 'বি'],
     ['tam', 'তাম'], ['ten', 'তেন'],
     // Dhaka colloquial: korso, parso, dekhsi, hoise.
-    ['so', 'ছো'], ['si', 'ছি'], ['se', 'ছে']
+    ['so', 'ছো'], ['si', 'ছি'], ['se', 'ছে'],
+
+    // The infinitive and the locative: korte, thakte, barite.
+    ['te', 'তে'],
+
+    // Endings that follow the stem's own vowel. Converting the word whole
+    // gives the same letters for most stems, so these only run when the
+    // dictionary knows the stem, which is when they fix something: "ash" is
+    // আস, so ashbo, ashlam and asho stop coming out with শ.
+    ['abo', 'াবো', KNOWN], ['abe', 'াবে', KNOWN], ['ate', 'াতে', KNOWN],
+    ['ano', 'ানো', KNOWN], ['ao', 'াও', KNOWN], ['ai', 'াই', KNOWN],
+    ['er', 'ের', KNOWN], ['ke', 'কে', KNOWN], ['na', 'না', KNOWN],
+    ['e', 'ে', KNOWN], ['i', 'ি', KNOWN], ['o', 'ো', KNOWN], ['y', 'য়', KNOWN]
   ];
+
+  // The perfect tense: bolechi, gechi, hoyechilo, kheyechi. The ch here is
+  // always ছ, which no phonetic rule can know. Tried before SUFFIXES so
+  // that "-echi" wins over the plain "-chi" above.
+  const PERFECT = [
+    ['iyechi', 'িয়েছি'], ['iyeche', 'িয়েছে'],
+    ['echilam', 'েছিলাম'], ['echilen', 'েছিলেন'], ['echilo', 'েছিলো'],
+    ['echile', 'েছিলে'], ['echen', 'েছেন'],
+    ['echi', 'েছি'], ['eche', 'েছে'], ['echo', 'েছো']
+  ];
+
+  // After a stem that ends in a vowel, a vowel ending is written as the
+  // full letter: ami + o is আমিও, valo + i is ভালোই.
+  const FULL_AFTER_VOWEL = { 'ো': 'ও', 'ি': 'ই', 'ে': 'এ', 'া': 'আ', 'ু': 'উ' };
+  const endsInVowel = bangla => /[\u0985-\u0994\u09BE-\u09CC]$/.test(bangla);
+
+  // The continuous tense on a vowel stem: jacchi, khacchi. Checked before
+  // SUFFIXES, whose plain "-chi" would otherwise take the last letters.
+  const CONTINUOUS = [
+    ['cchilam', 'চ্ছিলাম'], ['cchilo', 'চ্ছিলো'], ['cchen', 'চ্ছেন'],
+    ['cchi', 'চ্ছি'], ['cche', 'চ্ছে'], ['ccho', 'চ্ছো']
+  ];
+
+  const stemOf = stem => STEMS[stem.toLowerCase()] || lookup(stem);
+  const stemBangla = stem => stemOf(stem) || transliterateWord(stem);
+
+  function attach(stem, ending) {
+    const full = FULL_AFTER_VOWEL[ending[0]];
+    return full && endsInVowel(stem) ? stem + full + ending.slice(1) : stem + ending;
+  }
 
   function transliterateWord(word) {
     const hit = lookup(word);
@@ -313,18 +418,46 @@
     // only its tail: "possible" came out "possibলে", "little" as "littলে".
     // Words like "extensionta" and "filegulo" are safe here, because the
     // English shapes are anchored to the end and the Bangla suffix hides it.
-    if (looksEnglish(word)) return word;
+    if (looksEnglish(word)) {
+      // ...unless it is an English word wearing a Bangla classifier:
+      // computerta, codeta, extensionta. The whole word looks English
+      // because the stem does, so peel the classifier and keep the stem.
+      // A short stem is not trusted ("quota" is not quo + টা).
+      const lower = word.toLowerCase();
+      for (const [tail, bangla, kind] of SUFFIXES) {
+        if (kind !== CLASSIFIER || !lower.endsWith(tail)) continue;
+        const stem = word.slice(0, word.length - tail.length);
+        if (stem.length >= 4 && looksEnglish(stem)) return stem + bangla;
+      }
+      return word;
+    }
 
     const lower = word.toLowerCase();
-    for (const [tail, bangla, classifier] of SUFFIXES) {
+    for (const [tail, bangla] of PERFECT) {
+      if (lower.length > tail.length && lower.endsWith(tail)) {
+        const stem = word.slice(0, word.length - tail.length);
+        if (/[^aeiouAEIOU]$/.test(stem)) return stemBangla(stem) + bangla;
+      }
+    }
+    for (const [tail, bangla] of CONTINUOUS) {
+      if (lower.length > tail.length && lower.endsWith(tail)) {
+        const stem = word.slice(0, word.length - tail.length);
+        if (stemOf(stem)) return stemBangla(stem) + bangla;
+      }
+    }
+    for (const [tail, bangla, kind] of SUFFIXES) {
       if (lower.length > tail.length + 1 && lower.endsWith(tail)) {
         const stem = word.slice(0, word.length - tail.length);
+        if (kind === KNOWN) {
+          if (stemOf(stem)) return attach(stemBangla(stem), bangla);
+          continue;
+        }
         const known = lookup(stem) || looksEnglish(stem);
-        if (classifier && !known && /[nm]$/i.test(stem)) continue;
+        if (kind === CLASSIFIER && !known && /[nm]$/i.test(stem)) continue;
         // A stem the dictionary knows, an English word, or anything ending
         // in a consonant. That keeps "data" and "rata" out of it.
         if (known || /[^aeiouAEIOU]$/.test(stem)) {
-          return transliterateWord(stem) + bangla;
+          return (kind === CLASSIFIER ? transliterateWord(stem) : stemBangla(stem)) + bangla;
         }
       }
     }
@@ -334,6 +467,9 @@
     // True when the last thing emitted was a consonant that has not yet
     // received a vowel.
     let pendingConsonant = false;
+    // য় never joins a conjunct: "hoyto" is হয়তো, not হয়্তো. It still waits
+    // for a vowel sign (meye, kheye), so it is pending but cannot join.
+    let canJoin = false;
     const n = word.length;
 
     while (i < n) {
@@ -356,7 +492,9 @@
           i += len;
           matched = true;
         } else if (!pendingConsonant && hasKey(VOWEL_FULL, chunk)) {
-          out += VOWEL_FULL[chunk];
+          // An o that follows another vowel is spoken, so it is ও rather
+          // than the silent অ that opens a word: nao, khao, amio.
+          out += i > 0 && chunk === 'o' ? 'ও' : VOWEL_FULL[chunk];
           i += len;
           matched = true;
         }
@@ -376,9 +514,10 @@
         const after = word[i + 2];
         const beforeVowel = after && 'aeiouAEIOU'.includes(after);
         if (beforeVowel) {
-          if (pendingConsonant) out += HASANTA;
+          if (pendingConsonant && canJoin) out += HASANTA;
           out += 'ঙ';
           pendingConsonant = true;
+          canJoin = true;
         } else {
           out += 'ং';
           pendingConsonant = false;
@@ -398,8 +537,16 @@
         const chunk = word.substr(i, len);
 
         if (hasKey(CONSONANTS, chunk)) {
+          // A y straight after a consonant is the য-ফলা, not য়: sonkhya is
+          // সংখ্যা, sondhya সন্ধ্যা, byabohar ব্যবহার.
+          if (chunk === 'y' && pendingConsonant && canJoin) {
+            out += HASANTA + 'য';
+            i += len;
+            matched = true;
+            continue;
+          }
           // Two consonants in a row form a conjunct.
-          if (pendingConsonant) out += HASANTA;
+          if (pendingConsonant && canJoin) out += HASANTA;
           // ড় and ঢ় cannot begin a Bangla word, so "Rashadul" is র, not ড়.
           if (i === 0 && (chunk === 'R' || chunk === 'Rh')) {
             out += 'র';
@@ -407,6 +554,7 @@
             out += CONSONANTS[chunk];
           }
           pendingConsonant = true;
+          canJoin = chunk !== 'y';
           i += len;
           matched = true;
         }
@@ -453,19 +601,141 @@
 
     let english = 0;
     let bangla = 0;
-    for (const word of words) {
+    // A capitalised word in mid-sentence is a name (Rahim, Dhaka), which
+    // says nothing about the language around it, so it is not counted.
+    const counted = [...text.matchAll(/[A-Za-z]+/g)].filter(m => {
+      const w = m[0];
+      if (w === 'I' || !/^[A-Z][a-z]/.test(w)) return true;
+      return /(^|[.!?।]\s*)$/.test(text.slice(0, m.index).trimEnd() ? text.slice(0, m.index) : '');
+    }).map(m => m[0]);
+    for (const word of counted) {
       const lower = word.toLowerCase();
-      if (hasKey(COMMON, lower) || hasKey(COMMON, normalise(word))) bangla++;
+      // The English list first: "to" is তো in Banglish, but in a sentence
+      // that is otherwise English it is "to", and the other words decide.
+      if (ENGLISH.has(lower)) english++;
+      else if (hasKey(COMMON, lower) || hasKey(COMMON, normalise(word))) bangla++;
       else if (looksEnglish(word)) english++;
     }
-    // Clear English wins only when almost nothing looks like Bangla, since
-    // mixing a few English words into Banglish is completely normal.
-    if (english >= 3 && bangla === 0 && english / words.length >= 0.6) {
+    // Clear English wins when most words are English. One Bangla-looking
+    // word, or a fifth of them, no longer outvotes the rest: translator
+    // output like "I speak Bangla every day" or "He is a good boy" (boy folds
+    // to boi, বই) was called Banglish, and অ transliterated it into a jumble.
+    // Mixing a few English words into Banglish is still normal, and those
+    // sentences keep Bangla words in the majority.
+    const tolerated = Math.max(1, Math.floor(counted.length * 0.2));
+    if (english >= 3 && bangla <= tolerated && english / Math.max(1, counted.length) >= 0.6) {
       return 'english';
     }
 
     return 'banglish';
   }
 
-  self.UktiBanglish = { convert: banglishToBangla, classify };
+  // How many words the dictionary knows as Bangla, and how many look
+  // English. Used to decide whether someone typing in a search box is
+  // writing Bangla: classify() is tuned for the buttons and calls unknown
+  // words Banglish, which is too loose for popping up uninvited.
+  function stats(text) {
+    const words = (text || '').match(/[A-Za-z]+/g) || [];
+    let bangla = 0, english = 0;
+    for (const w of words) {
+      if (lookup(w)) bangla++;
+      else if (looksEnglish(w)) english++;
+    }
+    return { words: words.length, bangla, english };
+  }
+
+  return { convert: banglishToBangla, classify, stats };
+  }
+
+  // ---------------------------------------------------------------- repair
+  // A conversion that is not a real word is usually one confusable letter
+  // off: শ/ষ/স, ন/ণ, ি/ী, ত/ট, থ/ঠ and the like sound the same in speech
+  // and in Banglish. Try those swaps, one and then two at a time, and keep
+  // the first spelling the word list knows. FEATURES.md, experiment 1:
+  // held-out words 57.7% to 67.2%, tuning words unchanged.
+  //
+  // The list is a Bloom filter (data/bn-words.js, built by
+  // scripts/build-words.js): 1% false positives, never a false negative.
+  // Both sides are NFC, because ড় and য় have two Unicode spellings, and a
+  // mismatch there broke 27 correct words in the first experiment.
+
+  const SWAPS = [['ি','ী'],['ী','ি'],['ু','ূ'],['ূ','ু'],['স','শ'],['শ','স'],['স','ষ'],['শ','ষ'],['ষ','শ'],
+    ['ন','ণ'],['ণ','ন'],['জ','য'],['য','জ'],['দ','ড'],['র','ড়'],['ড়','র'],['ত','ৎ'],['ই','ঈ'],['উ','ঊ'],
+    ['ো',''],['য়','ই'],['ই','য়'],['া','্যা'],['ে','্যা'],['ং','ঙ'],['ঙ','ং'],['ত','ট'],['ট','ত'],['ড','দ'],
+    ['থ','ঠ'],['ধ','ঢ'],['ঞ','ন'],['ক্ষ','খ'],['খ','ক্ষ'],['জ্ঞ','গ্য']];
+
+  function swapsOf(words) {
+    const out = [];
+    for (const x of words) {
+      for (const [a, b] of SWAPS) {
+        for (let i = x.indexOf(a); i >= 0; i = x.indexOf(a, i + 1)) {
+          out.push(x.slice(0, i) + b + x.slice(i + a.length));
+        }
+      }
+    }
+    return out;
+  }
+
+  function repairWord(word, has) {
+    const w = word.normalize('NFC');
+    if (has(w)) return w;
+    const one = swapsOf([w]);
+    for (const c of one) if (has(c)) return c;
+    // Two swaps: গবেশনা needs both শ to ষ and ন to ণ. Capped, so a long
+    // word cannot make this slow.
+    const two = swapsOf(one.slice(0, 60));
+    for (const c of two.slice(0, 3000)) if (has(c)) return c;
+    return word;
+  }
+
+  // Only runs of Bangla letters are touched; English, digits, spaces and
+  // punctuation pass through as they are.
+  function repair(text, has) {
+    if (typeof has !== 'function') return text;
+    return String(text).replace(/[\u0980-\u09FF]+/g, run => {
+      const lead = run.match(/^[।॥]*/)[0], trail = run.match(/[।॥]*$/)[0];
+      const core = run.slice(lead.length, run.length - trail.length);
+      return core ? lead + repairWord(core, has) + trail : run;
+    });
+  }
+
+  // FNV-1a, twice with different seeds, combined as h1 + i*h2 (Kirsch and
+  // Mitzenmacher). scripts/build-words.js uses these same functions.
+  function hash(s, seed) {
+    let x = (2166136261 ^ seed) >>> 0;
+    for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); }
+    return x >>> 0;
+  }
+  function positions(s, m, k) {
+    const a = hash(s, 0), b = (hash(s, 0x9e3779b9) | 1) >>> 0, out = [];
+    for (let i = 0; i < k; i++) out.push((a + i * b) % m);
+    return out;
+  }
+  function bloomBuild(words, p = 0.01) {
+    const n = words.length;
+    const m = Math.ceil(-n * Math.log(p) / (Math.LN2 * Math.LN2));
+    const k = Math.max(1, Math.round(m / n * Math.LN2));
+    const bits = new Uint8Array(Math.ceil(m / 8));
+    for (const w of words) for (const q of positions(w.normalize('NFC'), m, k)) bits[q >> 3] |= 1 << (q & 7);
+    return { m, k, bits };
+  }
+  function wordSet(data) {
+    if (!data || !data.b64) return null;
+    const raw = atob(data.b64);
+    const bits = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bits[i] = raw.charCodeAt(i);
+    const { m, k } = data;
+    return word => positions(word, m, k).every(q => bits[q >> 3] & (1 << (q & 7)));
+  }
+
+  let engine = null;
+  const ready = () => engine || (engine = build());
+  self.UktiBanglish = {
+    convert: text => ready().convert(text),
+    classify: text => ready().classify(text),
+    stats: text => ready().stats(text),
+    repair,
+    wordSet,
+    bloomBuild
+  };
 })();

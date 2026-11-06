@@ -13,8 +13,23 @@ const DEFAULTS = {
   showHints: false,
   cleanFillers: true,
   autoSubmit: false,
-  replacements: []
+  replacements: [],
+  showMode: 'smart',
+  allowSites: [],
+  voiceCommands: true,
+  mixedEnglish: false,
+  sounds: false,
+  digits: 'asis',
+  recogLang: 'bn-BD'
 };
+
+// A starting point for "chosen sites only": where people write the most.
+// The user adds or removes sites with the "this site" switch.
+const STARTER_SITES = [
+  'gemini.google.com', 'chatgpt.com', 'claude.ai', 'web.whatsapp.com', 'messenger.com',
+  'facebook.com', 'mail.google.com', 'outlook.live.com', 'docs.google.com', 'x.com',
+  'linkedin.com', 'web.telegram.org'
+];
 
 // A segmented control whose pill slides to sit behind the chosen button.
 // A hidden tab has no layout, so the pill cannot be measured there; each
@@ -70,6 +85,14 @@ function swatches(id, key) {
     button.addEventListener('click', () => {
       paint(button.dataset.v);
       chrome.storage.local.set({ [key]: button.dataset.v });
+      // The chosen swatch pops once (CSS, so reduced motion turns it off).
+      const chip = button.querySelector('.chip');
+      if (chip) {
+        chip.classList.remove('pop');
+        void chip.offsetWidth;
+        chip.classList.add('pop');
+        chip.addEventListener('animationend', () => chip.classList.remove('pop'), { once: true });
+      }
     });
   });
 
@@ -96,6 +119,13 @@ const paintPos = segment('posSeg', 'barCorner', () =>
   chrome.storage.local.set({ barPos: null })
 );
 const paintTheme = swatches('themes', 'theme');
+const paintShow = segment('showSeg', 'showMode', async mode => {
+  if (mode === 'sites') {
+    const { allowSites } = await chrome.storage.local.get({ allowSites: [] });
+    if (!allowSites.length) await chrome.storage.local.set({ allowSites: STARTER_SITES });
+  }
+  refreshPower();
+});
 
 // The per-button switches share one stored object, so they are saved
 // together rather than as four separate keys.
@@ -119,6 +149,11 @@ const btnUndo = buttonToggle('btnUndo', 'undo');
 const showHints = toggle('showHints', 'showHints');
 const cleanFillers = toggle('cleanFillers', 'cleanFillers');
 const autoSubmit = toggle('autoSubmit', 'autoSubmit');
+const voiceCommands = toggle('voiceCommands', 'voiceCommands');
+const mixedEnglish = toggle('mixedEnglish', 'mixedEnglish');
+const sounds = toggle('sounds', 'sounds');
+const paintDigits = segment('digitsSeg', 'digits');
+const paintRecog = segment('recogSeg', 'recogLang');
 
 // ---- custom replacements ----
 
@@ -166,6 +201,8 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   host = found;
   return chrome.storage.local.get(DEFAULTS);
 }).then(settings => {
+  showMode = settings.showMode || 'smart';
+  allowSites = settings.allowSites || [];
   paintPower(settings.enabled !== false, settings.disabledSites || []);
   // No animation on the first paint, or the pill visibly flies into place.
   paintMode(settings.outputMode, false);
@@ -173,6 +210,7 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   paintLayout(settings.layout || 'full', false);
   paintSize(settings.uiSize, false);
   paintPos(settings.barPos ? 'auto' : (settings.barCorner || 'auto'), false);
+  paintShow(settings.showMode || 'smart', false);
 
   const buttons = { ...DEFAULTS.buttons, ...(settings.buttons || {}) };
   btnBanglish.checked = buttons.banglish !== false;
@@ -183,6 +221,11 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   showHints.checked = settings.showHints === true;
   cleanFillers.checked = settings.cleanFillers !== false;
   autoSubmit.checked = !!settings.autoSubmit;
+  voiceCommands.checked = settings.voiceCommands !== false;
+  mixedEnglish.checked = !!settings.mixedEnglish;
+  sounds.checked = !!settings.sounds;
+  paintDigits(settings.digits || 'asis', false);
+  paintRecog(settings.recogLang || 'bn-BD', false);
   replacements.value = rulesToText(settings.replacements);
   repaintSegments();
 });
@@ -214,12 +257,24 @@ function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return ''; }
 }
 
+// In "chosen sites only" mode the site switch adds or removes the site from
+// the chosen list; otherwise it adds or removes it from the off list.
+let showMode = 'smart';
+let allowSites = [];
+
+async function refreshPower() {
+  const s = await chrome.storage.local.get({ enabled: true, disabledSites: [], showMode: 'smart', allowSites: [] });
+  showMode = s.showMode;
+  allowSites = s.allowSites;
+  paintPower(s.enabled !== false, s.disabledSites);
+}
+
 function paintPower(enabled, disabledSites) {
   document.body.classList.toggle('off', !enabled);
   master.checked = enabled;
   masterLabel.textContent = enabled ? tr('সব জায়গায় চালু', uktiLang) : tr('সব জায়গায় বন্ধ', uktiLang);
 
-  const offHere = disabledSites.includes(host);
+  const offHere = showMode === 'sites' ? !allowSites.includes(host) : disabledSites.includes(host);
   siteOn.checked = !offHere;
   siteName.textContent = host || tr('এই সাইট', uktiLang);
   siteState.textContent = !enabled
@@ -235,6 +290,12 @@ master.addEventListener('change', async () => {
 
 siteOn.addEventListener('change', async () => {
   if (!host) return;
+  if (showMode === 'sites') {
+    const { allowSites: list } = await chrome.storage.local.get({ allowSites: [] });
+    const next = siteOn.checked ? [...new Set([...list, host])] : list.filter(h => h !== host);
+    await chrome.storage.local.set({ allowSites: next });
+    return refreshPower();
+  }
   const { disabledSites } = await chrome.storage.local.get({ disabledSites: [] });
   const next = siteOn.checked
     ? disabledSites.filter(h => h !== host)
@@ -243,8 +304,39 @@ siteOn.addEventListener('change', async () => {
   paintPower(master.checked, next);
 });
 
+// The full list, with export and import. A page of its own, because a file
+// chooser opened from the popup closes the popup.
+document.getElementById('openWords').addEventListener('click', event => {
+  event.preventDefault();
+  chrome.tabs.create({ url: chrome.runtime.getURL('words.html') });
+});
+
 document.getElementById('openSetup').addEventListener('click', event => {
   event.preventDefault();
   chrome.runtime.sendMessage({ type: 'OPEN_SETUP' });
   window.close();
+});
+
+// ---- tell a friend, and the one rating request ----
+
+wireShare(document.getElementById('share'));
+
+const rate = document.getElementById('rate');
+chrome.storage.local.get({ uses: 0, rateDone: false }).then(({ uses, rateDone }) => {
+  if (rateDone || uses < 15 || !self.UKTI_STORE_URL) return;
+  rate.hidden = false;
+});
+function rateAnswered() {
+  rate.hidden = true;
+  chrome.storage.local.set({ rateDone: true });
+}
+document.getElementById('rateGo').addEventListener('click', () => {
+  chrome.tabs.create({ url: self.UKTI_STORE_URL });
+  rateAnswered();
+});
+document.getElementById('rateLater').addEventListener('click', rateAnswered);
+
+document.getElementById('openSnips').addEventListener('click', event => {
+  event.preventDefault();
+  chrome.tabs.create({ url: chrome.runtime.getURL('words.html') + '#snippets' });
 });

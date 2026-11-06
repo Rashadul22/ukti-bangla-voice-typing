@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>উক্তির শব্দ</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #07080c; --card: #0e1117; --raise: #141924; --line: #1d212b;
+    --ink: #eceef3; --dim: #8e95a5; --faint: #7d8392;
+    --brand: #7263dd; --brand-2: #4aa8ff; --good: #34d399; --bad: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif;
+    padding: 32px 16px;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  header { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .mark {
+    width: 44px; height: 44px; flex: none; border-radius: 15px; display: grid; place-items: center;
+    background: linear-gradient(145deg, #7c6cf0, #5b4ae0 55%, #4aa8ff); color: #fff;
+  }
+  .mark svg { width: 24px; height: 24px; }
+  h1 { font-size: 24px; font-weight: 700; line-height: 1.2; }
+  header p { color: var(--dim); font-size: 13.5px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #count { font-size: 13px; color: var(--dim); }
+  textarea {
+    width: 100%; min-height: 280px; resize: vertical;
+    padding: 12px 14px; border-radius: 14px;
+    background: var(--raise); border: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 14px; line-height: 1.7;
+  }
+  textarea:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; }
+  .hint { margin-top: 10px; font-size: 12.5px; color: var(--faint); }
+  .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  button, .btn {
+    font: inherit; font-weight: 600; font-size: 13.5px; cursor: pointer;
+    min-height: 40px; padding: 9px 17px; border-radius: 11px; border: 0;
+    display: inline-flex; align-items: center;
+    background: linear-gradient(145deg, var(--brand), #5b4ae0); color: #fff;
+  }
+  .btn.quiet { background: var(--raise); border: 1px solid var(--line); color: var(--ink); }
+  button:focus-visible, .btn:focus-within, .btn:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  #status { margin-top: 12px; font-size: 13px; min-height: 1.6em; }
+  #status.ok { color: var(--good); } #status.bad { color: var(--bad); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+  }
+
+  /* Bangla is never tracked or uppercased. Letter-spacing pulls conjuncts
+     and vowel signs apart, and the script has no capitals; both rules were
+     written for Latin labels. (tests/layout.test.js) */
+  :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f3f4f8; --card: #ffffff; --raise: #eef0f5; --line: #dde1ea;
+      --ink: #141925; --dim: #4c5466; --faint: #5b6375;
+      --good: #047857; --bad: #b91c1c;
+    }
+    .card { box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 16px 34px -24px rgba(15,23,42,.28); }
+  }
+</style>
+<link rel="stylesheet" href="fx.css">
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M3.7 4h5.9v12.9a6.4 6.4 0 0 0 12.8 0V4h5.9v12.9a12.3 12.3 0 0 1-24.6 0z"/><path d="M12.3 7.4h7.4v4.9c0 3.1-1.8 5.4-4.9 6.6l-1.6-3c1.25-.62 1.95-1.35 2.1-2.3H12.3z"/></svg></div>
+    <div>
+      <h1>উক্তির শব্দ</h1>
+      <p>আপনার নিজের লেখা আর উক্তির মনে রাখা সব শব্দ, এখানেই।</p>
+    </div>
+  </header>
+  <section class="card">
+    <div class="top"><b>প্রতি লাইনে: যা শোনে = যা হবে</b><span id="count"></span></div>
+    <textarea id="list" spellcheck="false" placeholder="রাসেদুল = রাশেদুল" aria-label="শব্দের তালিকা"></textarea>
+    <p class="hint">বদলালে নিজে থেকেই জমা হয়। মুছতে চাইলে লাইনটা মুছে দিন। সব আপনার কম্পিউটারেই থাকে, কোথাও পাঠানো হয় না।</p>
+    <div class="acts">
+      <button id="export">ফাইলে রাখুন</button>
+      <label class="btn quiet" for="importFile">ফাইল থেকে আনুন<input type="file" id="importFile" accept=".json,.txt,application/json,text/plain"></label>
+    </div>
+    <div id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card" id="snippets" style="margin-top:16px">
+    <div class="top"><b>স্নিপেট: যা বলবেন = যা বসবে</b><span id="snipCount"></span></div>
+    <textarea id="snipList" spellcheck="false" placeholder="আমার ঠিকানা = বাড়ি ১২, রোড ৩, ঢাকা" aria-label="স্নিপেটের তালিকা" style="min-height:140px"></textarea>
+    <p class="hint">শুধু বাম পাশের কথাটা একা বললে ডান পাশের লেখাটা বসবে। বাক্যের ভেতরে বললে কিছু হবে না।</p>
+  </section>
+</main>
+<script src="fx.js"></script>
+<script src="i18n.js"></script>
+<script src="words.js"></script>
+</body>
+</html>

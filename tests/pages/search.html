@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>search boxes and writing boxes</title>
+<!-- Shapes taken from the sites the user named: YouTube's search box (an
+     input with role=combobox, name=search_query), Google's (a textarea with
+     role=combobox, name=q), a search form, a type=search box, WhatsApp's
+     chat search (contenteditable with a "Search" label), and the writing
+     boxes those same sites have: a comment box and a message box. -->
+<input id="yt" name="search_query" role="combobox" placeholder="Search" style="width:30em">
+<textarea id="g" name="q" role="combobox" title="Search" rows="1" cols="40"></textarea>
+<form role="search"><input id="formSearch" type="text"></form>
+<input id="typeSearch" type="search">
+<div id="wa" contenteditable="true" aria-label="Search input textbox" style="border:1px solid;width:20em">x</div>
+<div id="comment" contenteditable="true" aria-label="Add a comment…" style="border:1px solid;min-height:2em;width:30em"></div>
+<textarea id="msg" rows="3" cols="50" placeholder="Type a message"></textarea>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>window.mimic = { el: document.getElementById('msg'), kind: 'textarea', model: () => document.getElementById('msg').value };</script>

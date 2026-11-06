@@ -1,0 +1,82 @@
+{
+ "A-40px-targets main now": {
+  "height": 641,
+  "smallTargets": 4,
+  "contrastFails": 0
+ },
+ "A-40px-targets main proposed": {
+  "height": 659,
+  "smallTargets": 0,
+  "contrastFails": 0
+ },
+ "A-40px-targets look now": {
+  "height": 801,
+  "smallTargets": 10,
+  "contrastFails": 0
+ },
+ "A-40px-targets look proposed": {
+  "height": 861,
+  "smallTargets": 0,
+  "contrastFails": 0
+ },
+ "B-fits-600 main now": {
+  "height": 641,
+  "smallTargets": 4,
+  "contrastFails": 0
+ },
+ "B-fits-600 main proposed": {
+  "height": 600,
+  "smallTargets": 4,
+  "contrastFails": 0
+ },
+ "B-fits-600 look now": {
+  "height": 801,
+  "smallTargets": 10,
+  "contrastFails": 0
+ },
+ "B-fits-600 look proposed": {
+  "height": 765,
+  "smallTargets": 10,
+  "contrastFails": 0
+ },
+ "C-light-mode main now": {
+  "height": 641,
+  "smallTargets": 4,
+  "contrastFails": 0
+ },
+ "C-light-mode main proposed": {
+  "height": 641,
+  "smallTargets": 4,
+  "contrastFails": 0
+ },
+ "C-light-mode look now": {
+  "height": 801,
+  "smallTargets": 10,
+  "contrastFails": 0
+ },
+ "C-light-mode look proposed": {
+  "height": 801,
+  "smallTargets": 10,
+  "contrastFails": 1
+ },
+ "C-light-mode setup now": {
+  "contrastFails": []
+ },
+ "C-light-mode setup proposed": {
+  "contrastFails": [
+   "4.35 div.num \"1\"",
+   "4.35 div.num \"2\"",
+   "3.35 div.label \"Two things worth knowing\"",
+   "1.22 b \"It will not work on pages already open\"",
+   "2.58 span \"Tabs that were already open before Ukti \"",
+   "1.22 b \"It can stop after a long stretch\"",
+   "2.58 span \"Google's free voice service has a limit,\"",
+   "3.35 div.label \"Shortcuts\"",
+   "2.58 span \"Start or stop speaking\"",
+   "2.58 span \"Turn typed Banglish into Bangla\"",
+   "2.58 span \"Turn the text into English\"",
+   "2.58 span \"Undo\"",
+   "1.15 a.change#changeShortcuts \"Change shortcuts\""
+  ]
+ }
+}

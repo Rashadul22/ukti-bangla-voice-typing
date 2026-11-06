@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>two boxes, one of which can be removed</title>
+<textarea id="a" rows="2" cols="50"></textarea>
+<div id="holder"><textarea id="b" rows="2" cols="50"></textarea></div>
+<button id="remove">remove b</button>
+<script>
+  window.mimic = { el: document.getElementById('a'), kind: 'textarea', model: () => document.getElementById('a').value };
+  document.getElementById('remove').onclick = () => document.getElementById('holder').replaceChildren();
+</script>

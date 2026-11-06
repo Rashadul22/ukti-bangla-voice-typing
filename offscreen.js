@@ -63,6 +63,7 @@ const state = {
   tabId: null,
   frameId: null,
   sessionId: null,
+  epoch: 0,              // newest start or stop obeyed for this session
   settings: null,
   sessionStart: 0,
   lastActivity: 0,
@@ -78,6 +79,7 @@ function emit(type, data = {}) {
     tabId: state.tabId,
     frameId: state.frameId,
     sessionId: state.sessionId,
+    epoch: state.epoch,
     ...data
   }).catch(() => {});
 }
@@ -100,20 +102,33 @@ function scheduleRelease() {
   }, 120000);
 }
 
+// The reply to the page carries error.name, so these codes must be the
+// name. As plain new Error(code) they arrived as "Error", and the page never
+// recognised them: a missing pack said "translation failed", not "open setup".
+function coded(code) {
+  const error = new Error(code);
+  error.name = code;
+  return error;
+}
+
 async function getTranslator(from, to) {
   const key = from + '>' + to;
   if (translators.has(key)) return translators.get(key);
   if (pending.has(key)) return pending.get(key);
 
-  if (!('Translator' in self)) throw new Error('NO_TRANSLATOR_API');
+  if (!('Translator' in self)) throw coded('NO_TRANSLATOR_API');
 
   const task = (async () => {
     const opts = { sourceLanguage: from, targetLanguage: to };
     const status = await Translator.availability(opts);
-    if (status === 'unavailable') throw new Error('PAIR_UNAVAILABLE');
+    if (status === 'unavailable') throw coded('PAIR_UNAVAILABLE');
     // 'downloadable' means this pack was never fetched from an extension
-    // page, and create() without user activation throws NotAllowedError.
+    // page. create() was expected to throw NotAllowedError here without user
+    // activation; measured in Chromium 153 it never settles at all, so the
+    // page showed "translating" for good and every later request for the
+    // pair queued behind it. Do not call it unless the pack is present.
     // The setup page is responsible for the first download of each pair.
+    if (status !== 'available') throw coded('NEEDS_DOWNLOAD');
     const made = await Translator.create(opts);
     translators.set(key, made);
     return made;
@@ -128,37 +143,147 @@ async function getTranslator(from, to) {
 }
 
 // Spoken Bangla is full of fillers that a literal translator renders as
-// noise. This is deliberately conservative: only patterns that are almost
-// never meaningful content get removed.
+// noise. Measured 3 November, the old patterns damaged 23 of 25 ordinary
+// sentences (tests/corpus/fillers.tsv): they had no word boundaries, so
+// "বুঝলা" ate the start of "বুঝলাম" and left "ম", and "আর কি" turned
+// "আর কিছু" into "ছু". So now a filler is only ever a whole word, and the
+// ones that are also ordinary grammar count only where they are fillers.
+//
+//   ইয়ে                 anywhere, as a word of its own
+//   মানে মানে (মানে...)  two or more in a row
+//   আর কি, বুঝলা, বুঝছো  only at the end of a clause, where they are tags:
+//                        "ও আসবে আর কি" loses it, "তুমি আর কি চাও" keeps it
+//
+// "কি বলে" and "হচ্ছে যে" are gone from the list: "সে কি বলে" and "মনে
+// হচ্ছে যে" are grammar, and no rule tells them from the filler use.
+const LETTER = '\\p{L}\\p{M}\\p{N}';
+const START = `(?<![${LETTER}])`;
+const END = `(?![${LETTER}])`;
+const CLAUSE_END = `(?=\\s*(?:[,।?!.;:]|$))`;
 const FILLER_PATTERNS = [
-  /\s*হচ্ছে\s+যে\s*/g,
-  /\s*যে\s+হচ্ছে\s*/g,
-  /\s*আর\s+কি\s*/g,
-  /\s*বুঝলা\s*/g,
-  /\s*বুঝছো\s*/g,
-  /\s*কি\s+বলে\s*/g,
-  /\s*ইয়ে\s*/g,
-  /\s*(মানে\s+){2,}/g
+  new RegExp(`${START}ইয়ে${END}`, 'gu'),
+  new RegExp(`${START}মানে(?:\\s+মানে)+${END}`, 'gu'),
+  new RegExp(`${START}আর\\s+কি${END}${CLAUSE_END}`, 'gu'),
+  new RegExp(`${START}(?:বুঝলা|বুঝছো)${END}${CLAUSE_END}`, 'gu')
 ];
 
 function cleanFillers(text) {
   let out = text;
-  for (const pattern of FILLER_PATTERNS) {
-    out = out.replace(pattern, ' ');
-  }
-  return out.replace(/\s{2,}/g, ' ').trim();
+  for (const pattern of FILLER_PATTERNS) out = out.replace(pattern, ' ');
+  return out
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,।?!.;:])/g, '$1')    // no space left before punctuation
+    .trim();
 }
 
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// The user's own corrections, applied to whole words only. As plain
+// substrings, a rule "কি = কী" also turned "কিছু" into "কীছু" and "থাকি"
+// into "থাকী" (8 of 628 corpus words). A rule of several words still
+// matches as a phrase. The pattern is built from the user's text escaped, so
+// no rule can be a regular expression that hangs the extension.
 function applyReplacements(text, replacements) {
   if (!Array.isArray(replacements) || replacements.length === 0) return text;
   let out = text;
   for (const rule of replacements) {
     if (!rule || !rule.from) continue;
-    // Plain string replacement, case-sensitive. No regex, so a user cannot
-    // accidentally write a pattern that hangs the extension.
-    out = out.split(rule.from).join(rule.to ?? '');
+    const pattern = new RegExp(`${START}${escapeRegExp(rule.from)}${END}`, 'gu');
+    out = out.replace(pattern, () => rule.to ?? '');
   }
   return out;
+}
+
+// ---------------------------------------------------------- voice commands
+// Chrome's Bangla recognition gives almost no punctuation, so these words
+// become marks. Bare দাঁড়ি (also "beard") and কমা (also "reduce") are
+// ordinary words, so on their own they count only when they are the whole
+// segment, said alone after a pause. The unambiguous names also count at
+// the end of a sentence. tests/corpus/commands.tsv holds both kinds,
+// including ordinary sentences that must not trigger.
+const ALONE = new Map([
+  ['দাঁড়ি', '।'], ['দাড়ি', '।'], ['কমা', ','], ['মুছে দাও', 'undo'], ['মুছে ফেলো', 'undo'], ['মুছে ফেল', 'undo']
+]);
+const AT_END = [
+  ['প্রশ্নবোধক চিহ্ন', '?'], ['প্রশ্নবোধক', '?'], ['প্রশ্নচিহ্ন', '?'],
+  ['বিস্ময়সূচক চিহ্ন', '!'], ['বিস্ময়সূচক', '!'], ['বিস্ময়বোধক চিহ্ন', '!'], ['বিস্ময়বোধক', '!'],
+  ['দাঁড়ি চিহ্ন', '।'], ['দাড়ি চিহ্ন', '।'], ['ফুলস্টপ', '।'], ['ফুল স্টপ', '।'],
+  ['কমা চিহ্ন', ','], ['নতুন লাইন', '\n'], ['নতুন অনুচ্ছেদ', '\n\n'], ['নতুন প্যারা', '\n\n']
+].map(([words, mark]) => [words.normalize('NFC'), mark]);
+
+function voiceCommand(raw) {
+  const text = String(raw || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+  const alone = ALONE.get(text);
+  if (alone === 'undo') return { text: '', punct: '', action: 'undo' };
+  if (alone) return { text: '', punct: alone, action: '' };
+  for (const [words, mark] of AT_END) {
+    if (text === words) return { text: '', punct: mark, action: '' };
+    if (text.endsWith(' ' + words)) return { text: text.slice(0, -words.length - 1), punct: mark, action: '' };
+  }
+  return { text: raw, punct: '', action: '' };
+}
+
+// ---------------------------------------------------------------- snippets
+// Say the trigger on its own and the saved text goes in. Only the whole
+// segment matches, so a trigger said inside a sentence stays a sentence.
+function applySnippets(raw, snippets) {
+  if (!Array.isArray(snippets) || !snippets.length) return null;
+  const said = String(raw || '').normalize('NFC').replace(/[।,?!.]+$/, '').replace(/\s+/g, ' ').trim();
+  for (const s of snippets) {
+    if (!s || !s.say || typeof s.text !== 'string') continue;
+    if (String(s.say).normalize('NFC').replace(/\s+/g, ' ').trim() === said) return s.text;
+  }
+  return null;
+}
+
+// ------------------------------------------------- English in English letters
+// For people who write mixed, as most chat in Bangladesh is written: "আমি
+// office এ আছি". Only loanwords that are not also Bangla words: বাস (live),
+// কল (tap), কেস, ডাক্তার and the like are left out on purpose. The Bangla
+// ending is kept, apart: অফিসে becomes "office এ".
+const LOANWORDS = {
+  'অফিস': 'office', 'মিটিং': 'meeting', 'ফোন': 'phone', 'মোবাইল': 'mobile', 'কম্পিউটার': 'computer',
+  'ল্যাপটপ': 'laptop', 'ইমেইল': 'email', 'ইমেল': 'email', 'ফেসবুক': 'Facebook', 'ইউটিউব': 'YouTube',
+  'হোয়াটসঅ্যাপ': 'WhatsApp', 'গুগল': 'Google', 'ইন্টারনেট': 'internet', 'ওয়াইফাই': 'WiFi', 'লিংক': 'link',
+  'পাসওয়ার্ড': 'password', 'অনলাইন': 'online', 'অফলাইন': 'offline', 'প্রজেক্ট': 'project', 'রিপোর্ট': 'report',
+  'প্রেজেন্টেশন': 'presentation', 'ক্লাস': 'class', 'এক্সাম': 'exam', 'অ্যাসাইনমেন্ট': 'assignment',
+  'টিচার': 'teacher', 'ডেডলাইন': 'deadline', 'লোকেশন': 'location', 'ডেলিভারি': 'delivery', 'অর্ডার': 'order',
+  'প্রোডাক্ট': 'product', 'পেমেন্ট': 'payment', 'মেসেজ': 'message', 'ম্যাসেজ': 'message', 'ভিডিও': 'video',
+  'অ্যাপ': 'app', 'ডাউনলোড': 'download', 'আপলোড': 'upload', 'শেয়ার': 'share', 'পোস্ট': 'post',
+  'কমেন্ট': 'comment', 'লাইক': 'like', 'গ্রুপ': 'group', 'চ্যাট': 'chat', 'সফটওয়্যার': 'software',
+  'ডেভেলপার': 'developer', 'ইউনিভার্সিটি': 'university', 'হোমওয়ার্ক': 'homework', 'টিকেট': 'ticket',
+  'টিকিট': 'ticket', 'চার্জ': 'charge', 'ব্যাটারি': 'battery', 'সার্ভার': 'server', 'ওয়েবসাইট': 'website',
+  'ব্রাউজার': 'browser', 'এক্সটেনশন': 'extension', 'অ্যাকাউন্ট': 'account', 'প্রোফাইল': 'profile',
+  'সেটিংস': 'settings', 'আপডেট': 'update', 'নোটিফিকেশন': 'notification', 'স্ক্রিনশট': 'screenshot',
+  'ফাইল': 'file', 'ফোল্ডার': 'folder', 'প্রিন্ট': 'print', 'সিভি': 'CV', 'ইন্টারভিউ': 'interview',
+  'জব': 'job', 'স্যালারি': 'salary', 'টিম': 'team', 'ক্লায়েন্ট': 'client'
+};
+const LOAN_KEYS = Object.keys(LOANWORDS).map(k => k.normalize('NFC')).sort((a, b) => b.length - a.length);
+// Endings, longest first. A vowel-sign ending is written as its letter.
+const ENDINGS = [['গুলো', 'গুলো'], ['টাও', 'টাও'], ['য়ের', 'এর'], ['য়ে', 'এ'], ['ের', 'এর'], ['টা', 'টা'],
+  ['টি', 'টি'], ['কে', 'কে'], ['তে', 'তে'], ['র', 'র'], ['ে', 'এ'], ['ও', 'ও']].map(([a, b]) => [a.normalize('NFC'), b]);
+
+function mixEnglish(raw) {
+  return String(raw || '').normalize('NFC').replace(/[ঀ-৿]+/g, word => {
+    if (LOANWORDS[word]) return LOANWORDS[word];
+    for (const base of LOAN_KEYS) {
+      if (!word.startsWith(base)) continue;
+      const rest = word.slice(base.length);
+      const end = ENDINGS.find(([e]) => e === rest);
+      if (end) return `${LOANWORDS[base]} ${end[1]}`;
+    }
+    return word;
+  });
+}
+
+// ------------------------------------------------------------------ digits
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+function fixDigits(text, mode) {
+  if (mode === 'bn') return String(text).replace(/[0-9]/g, d => BN_DIGITS[d]);
+  if (mode === 'en') return String(text).replace(/[০-৯]/g, d => String(BN_DIGITS.indexOf(d)));
+  return text;
 }
 
 // Translator processes sequentially and can reject large input with
@@ -178,7 +303,28 @@ function chunkText(text, maxLen = 900) {
   return parts;
 }
 
+// A translation that has not answered in this long is not going to. Better
+// to tell the user than to leave "translating" on screen.
+const TRANSLATE_TIMEOUT_MS = 20000;
+let repairWords = null;
+
+function withTimeout(promise) {
+  let timer;
+  const late = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error('Translation took too long');
+      error.name = 'TIMEOUT';
+      reject(error);
+    }, TRANSLATE_TIMEOUT_MS);
+  });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
 async function translateText(text, from, to) {
+  return withTimeout(translateNow(text, from, to));
+}
+
+async function translateNow(text, from, to) {
   const t = await getTranslator(from, to);
   const chunks = chunkText(text);
   const out = [];
@@ -200,7 +346,19 @@ async function processSegment(rawText) {
   text = applyReplacements(text, settings.replacements);
   if (!text) return;
 
-  if (settings.outputMode === 'english') {
+  // A snippet is the user's own text: it goes in as saved, untranslated.
+  const snippet = applySnippets(text, settings.snippets);
+  if (snippet != null) { emit('FINAL_RESULT', { text: snippet }); return; }
+
+  let punct = '';
+  if (settings.voiceCommands !== false) {
+    const command = voiceCommand(text);
+    if (command.action) { emit('FINAL_RESULT', { text: '', action: command.action }); return; }
+    text = command.text;
+    punct = command.punct;
+  }
+
+  if (text && settings.outputMode === 'english') {
     try {
       text = await toEnglish(text);
     } catch (error) {
@@ -210,9 +368,14 @@ async function processSegment(rawText) {
       });
       // Fall back to inserting the Bangla rather than losing the user's words.
     }
+    if (punct === '।') punct = '.';
+  } else if (text && settings.mixedEnglish) {
+    text = mixEnglish(text);
   }
+  text = fixDigits(text, settings.digits);
+  if (!text && !punct) return;
 
-  emit('FINAL_RESULT', { text });
+  emit('FINAL_RESULT', { text, punct });
 }
 
 // ------------------------------------------------------------ audio meter
@@ -465,7 +628,7 @@ function startAttempt() {
     return;
   }
 
-  recognition.lang = CONFIG.lang;
+  recognition.lang = state.settings?.recogLang === 'bn-IN' ? 'bn-IN' : CONFIG.lang;
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
@@ -595,7 +758,13 @@ function startAttempt() {
   }
 }
 
-function startDictation({ tabId, frameId, sessionId, settings }) {
+function startDictation({ tabId, frameId, sessionId, epoch, settings }) {
+  // There is one microphone. If another frame was dictating, tell it before
+  // switching, or its button stays lit with nothing behind it.
+  if (state.desired && state.sessionId && state.sessionId !== sessionId) {
+    emit('TAKEN_OVER');
+  }
+
   // A new start always targets the newest box, so cancel any old session.
   if (state.current) {
     state.generation++;
@@ -609,6 +778,7 @@ function startDictation({ tabId, frameId, sessionId, settings }) {
   state.tabId = tabId;
   state.frameId = frameId;
   state.sessionId = sessionId;
+  state.epoch = epoch || 0;
   state.settings = settings;
   state.faultAttempts = 0;
   state.calmRestarts = 0;
@@ -643,16 +813,50 @@ function stopDictation() {
 
 // ----------------------------------------------------------------- listener
 
+// Starts and stops from one frame are numbered. One older than the newest
+// already obeyed for the same session arrived out of order and is dropped.
+function stale(message) {
+  return typeof message.epoch === 'number' &&
+    message.sessionId === state.sessionId &&
+    message.epoch < state.epoch;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target !== 'offscreen') return false;
+  // Only the service worker drives the microphone. A message from a tab
+  // (a content script, or a renderer that a page has taken over, which can
+  // send anything a content script can) is ignored. tests/security2.test.js
+  if (sender && sender.tab) return false;
 
   if (message.type === 'START_DICTATION') {
+    if (stale(message)) return false;   // a stop from after it already ran
     startDictation(message);
     return false;
   }
 
   if (message.type === 'STOP_DICTATION') {
+    // A stop names the session or tab it is for. One for anything else is
+    // stale: a page that was dictating before another tab took over.
+    if (message.sessionId && message.sessionId !== state.sessionId) return false;
+    if (message.tabId != null && message.tabId !== state.tabId) return false;
+    if (stale(message)) return false;
+    if (typeof message.epoch === 'number') state.epoch = message.epoch;
+    // Already stopped: say nothing, so a stop sent for a dead page cannot
+    // set off another round of messages to it.
+    if (!state.desired && !state.current) return false;
     stopDictation();
+    return false;
+  }
+
+  // Banglish repair: the word list lives here, not in every page, because
+  // it is 700 KB and only a conversion needs it.
+  if (message.type === 'REPAIR_WORDS') {
+    try {
+      if (!repairWords) repairWords = self.UktiBanglish.wordSet(self.UKTI_WORDS);
+      sendResponse({ ok: true, text: self.UktiBanglish.repair(String(message.text || ''), repairWords) });
+    } catch (error) {
+      sendResponse({ ok: false, error: error.name || 'error' });
+    }
     return false;
   }
 

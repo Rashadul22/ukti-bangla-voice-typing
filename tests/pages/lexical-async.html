@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><title>lexical, async</title>
+<script src="mimic.js"></script>
+<!-- WhatsApp's Lexical, as the author saw it: one dictated line came out
+     three times. Lexical takes a paste and a typed insert (beforeinput)
+     into its model and commits a task later (React schedules it), so the DOM changes a moment
+     AFTER the event, not during it. Text put straight into the DOM is
+     adopted into the model, not thrown away. A check made at the moment of
+     each write sees nothing, so every strategy runs, and all of them land. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  const observer = new MutationObserver(() => { model = el.innerText.replace(/\n+$/, ''); });
+  const render = caret => { el.textContent = model; observer.takeRecords(); if (caret != null) placeCaret(el, caret); };
+  observer.observe(el, { childList: true, characterData: true, subtree: true });
+  const later = (text, s, en) => setTimeout(() => { model = model.slice(0, s) + text + model.slice(en); render(s + text.length); }, 0);
+
+  el.addEventListener('beforeinput', e => {
+    if (e.inputType !== 'insertText' && e.inputType !== 'insertFromPaste') return;
+    const text = e.data ?? e.dataTransfer?.getData('text/plain');
+    if (text == null) return;
+    e.preventDefault();
+    const [s, en] = liveOffsets(el, model.length);
+    later(text, s, en);
+  });
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const [s, en] = liveOffsets(el, model.length);
+    later(e.clipboardData.getData('text/plain'), s, en);
+  });
+
+  window.mimic = {
+    el, kind: 'lexical-async',
+    model: () => model,
+    setText(s) { model = s; el.focus(); render(s.length); }
+  };
+</script>

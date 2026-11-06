@@ -20,8 +20,15 @@ function setStatus(node, text, kind) {
   node.appendChild(document.createTextNode(text));
 }
 
-function markDone(step) {
+// `fresh` when the user has just completed the step, so the badge pops once;
+// a step found already done when the page opens does not.
+function markDone(step, fresh = false) {
+  if (step.classList.contains('done')) return;
   step.classList.add('done');
+  if (fresh) {
+    step.classList.add('just');
+    step.querySelector('.num')?.addEventListener('animationend', () => step.classList.remove('just'), { once: true });
+  }
 }
 
 // ------------------------------------------------------------- microphone
@@ -55,7 +62,7 @@ micButton.addEventListener('click', async () => {
 
     await chrome.storage.local.set({ micGranted: true });
     setStatus(micStatus, tr('হয়ে গেছে, মাইক্রোফোন চালু।', uktiLang), 'ok');
-    markDone(micStep);
+    markDone(micStep, true);
   } catch (error) {
     micButton.disabled = false;
     const message =
@@ -81,8 +88,8 @@ const PACKS = [
 
 const packDone = new Set();
 
-function checkAllPacks() {
-  if (packDone.size === PACKS.length) markDone(packStep);
+function checkAllPacks(fresh = false) {
+  if (packDone.size === PACKS.length) markDone(packStep, fresh);
 }
 
 for (const pack of PACKS) {
@@ -135,7 +142,7 @@ for (const pack of PACKS) {
       setStatus(status, tr('হয়ে গেছে। পরীক্ষা: \u201C', uktiLang) + out + '\u201D', 'ok');
       setTimeout(() => bar.classList.remove('show'), 900);
       packDone.add(pack.button);
-      checkAllPacks();
+      checkAllPacks(true);
       await chrome.storage.local.set({ setupDone: true });
     } catch (error) {
       button.disabled = false;
@@ -150,3 +157,76 @@ for (const pack of PACKS) {
     }
   });
 }
+
+// ------------------------------------------------------------- try it
+// The same path any page uses: the worker starts the offscreen recognizer
+// for this tab, and the results come back to this tab. Closing the page
+// stops it (the worker's tabs.onRemoved).
+
+const tryStep = document.getElementById('tryStep');
+const tryMic = document.getElementById('tryMic');
+const tryBox = document.getElementById('tryBox');
+const trySaid = tryBox.querySelector('.said');
+const tryNow = tryBox.querySelector('.now');
+const tryStatus = document.getElementById('tryStatus');
+let trySession = null;
+let tryEpoch = 0;
+
+function paintTry() {
+  tryBox.classList.toggle('has', !!(trySaid.textContent || tryNow.textContent));
+  tryBox.scrollTop = tryBox.scrollHeight;
+}
+
+function tryEnded(message) {
+  trySession = null;
+  tryStep.classList.remove('live');
+  tryNow.textContent = '';
+  tryMic.textContent = tr('বলা শুরু করুন', uktiLang);
+  if (message) setStatus(tryStatus, tr(message, uktiLang), 'bad');
+  else tryStatus.className = 'status';
+  paintTry();
+}
+
+tryMic.addEventListener('click', async () => {
+  if (trySession) {
+    const id = trySession;
+    tryEnded();
+    chrome.runtime.sendMessage({ type: 'STOP_DICTATION', sessionId: id, epoch: tryEpoch }).catch(() => {});
+    return;
+  }
+  trySession = 'try-' + Math.random().toString(36).slice(2);
+  tryEpoch++;
+  tryStep.classList.add('live');
+  tryMic.textContent = tr('থামান', uktiLang);
+  setStatus(tryStatus, tr('শুনছি…', uktiLang));
+  try {
+    const reply = await chrome.runtime.sendMessage({ type: 'START_DICTATION', sessionId: trySession, epoch: tryEpoch });
+    if (!reply?.ok) tryEnded('শুরু করা গেল না।');
+  } catch (_) {
+    tryEnded('শুরু করা গেল না।');
+  }
+});
+
+chrome.runtime.onMessage.addListener(message => {
+  if (message.source !== 'ukti-background' || !trySession || message.sessionId !== trySession) return;
+  switch (message.type) {
+    case 'INTERIM_RESULT':
+      tryNow.textContent = message.text || '';
+      paintTry();
+      break;
+    case 'FINAL_RESULT':
+      if (message.text) trySaid.textContent += (trySaid.textContent ? ' ' : '') + message.text;
+      tryNow.textContent = '';
+      paintTry();
+      break;
+    case 'FATAL':
+      tryEnded(/not-allowed|permission/i.test(String(message.error)) ? 'আগে ১ নম্বর ধাপে মাইক্রোফোন চালু করুন।' : 'শুরু করা গেল না।');
+      break;
+    case 'STOPPED':
+    case 'TAKEN_OVER':
+      tryEnded();
+      break;
+  }
+});
+
+wireShare(document.getElementById('share'));

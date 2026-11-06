@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><title>model editor, paste only</title>
+<script src="mimic.js"></script>
+<!-- Lexical / WhatsApp archetype. The editor owns a model string. Typing
+     and paste go through the model; any other DOM change (execCommand, a
+     manual Range insert) is thrown away on the next task by re-rendering
+     from the model. -->
+<div id="ed" contenteditable="true" style="border:1px solid #888;min-height:3em;width:30em"></div>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  let model = '';
+  const render = caret => { el.textContent = model; if (caret != null) placeCaret(el, caret); };
+
+  el.addEventListener('beforeinput', e => {
+    const out = applyTyping(e, model, liveOffsets(el, model.length));
+    if (!out) return;
+    e.preventDefault();
+    model = out.model;
+    render(out.caret);
+  });
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    const [s, en] = liveOffsets(el, model.length);
+    model = model.slice(0, s) + text + model.slice(en);
+    render(s + text.length);
+  });
+  // Anything that reached the DOM without going through the model.
+  el.addEventListener('input', () => {
+    setTimeout(() => { if (el.textContent !== model) render(model.length); }, 0);
+  });
+
+  window.mimic = {
+    el, kind: 'model-paste',
+    model: () => model,
+    setText(s) { model = s; el.focus(); render(s.length); }
+  };
+</script>

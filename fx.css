@@ -1,0 +1,94 @@
+/* Shared motion for the popup, the setup page and the corrections page.
+   The layout is not touched: every rule here is an entrance, a response to
+   the pointer, or an easing. Nothing runs at idle, and everything is off
+   when the system asks for reduced motion (see the block at the end and
+   MOTION.md). fx.js adds the classes; without it the pages look the same,
+   just still. */
+
+:root {
+  /* A real spring sampled into linear() (Chrome 113+): a soft overshoot
+     and one small settle, which cubic-bezier cannot draw. */
+  --spring-soft: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938 16.7%,
+    1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%,
+    1.051 39.6%, 1.017 43.1%, .991, .977 51%, .974 53.8%, .975 57.1%, .997 69.8%,
+    1.003 76.9%, 1.004 83.8%, 1);
+}
+
+/* ---------------------------------------------------------- entrance
+   Each block rises out of a light blur, one after another. --i is its
+   place in the order, set by fx.js. */
+.fx-in {
+  animation: fx-in var(--fx-dur, .6s) var(--spring-soft) both;
+  animation-delay: calc(var(--i, 0) * var(--fx-step, 45ms));
+}
+/* The popup opens many times a day, so its entrance is a quick settle
+   (0.33 s in all) rather than a show (the setup page's 0.8 s). */
+.fx-quick { --fx-dur: .26s; --fx-step: 12ms; }
+@keyframes fx-in {
+  from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* --------------------------------------------------------- spotlight
+   A soft light under the pointer, inside the card, below its content.
+   isolation makes the card its own stacking context, so the z-index:-1
+   layer sits above the card's background and below its text. */
+.fx-spot { position: relative; isolation: isolate; }
+.fx-spot::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  border-radius: inherit; pointer-events: none;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(124, 108, 240, .14), transparent 65%);
+  opacity: 0; transition: opacity .35s ease;
+}
+.fx-spot.lit::after { opacity: 1; }
+
+/* ------------------------------------------------------------- shine
+   A band of light crosses a main button once when the pointer arrives. */
+.fx-shine { position: relative; overflow: hidden; isolation: isolate; }
+.fx-shine::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .28) 50%, transparent 65%);
+  transform: translateX(-110%);
+}
+.fx-shine:hover::after { transform: translateX(110%); transition: transform .7s ease; }
+
+/* -------------------------------------------------------------- mark
+   The logo catches the light once when the page opens. */
+.fx-glint { position: relative; overflow: hidden; }
+.fx-glint::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: fx-glint 1.1s ease .45s 1 both;
+}
+@keyframes fx-glint { to { transform: translateX(120%); } }
+
+/* ----------------------------------------------------------- springs
+   The switches and segment pills overshoot a little and settle. */
+.track, .track::after, .seg .pill { transition-timing-function: var(--spring-soft); }
+
+/* A finished setup step glows green once, around the pop of its badge. */
+.card.just { animation: fx-done .9s ease-out; }
+@keyframes fx-done {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, .45); }
+  100% { box-shadow: 0 0 0 14px rgba(52, 211, 153, 0); }
+}
+
+/* A status line that changes fades in from a blur instead of snapping. */
+.fx-say { animation: fx-say .45s var(--spring-soft); }
+@keyframes fx-say { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } }
+
+/* Switching tabs in the popup: the new pane rises out of a light blur.
+   This was a view transition first, but its overlay swallowed presses made
+   while it ran (measured: the switch did not respond 0.3 s after a tab
+   change), so the pane animates itself and nothing covers the page. */
+.pane.on { animation: fx-pane-in .28s var(--spring-soft); }
+@keyframes fx-pane-in { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-in, .fx-glint::after, .card.just, .fx-say { animation: none !important; }
+  .fx-shine::after { display: none; }
+  .fx-spot::after { transition: none; }
+  .pane.on { animation: none !important; }
+}

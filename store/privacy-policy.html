@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ukti privacy policy</title>
+<style>
+  :root { --ink: #1d2230; --muted: #5b6475; --line: #e3e6ec; --bg: #ffffff; --accent: #0f766e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #eceef2; --muted: #a3abb9; --line: #2c313b; --bg: #15181e; --accent: #5eead4; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 system-ui, "Noto Sans Bengali", sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+  h1 { font-size: 1.7rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin: 2.2rem 0 .5rem; }
+  p, li { color: var(--ink); }
+  .muted { color: var(--muted); font-size: .92rem; }
+  nav a { color: var(--accent); margin-right: 1rem; }
+  section + section { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  code { font-size: .9em; }
+</style>
+</head>
+<body>
+<main>
+<nav><a href="#en">English</a><a href="#bn" lang="bn">বাংলা</a></nav>
+
+<section id="en">
+<h1>Ukti privacy policy</h1>
+<p class="muted">Ukti (উক্তি), a Chrome extension for speaking Bangla into any text box.
+Last updated 3 November 2026.</p>
+
+<h2>The short version</h2>
+<ul>
+  <li><strong>Your speech goes to Google.</strong> Ukti uses Chrome's built-in speech
+      recognition, and Chrome sends the audio to Google's servers to turn it into
+      text. This is how Chrome's free speech recognition works; it is not something
+      Ukti adds.</li>
+  <li><strong>Translation and Banglish conversion stay on your computer.</strong></li>
+  <li><strong>Ukti has no server, no analytics, no account and no ads.</strong> Its own
+      code makes no network requests at all.</li>
+  <li><strong>What Ukti stores, it stores on your computer:</strong> your settings, the
+      sites you turned it off for, and your own word fixes.</li>
+  <li><strong>Password and payment fields are skipped.</strong></li>
+</ul>
+
+<h2>When you speak</h2>
+<p>While the microphone button is red, Chrome streams what the microphone hears,
+including pauses, to Google's speech service, and the text comes back. It stops
+when you press the button again, press Escape, turn Ukti off, close the tab or
+leave the page. What Google does with the audio is covered by
+<a href="https://policies.google.com/privacy">Google's privacy policy</a>; Ukti
+cannot see or change that. If you would rather Google did not hear something,
+type it instead.</p>
+<p>Ukti also opens the microphone a second time, only to measure how loud you are
+so the button can react to your voice. That measurement stays on your computer
+and is never recorded or sent.</p>
+<p>Ukti does not save your words. They exist in the page's memory while you are
+on it: in the box you are typing in, in the preview while you speak, and in
+the undo history (the last 20 changes on that page). They are gone when you
+close the page.</p>
+
+<h2>Translation and Banglish</h2>
+<p>Translation uses Chrome's Translator API, which runs on your computer. The
+first time, you download a language pack from the setup page; that download
+brings the model to your computer and does not carry any of your text. If a pack
+is missing, Ukti tells you and does not fall back to any online service.</p>
+<p>Banglish to Bangla conversion is a dictionary and a set of rules inside the
+extension.</p>
+
+<h2>What Ukti stores</h2>
+<p>All of this is kept by Chrome in the extension's storage on your computer,
+and none of it is sent anywhere.</p>
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr><td>Your settings: output language, theme, size, layout, position, which buttons show, interface language, on or off</td><td>so the control looks and behaves the way you chose</td></tr>
+  <tr><td>The list of sites you turned Ukti off for, and, if you chose "only on chosen sites", the list of sites you chose</td><td>so it stays off, or on, where you said</td></tr>
+  <tr><td>Your word fixes ("what it hears = what it becomes")</td><td>you typed these; they are applied to your speech on your computer</td></tr>
+  <tr><td>A count of how many times you used the buttons, and whether you have seen the welcome card and finished setup</td><td>so the labels and the welcome card stop appearing once you know the way</td></tr>
+</table>
+
+<h2>Learning your words</h2>
+<p>When you fix a word Ukti has just written for you, Ukti offers to remember
+it, so the same mistake is fixed next time. To notice that, it watches only
+the box it just wrote into, for two minutes, and compares what is there with
+what it wrote. It stores nothing unless you press "Yes, remember". What it
+remembers goes in the same list as your own word fixes, on your computer,
+where you can see, change and delete every one: the Words tab in the popup,
+and the full list page it links to. You can save that list to a file and load
+it on another computer; the file goes wherever you save it, and Ukti sends it
+nowhere.</p>
+
+<h2>What Ukti can see</h2>
+<p>When you install it, Chrome warns that Ukti can "read and change all your data
+on all websites". That is accurate as a description of what Chrome allows: the
+control has to be able to appear in any text box on any site, so its script runs
+on every page. What it actually reads is narrow:</p>
+<ul>
+  <li>the text of the box you are in, when you speak into it or press one of its buttons;</li>
+  <li>a box's type, name and labels, to recognise password and payment fields and stay out of them;</li>
+  <li>where the box sits on the screen, to put the control beside it;</li>
+  <li>the site's name, for the "off for this site" switch.</li>
+</ul>
+<p>Nothing else on the page is read, and nothing it reads is sent anywhere.</p>
+
+<h2>Password and payment fields</h2>
+<p>The control does not appear, and dictation will not start, in password fields,
+one-time codes, PINs, card numbers, card security codes, or fields drawn as dots.
+It recognises them from how the site marks them up. <strong>This is a limitation as
+well as a feature:</strong> a site that marks a password field as an ordinary text
+box, with no hint at all, cannot be recognised. And a harmless box whose label
+mentions a password or a PIN may be skipped too, on purpose.</p>
+
+<h2>Deleting everything</h2>
+<p>Remove the extension at <code>chrome://extensions</code>. Chrome deletes
+everything Ukti stored along with it. To delete only your word fixes, clear the
+box under the Words tab in the Ukti popup.</p>
+
+<h2>Questions</h2>
+<p><strong>Why is it free, with no account?</strong> Because it costs nothing to run.
+The heavy work is Chrome's: speech recognition is Chrome's Web Speech service and
+translation is Chrome's on-device translator. Ukti has no server to pay for, so
+there is nothing to charge for and no reason to collect anything.</p>
+<p><strong>Does Ukti listen all the time?</strong> No. Only while the microphone button
+is red, after you pressed it.</p>
+<p><strong>Does it work offline?</strong> Speech recognition does not, because it
+happens on Google's servers. Banglish conversion and translation do.</p>
+
+<h2>Changes and contact</h2>
+<p>If this policy changes, the date at the top changes with it. Ukti is made by
+Md Rashadul Islam; contact through <a href="https://rashadul.me">rashadul.me</a>.</p>
+</section>
+
+<section id="bn" lang="bn">
+<h1>উক্তির গোপনীয়তা নীতি</h1>
+<p class="muted">উক্তি, যেকোনো লেখার বক্সে বাংলায় বলে লেখার Chrome এক্সটেনশন।
+শেষ হালনাগাদ ৩ নভেম্বর ২০২৬।</p>
+
+<h2>সংক্ষেপে</h2>
+<ul>
+  <li><strong>আপনার কণ্ঠ Google এর কাছে যায়।</strong> উক্তি Chrome এর নিজস্ব কথা চেনার
+      ব্যবস্থা ব্যবহার করে, আর Chrome অডিওটা Google এর সার্ভারে পাঠিয়ে লেখায় বদলায়।
+      Chrome এর ফ্রি কথা চেনা এভাবেই কাজ করে, এটা উক্তি আলাদা করে যোগ করেনি।</li>
+  <li><strong>অনুবাদ আর বাংলিশ থেকে বাংলা, দুটোই আপনার কম্পিউটারেই হয়।</strong></li>
+  <li><strong>উক্তির কোনো সার্ভার নাই, কোনো অ্যানালিটিক্স নাই, অ্যাকাউন্ট নাই, বিজ্ঞাপন নাই।</strong>
+      উক্তির নিজের কোড কোথাও কোনো নেটওয়ার্ক অনুরোধ পাঠায় না।</li>
+  <li><strong>উক্তি যা রাখে, আপনার কম্পিউটারেই রাখে:</strong> আপনার সেটিং, যে সাইটগুলোতে
+      বন্ধ করেছেন তার তালিকা, আর আপনার নিজের শব্দ ঠিক করার তালিকা।</li>
+  <li><strong>পাসওয়ার্ড আর পেমেন্টের ঘর এড়িয়ে চলে।</strong></li>
+</ul>
+
+<h2>যখন আপনি বলেন</h2>
+<p>মাইকের বাটন যতক্ষণ লাল থাকে, ততক্ষণ মাইক্রোফোন যা শোনে, থামাগুলো সহ, Chrome তা Google
+এর কথা চেনার সার্ভিসে পাঠায়, আর লেখা ফেরত আসে। বাটনে আবার চাপলে, Escape চাপলে, উক্তি বন্ধ
+করলে, ট্যাব বন্ধ করলে বা পেজ ছেড়ে গেলে এটা থেমে যায়। Google অডিও দিয়ে কী করে তা
+<a href="https://policies.google.com/privacy">Google এর গোপনীয়তা নীতি</a> অনুযায়ী হয়;
+উক্তি সেটা দেখতে বা বদলাতে পারে না। কোনো কথা Google কে শোনাতে না চাইলে সেটা টাইপ করুন।</p>
+<p>উক্তি মাইক্রোফোন আরেকবার খোলে, শুধু আপনার গলার জোর মাপার জন্য, যাতে বাটনটা কণ্ঠের সাথে
+নড়ে। এই মাপ আপনার কম্পিউটারেই থাকে, কখনো রেকর্ড হয় না, কোথাও যায় না।</p>
+<p>উক্তি আপনার কথা জমা রাখে না। পেজে থাকা অবস্থায় কথাগুলো পেজের মেমোরিতে থাকে: যে বক্সে
+লিখছেন সেখানে, বলার সময় প্রিভিউতে, আর ফেরত নেওয়ার তালিকায় (ওই পেজের শেষ ২০টা বদল)।
+পেজ বন্ধ করলে সব চলে যায়।</p>
+
+<h2>অনুবাদ আর বাংলিশ</h2>
+<p>অনুবাদ হয় Chrome এর Translator API দিয়ে, যা আপনার কম্পিউটারেই চলে। প্রথমবার সেটআপ পেজ
+থেকে ভাষা প্যাক নামাতে হয়; সেই ডাউনলোড মডেলটা আপনার কম্পিউটারে আনে, আপনার কোনো লেখা
+নিয়ে যায় না। প্যাক না থাকলে উক্তি সেটা জানায়, অনলাইনের কোনো অনুবাদ সার্ভিসে যায় না।</p>
+<p>বাংলিশ থেকে বাংলা করা হয় এক্সটেনশনের ভেতরের একটা অভিধান আর কিছু নিয়ম দিয়ে।</p>
+
+<h2>উক্তি যা রাখে</h2>
+<p>এসবই Chrome আপনার কম্পিউটারে এক্সটেনশনের স্টোরেজে রাখে, কিছুই কোথাও পাঠানো হয় না।</p>
+<table>
+  <tr><th>কী</th><th>কেন</th></tr>
+  <tr><td>আপনার সেটিং: আউটপুটের ভাষা, থিম, আকার, সাজানো, জায়গা, কোন বাটন থাকবে, লেখার ভাষা, চালু না বন্ধ</td><td>যাতে কন্ট্রোলটা আপনি যেমন বেছেছেন তেমন থাকে</td></tr>
+  <tr><td>যে সাইটগুলোতে উক্তি বন্ধ করেছেন তার তালিকা, আর "শুধু বাছাই সাইটে" বেছে থাকলে সেই সাইটগুলোর তালিকা</td><td>যাতে আপনি যেখানে বলেছেন সেখানে বন্ধ বা চালু থাকে</td></tr>
+  <tr><td>আপনার শব্দ ঠিক করার তালিকা ("যা শোনে = যা হবে")</td><td>এগুলো আপনি নিজে লিখেছেন; আপনার কম্পিউটারেই কথার ওপর বসানো হয়</td></tr>
+  <tr><td>বাটনগুলো কতবার ব্যবহার করেছেন তার সংখ্যা, আর স্বাগত কার্ড দেখেছেন কিনা ও সেটআপ শেষ কিনা</td><td>যাতে চিনে ফেলার পর লেবেল আর স্বাগত কার্ড আর না আসে</td></tr>
+</table>
+
+<h2>আপনার শব্দ শেখা</h2>
+<p>উক্তি এইমাত্র যে শব্দ লিখেছে সেটা আপনি ঠিক করে দিলে, উক্তি সেটা মনে রাখতে চায়,
+যাতে পরেরবার একই ভুল আর না হয়। এটা বোঝার জন্য উক্তি শুধু সেই বক্সটাই দেখে যেখানে এইমাত্র
+লিখেছে, দুই মিনিটের জন্য, আর মিলিয়ে দেখে যা লিখেছিল তার সাথে। আপনি "হ্যাঁ, মনে রাখো" না
+চাপলে কিছুই জমা রাখে না। যা মনে রাখে তা আপনার নিজের শব্দ ঠিক করার তালিকাতেই থাকে, আপনার
+কম্পিউটারে, যেখানে প্রতিটা দেখা, বদলানো আর মোছা যায়: পপআপের "শব্দ" ট্যাবে, আর সেখান থেকে
+খোলা পুরো তালিকার পেজে। তালিকাটা ফাইলে রেখে অন্য কম্পিউটারে আনতে পারেন; ফাইলটা আপনি যেখানে
+রাখেন সেখানেই থাকে, উক্তি কোথাও পাঠায় না।</p>
+
+<h2>উক্তি কী দেখতে পারে</h2>
+<p>ইনস্টলের সময় Chrome সতর্ক করে যে উক্তি "সব ওয়েবসাইটে আপনার সব ডেটা পড়তে ও বদলাতে
+পারে"। Chrome কী অনুমতি দেয় সে হিসেবে কথাটা ঠিক: যেকোনো সাইটের যেকোনো বক্সে কন্ট্রোলটা আসতে
+হলে এর স্ক্রিপ্ট সব পেজে চালাতে হয়। আসলে যা পড়ে তা খুব অল্প:</p>
+<ul>
+  <li>আপনি যে বক্সে আছেন তার লেখা, যখন সেখানে বলেন বা এর কোনো বাটনে চাপেন;</li>
+  <li>বক্সের ধরন, নাম আর লেবেল, পাসওয়ার্ড আর পেমেন্টের ঘর চিনে সেখান থেকে দূরে থাকার জন্য;</li>
+  <li>বক্সটা পর্দায় কোথায়, কন্ট্রোলটা তার পাশে বসানোর জন্য;</li>
+  <li>সাইটের নাম, "এই সাইটে বন্ধ" সুইচের জন্য।</li>
+</ul>
+<p>পেজের আর কিছু পড়া হয় না, আর যা পড়ে তার কিছুই কোথাও পাঠানো হয় না।</p>
+
+<h2>পাসওয়ার্ড আর পেমেন্টের ঘর</h2>
+<p>পাসওয়ার্ড, ওয়ান-টাইম কোড, পিন, কার্ড নম্বর, কার্ডের সিকিউরিটি কোড, বা ফোঁটা দিয়ে ঢাকা
+ঘরে কন্ট্রোল আসে না, বলাও শুরু হয় না। সাইট ঘরটাকে কীভাবে চিহ্নিত করেছে তা দেখে চেনে।
+<strong>এটা একটা সীমাবদ্ধতাও:</strong> কোনো সাইট যদি পাসওয়ার্ডের ঘরকে কোনো চিহ্ন ছাড়াই সাধারণ
+বক্স হিসেবে বানায়, তাহলে সেটা চেনা যায় না। আবার যে সাধারণ বক্সের লেবেলে পাসওয়ার্ড বা পিনের
+কথা আছে, সেটাও ইচ্ছা করেই বাদ পড়তে পারে।</p>
+
+<h2>সব মুছে ফেলা</h2>
+<p><code>chrome://extensions</code> থেকে এক্সটেনশনটা সরিয়ে দিন। উক্তি যা রেখেছিল, Chrome তা সহ
+মুছে দেয়। শুধু শব্দ ঠিক করার তালিকা মুছতে চাইলে উক্তির পপআপের "শব্দ" ট্যাবের বক্সটা খালি
+করে দিন।</p>
+
+<h2>প্রশ্ন</h2>
+<p><strong>এটা ফ্রি কেন, অ্যাকাউন্টও লাগে না কেন?</strong> কারণ এটা চালাতে কোনো খরচ নাই। ভারী
+কাজগুলো Chrome করে: কথা চেনা Chrome এর Web Speech সার্ভিস, আর অনুবাদ Chrome এর নিজের
+কম্পিউটারে চলা অনুবাদক। উক্তির কোনো সার্ভার নাই যার খরচ দিতে হয়, তাই টাকা নেওয়ার কিছু নাই,
+কিছু সংগ্রহ করারও কারণ নাই।</p>
+<p><strong>উক্তি কি সবসময় শোনে?</strong> না। শুধু আপনি মাইকের বাটনে চাপার পর, বাটনটা যতক্ষণ লাল।</p>
+<p><strong>ইন্টারনেট ছাড়া চলে?</strong> কথা চেনা চলে না, কারণ সেটা Google এর সার্ভারে হয়। বাংলিশ
+থেকে বাংলা আর অনুবাদ চলে।</p>
+
+<h2>বদল আর যোগাযোগ</h2>
+<p>এই নীতি বদলালে ওপরের তারিখও বদলাবে। উক্তি বানিয়েছেন মোঃ রাশেদুল ইসলাম; যোগাযোগ
+<a href="https://rashadul.me">rashadul.me</a> এর মাধ্যমে।</p>
+</section>
+</main>
+</body>
+</html>

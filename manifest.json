@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ukti - Bangla Voice Typing",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Speak in Bangla, get text in any box. Bangla or English output. Also converts typed Banglish to Bangla.",
   "minimum_chrome_version": "138",
   "permissions": [
@@ -36,12 +36,40 @@
       "run_at": "document_idle"
     }
   ],
+  "commands": {
+    "toggle-dictation": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Space"
+      },
+      "description": "Start or stop speaking (বলা শুরু বা বন্ধ)"
+    },
+    "to-bangla": {
+      "suggested_key": {
+        "default": "Alt+Shift+1"
+      },
+      "description": "Banglish to Bangla (বাংলিশ থেকে বাংলা)"
+    },
+    "to-english": {
+      "suggested_key": {
+        "default": "Alt+Shift+2"
+      },
+      "description": "Make the text English (লেখাটা ইংরেজি)"
+    },
+    "undo": {
+      "suggested_key": {
+        "default": "Alt+Shift+3"
+      },
+      "description": "Undo Ukti's last change (ফেরত নিন)"
+    }
+  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "author": "Md Rashadul Islam",
-  "homepage_url": "https://rashadul.me"
+  "homepage_url": "https://rashadul.me",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; connect-src 'none'"
+  }
 }

@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>tracking pixels, and a frame that grows</title>
+<div id="pixels"></div>
+<iframe id="grow" src="textarea.html" style="width:1px;height:1px;border:0"></iframe>
+<script>
+  for (let i = 0; i < 20; i++) {
+    const f = document.createElement('iframe');
+    f.src = 'blank.html';
+    f.style.cssText = 'width:1px;height:1px;border:0';
+    document.getElementById('pixels').append(f);
+  }
+</script>

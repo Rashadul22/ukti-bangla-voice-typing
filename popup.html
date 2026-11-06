@@ -12,10 +12,13 @@
     --raise:  #171b24;
     --ink:    #eceef3;
     --dim:    #8d94a4;
-    --faint:  #5c6476;
+    --faint:  #7e8593;   /* was #5c6476: 3.11:1 on the panel, under the 4.5 body text needs */
     --line:   #222733;
     --brand:  #7c6cf0;
     --brand2: #4aa8ff;
+    /* The brand gradient's start, deep enough for white text on it (4.61:1;
+       #7c6cf0 gave 3.99). Used only where text sits on the gradient. */
+    --brand-ink: #7263dd;
     --r-lg:   20px;
     --r-md:   14px;
     --r-sm:   11px;
@@ -64,7 +67,7 @@
     line-height: 1.25;
   }
   .brand small {
-    display: block; font-size: 11.5px; font-weight: 400; color: var(--dim);
+    display: block; font-size: 12px; font-weight: 400; color: var(--dim);
   }
 
   /* --------------------------------------------------- rounded cards */
@@ -85,7 +88,7 @@
     display: block; font-size: 13.5px; font-weight: 600;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .who span { font-size: 11.5px; color: var(--dim); }
+  .who span { font-size: 12.5px; color: var(--dim); }
 
   /* ------------------------------------------------------------ tabs */
 
@@ -103,7 +106,7 @@
   .tabs button:hover { color: var(--ink); }
   .tabs button.on {
     color: #fff;
-    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    background: linear-gradient(145deg, var(--brand-ink), #5b4ae0);
     box-shadow: 0 4px 14px rgba(124,108,240,.34);
   }
   .tabs button:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
@@ -116,7 +119,7 @@
 
   .group { padding: 13px 14px; margin-bottom: 10px; }
   .label {
-    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    font-size: 12px; font-weight: 700; letter-spacing: .09em;
     text-transform: uppercase; color: var(--faint); margin-bottom: 10px;
   }
 
@@ -137,7 +140,7 @@
   .seg .pill {
     position: absolute; top: 3px; bottom: 3px; left: 0;
     border-radius: 10px;
-    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    background: linear-gradient(145deg, var(--brand-ink), #5b4ae0);
     box-shadow: 0 3px 10px rgba(124,108,240,.4);
     transition: transform .34s var(--ease), width .34s var(--ease);
   }
@@ -159,7 +162,7 @@
     flex: 1; cursor: pointer; text-align: center;
     padding: 9px 0 7px; border-radius: var(--r-md);
     border: 1px solid var(--line); background: var(--raise);
-    font: inherit; font-size: 11.5px; color: var(--dim);
+    font: inherit; font-size: 12.5px; color: var(--dim);
     transition: border-color .22s, color .22s, background .22s;
   }
   .theme:hover { border-color: #333a49; color: var(--ink); }
@@ -210,6 +213,9 @@
   .key { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .key > span { font-size: 12.5px; color: var(--dim); }
   .combo { display: flex; gap: 3px; }
+  .unset { font-size: 12.5px; opacity: .65; }
+  .change { display: inline-block; margin-top: 8px; font-size: 12.5px; color: inherit; opacity: .75; }
+  .change:hover, .change:focus-visible { opacity: 1; }
   kbd {
     font: 600 10px/1 ui-monospace, monospace;
     padding: 5px 7px; border-radius: 7px;
@@ -221,12 +227,50 @@
 
   .by {
     margin: 11px 12px 0; text-align: center;
-    font-size: 11.5px; color: var(--faint);
+    font-size: 12px; color: var(--faint);
   }
+  .by { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .by a { color: var(--dim); text-decoration: none; }
+  .by .role { color: var(--faint); }
+  .share {
+    all: unset; position: relative; cursor: pointer;
+    color: var(--dim); font: inherit; border-bottom: 1px solid var(--line);
+  }
+  .share:hover { color: var(--ink); }
+  .share:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; border-radius: 4px; }
+  .share::before { content: ''; position: absolute; inset: -13px -4px; }
+
+  /* Once in a lifetime, after real use, and only when there is a store
+     page to send people to (popup.js). */
+  .rate {
+    margin: 0 12px 12px; padding: 12px 14px; border-radius: var(--r-lg);
+    background: linear-gradient(145deg, rgba(124,108,240,.16), rgba(74,168,255,.10));
+    border: 1px solid rgba(124,108,240,.4);
+  }
+  .rate[hidden] { display: none; }
+  .rate b { display: block; font-size: 13.5px; }
+  .rate span { display: block; font-size: 12.5px; color: var(--dim); }
+  .rate-acts { display: flex; gap: 8px; margin-top: 10px; }
+  .rate-acts button {
+    all: unset; cursor: pointer; min-height: 40px; padding: 0 14px; border-radius: 11px;
+    font-size: 13px; font-weight: 650; color: #fff;
+    background: linear-gradient(145deg, var(--brand-ink), #5b4ae0);
+  }
+  .rate-acts button.quiet { color: var(--ink); background: var(--raise); border: 1px solid var(--line); }
+  .rate-acts button:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; }
+  /* The maker's initials until a photo is added. In CSS, so the text a
+     screen reader or the language switch sees stays the plain sentence. */
+  .avatar {
+    width: 20px; height: 20px; flex: none; border-radius: 50%;
+    display: inline-grid; place-items: center;
+    background: linear-gradient(145deg, var(--brand), var(--brand2));
+    color: #fff; font-size: 9.5px; font-weight: 700; line-height: 1;
+  }
+  .avatar::before { content: 'রা'; }
+  html[lang="en"] .avatar::before { content: 'MR'; }
   .by a:hover { color: var(--ink); }
 
-  .hint { margin: 9px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
+  .hint { margin: 9px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--faint); }
 
   textarea {
     width: 100%; height: 86px; resize: vertical;
@@ -240,17 +284,80 @@
     display: block; margin: 0 12px; padding: 11px 0;
     border-radius: var(--r-lg); text-align: center; text-decoration: none;
     font-size: 13.5px; font-weight: 650; color: #fff;
-    background: linear-gradient(145deg, var(--brand), #5b4ae0);
+    background: linear-gradient(145deg, var(--brand-ink), #5b4ae0);
     box-shadow: 0 7px 20px rgba(124,108,240,.32);
-    transition: filter .2s, transform .2s var(--ease);
+    transition: filter .22s, transform .22s var(--ease);
   }
   .cta:hover { filter: brightness(1.14); }
   .cta:active { transform: scale(.985); }
 
+  /* ------------------------------------------------- feedback motion
+     Pressing a tab, a segment or a swatch sinks it a little; a switch's
+     thumb stretches while it is held, the way a finger squashes it; a
+     chosen swatch pops once. All under 0.4s, all off with reduced motion. */
+  .tabs button, .seg button, .theme { transition-property: color, background, border-color, transform; }
+  .tabs button:active, .seg button:active, .theme:active { transform: scale(.96); transition-duration: .12s; }
+  .track::after { transition: transform .32s var(--ease), background .28s var(--ease), width .2s var(--ease); }
+  .sw:active .track::after { width: 22px; }
+  .sw:active input:checked + .track::after { transform: translateX(14px); }
+  .chip.pop { animation: chip-pop .36s var(--ease); }
+  @keyframes chip-pop { 0% { transform: scale(.82); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+  /* ----------------------------------------------------- hit areas
+     Targets under 40px that stand alone get a larger invisible hit area,
+     so a finger can land on them without the layout changing. Measured:
+     header switches 42x24, tabs 37 tall, the two links 15 to 20 tall. */
+  header .sw, .site .sw, .tabs button, .change, .by a { position: relative; }
+  header .sw::before, .site .sw::before {
+    content: ''; position: absolute; inset: -8px -6px;
+  }
+  .tabs button::before { content: ''; position: absolute; inset: -2px 0; }
+  .change::before { content: ''; position: absolute; inset: -11px -4px; }
+  .by a::before { content: ''; position: absolute; inset: -13px -4px; }
+
+  /* Links had only the browser's thin default ring; every other control uses
+     this one. */
+  a:focus-visible { outline: 2px solid var(--brand2); outline-offset: 2px; border-radius: 4px; }
+
+  /* Nothing in here moved less with reduced motion asked for: 13 transitions
+     and the pane animation still ran, measured. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: .01ms !important;
+      transition-delay: 0s !important;
+      animation: none !important;
+    }
+  }
+
   /* Everything below the master switch dims when Ukti is switched off. */
   body.off .dimmable { opacity: .38; pointer-events: none; filter: saturate(.5); }
   .dimmable { transition: opacity .3s var(--ease), filter .3s var(--ease); }
+
+  /* Bangla is never tracked or uppercased. Letter-spacing pulls conjuncts
+     and vowel signs apart, and the script has no capitals; both rules were
+     written for Latin labels. (tests/layout.test.js) */
+  :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
+
+  /* Light, when the computer is light. These pages were always dark,
+     whatever the system said. Every text colour here is 5.3:1 or more on
+     the surface it sits on (tests/colour.test.js, and the audit's light
+     surfaces). */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f4f5f9; --panel: #ffffff; --raise: #eef0f5;
+      --ink: #141925; --dim: #4c5466; --faint: #5b6375; --line: #dde1ea;
+    }
+    body::before { background: radial-gradient(circle, rgba(124,108,240,.16), transparent 68%); }
+    .theme:hover { border-color: #c3c8d4; }
+    .theme.on { color: var(--ink); background: rgba(124,108,240,.12); }
+    .chip { border-color: rgba(0,0,0,.12); }
+    .track { background: #cfd4de; }
+    .track::after { background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .tabs button.on, .seg .pill { box-shadow: 0 3px 10px rgba(124,108,240,.28); }
+  }
 </style>
+<link rel="stylesheet" href="fx.css">
 </head>
 <body>
 
@@ -261,6 +368,11 @@
     <input type="checkbox" id="master"><div class="track"></div>
   </label>
 </header>
+
+<div class="rate" id="rate" hidden>
+  <div><b>উক্তি ভালো লাগছে?</b><span>স্টোরে একটা রেটিং দিলে আরো মানুষ উক্তি খুঁজে পাবে।</span></div>
+  <div class="rate-acts"><button type="button" id="rateGo">রেটিং দিন</button><button type="button" id="rateLater" class="quiet">এখন না</button></div>
+</div>
 
 <div class="site dimmable">
   <div class="who"><b id="siteName">এই সাইট</b><span id="siteState">চালু আছে</span></div>
@@ -300,18 +412,19 @@
     <div class="label">শর্টকাট</div>
     <div class="keys">
       <div class="key"><span>বলা শুরু বা বন্ধ</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div></div>
+        <div class="combo" data-command="toggle-dictation"></div></div>
       <div class="key"><span>বাংলিশ → বাংলা</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>B</kbd></div></div>
+        <div class="combo" data-command="to-bangla"></div></div>
       <div class="key"><span>লেখাটা ইংরেজি</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></div></div>
+        <div class="combo" data-command="to-english"></div></div>
       <div class="key"><span>ফেরত নিন</span>
-        <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></div></div>
+        <div class="combo" data-command="undo"></div></div>
     </div>
+    <a href="#" id="changeShortcuts" class="change">শর্টকাট বদলান</a>
   </div>
 
   <a href="#" class="cta" id="openSetup">সেটআপ খুলুন</a>
-  <p class="by">বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a></p>
+  <p class="by"><span class="avatar" aria-hidden="true"></span>বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a> <span class="role">·</span> <button type="button" id="share" class="share">বন্ধুকে জানান</button></p>
 </div>
 
 <div class="pane dimmable" id="look">
@@ -348,9 +461,17 @@
         <button data-v="bl">বাঁয়ে নিচে</button>
       </div>
     </div>
-    <p class="hint">"নিজে থেকে" মানে যে বক্সে লিখছেন তার পাশে এসে বসবে।
-      মাইকের বাটনটা ধরে টেনেও সরানো যায়, আর এখান থেকে আবার আগের জায়গায়
-      ফেরানো যায়।</p>
+    <p class="hint">নিজে থেকে: যে বক্সে লিখছেন তার পাশে বসে। মাইক টেনেও সরানো যায়।</p>
+    <div class="field">
+      <span>কখন দেখাবে</span>
+      <div class="seg" id="showSeg">
+        <div class="pill"></div>
+        <button data-v="smart">স্মার্ট</button>
+        <button data-v="always">সব বক্সে</button>
+        <button data-v="sites">বাছাই সাইটে</button>
+      </div>
+    </div>
+    <p class="hint">স্মার্ট: লেখার বক্সে আসে, বক্স ছাড়লে লুকায়। বাছাই সাইটে: যেখানে "এই সাইট" চালু করবেন।</p>
   </div>
 
   <div class="group">
@@ -372,7 +493,8 @@
   <div class="group">
     <div class="label">নিজের শব্দ ঠিক করা</div>
     <p class="hint">প্রতি লাইনে: যা শোনে = যা হবে</p>
-    <textarea id="replacements" placeholder="রাসাদুল = রাশাদুল" spellcheck="false"></textarea>
+    <textarea id="replacements" placeholder="রাসেদুল = রাশেদুল" spellcheck="false"></textarea>
+    <a href="#" id="openWords" class="change">সব শব্দ, ফাইলে রাখা বা আনা</a>
   </div>
 
   <div class="group">
@@ -381,10 +503,41 @@
       <input type="checkbox" id="cleanFillers"><div class="track"></div></label>
     <label class="sw"><span>বলা শেষে পাঠিয়ে দাও</span>
       <input type="checkbox" id="autoSubmit"><div class="track"></div></label>
+    <label class="sw"><span>মুখে বলা কমান্ড</span>
+      <input type="checkbox" id="voiceCommands"><div class="track"></div></label>
+    <p class="hint">প্রশ্নবোধক, নতুন লাইন, দাঁড়ি চিহ্ন। শুধু "দাঁড়ি", "কমা" বা "মুছে দাও" একা বললে।</p>
+    <label class="sw"><span>ইংরেজি শব্দ ইংরেজি হরফে</span>
+      <input type="checkbox" id="mixedEnglish"><div class="track"></div></label>
+    <label class="sw"><span>শুরু আর থামার শব্দ</span>
+      <input type="checkbox" id="sounds"><div class="track"></div></label>
+  </div>
+
+  <div class="group">
+    <div class="label">লেখার ধরন</div>
+    <div class="field">
+      <span>সংখ্যা</span>
+      <div class="seg" id="digitsSeg">
+        <div class="pill"></div>
+        <button data-v="asis">যেমন বলা</button>
+        <button data-v="bn">১২৩</button>
+        <button data-v="en">123</button>
+      </div>
+    </div>
+    <div class="field">
+      <span>উচ্চারণ</span>
+      <div class="seg" id="recogSeg">
+        <div class="pill"></div>
+        <button data-v="bn-BD">বাংলাদেশ</button>
+        <button data-v="bn-IN">পশ্চিমবঙ্গ</button>
+      </div>
+    </div>
+    <a href="#" id="openSnips" class="change">স্নিপেট: একটা কথা বললে পুরো লেখা</a>
   </div>
 </div>
 
+<script src="fx.js"></script>
 <script src="i18n.js"></script>
 <script src="popup.js"></script>
+<script src="shortcuts.js"></script>
 </body>
 </html>

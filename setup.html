@@ -13,7 +13,7 @@
       --bg:      #07080c;
       --ink:     #eceef3;
       --dim:     #8e95a5;
-      --faint:   #5d6577;
+      --faint:   #7d8392;   /* was #5d6577: 3.43:1 on the page, under 4.5 */
       --line:    #1d212b;
       --card:    #0e1117;
       --raise:   #141924;
@@ -57,10 +57,14 @@
   @layer shell {
     .page {
       position: relative; z-index: 1;
-      width: min(1120px, 100%);
+      width: min(1180px, 100%);
       max-height: 100%;
       display: grid;
-      grid-template-columns: 1.15fr .85fr;
+      /* Three columns on a laptop screen, so the page uses its width and
+         still fits 1280x720 without scrolling: the steps, what to keep in
+         mind, then shortcuts and the maker. Two columns, then one, as the
+         window narrows (and then it scrolls). */
+      grid-template-columns: 1.1fr 1fr 1fr;
       grid-template-rows: auto 1fr;
       gap: 18px 20px;
       align-content: center;
@@ -96,7 +100,7 @@
       border-radius: var(--r);
       padding: 18px 20px;
       box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 16px 34px -24px #000;
-      transition: border-color .4s var(--ease);
+      transition: border-color .35s var(--ease);
     }
 
     /* A quiet gradient hairline along the top edge: the one flourish that
@@ -130,7 +134,7 @@
     .soft { background: #0b0e14; }
     .soft::before { display: none; }
     .soft .label {
-      color: var(--faint); font-size: 11px; font-weight: 600;
+      color: var(--faint); font-size: 12.5px; font-weight: 600;
       letter-spacing: .09em; text-transform: uppercase; margin-bottom: 11px;
     }
   }
@@ -141,7 +145,10 @@
       color: #fff; cursor: pointer;
       padding: 9px 17px; border-radius: 11px;
       border: 1px solid rgba(255,255,255,.14);
-      background: linear-gradient(180deg, #312a6e, #241f55);
+      /* Bright enough to be the thing to press: 4.3:1 against the card
+         (the old #312a6e was 1.52:1 and read as disabled). */
+      background: linear-gradient(180deg, #7263dd, #5b4ae0);
+      box-shadow: 0 6px 18px -6px rgba(124,108,240,.6);
       transition: transform .18s var(--ease), filter .18s, opacity .18s;
     }
     button:hover:not(:disabled) { filter: brightness(1.22); }
@@ -183,10 +190,24 @@
       display: block; height: 100%; width: 0;
       border-radius: 99px;
       background: linear-gradient(90deg, var(--brand), var(--brand-2));
-      transition: width .25s var(--ease);
+      transition: width .3s var(--ease);
     }
 
     hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+
+    /* Feedback motion: a step that has just been completed pops its badge
+       once; a downloading pack has a sheen running along its bar, only
+       while it downloads. Both off with reduced motion. */
+    .card.just .num { animation: pop .42s var(--ease); }
+    @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    .bar.show i { position: relative; overflow: hidden; }
+    .bar.show i::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform: translateX(-100%);
+      animation: sheen 1.1s linear infinite;
+    }
+    @keyframes sheen { to { transform: translateX(100%); } }
 
     .note { display: flex; gap: 11px; align-items: flex-start; }
     .note + .note { margin-top: 13px; }
@@ -194,7 +215,7 @@
       flex: none; width: 30px; height: 30px; border-radius: 10px;
       display: grid; place-items: center;
       background: var(--raise); border: 1px solid var(--line);
-      font-size: 11px; font-weight: 700; color: var(--dim);
+      font-size: 12px; font-weight: 700; color: var(--dim);
     }
     .note b { display: block; font-size: 13.5px; font-weight: 650; margin-bottom: 1px; }
     .note span { font-size: 12.5px; color: var(--dim); line-height: 1.5; }
@@ -203,6 +224,59 @@
     .key { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .key > span { font-size: 13px; color: var(--dim); }
     .combo { display: flex; gap: 4px; }
+    .unset { font-size: 13px; opacity: .65; }
+    /* Links stand alone, so they get a 40px hit area without the layout
+       moving (measured 15 to 20 tall), and the same focus ring as the
+       buttons instead of the browser's thin default. */
+    .change, footer a { position: relative; }
+    .change::before, footer a::before { content: ''; position: absolute; inset: -11px -4px; }
+    a:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; border-radius: 4px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        transition-delay: 0s !important;
+        animation: none !important;
+      }
+    }
+    /* The maker card. Initials until a photo is added; in CSS so the
+       language switch and screen readers see only the sentence. */
+    .maker .who { display: flex; align-items: center; gap: 12px; }
+    .maker .who b { display: block; font-size: 15px; font-weight: 650; }
+    .maker .who span { display: block; font-size: 13px; color: var(--dim); line-height: 1.5; }
+    .maker .why { margin-top: 10px; font-size: 13.5px; color: var(--dim); line-height: 1.65; }
+    .maker .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .maker .link {
+      display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
+      border-radius: 11px; border: 1px solid var(--line); background: var(--raise);
+      color: var(--ink); font-size: 13.5px; font-weight: 600; text-decoration: none;
+    }
+    .maker .link:hover { border-color: var(--brand); filter: none; }
+    .maker button.link { background: var(--raise); box-shadow: none; cursor: pointer; }
+
+    /* Step 3: the try-it box. What was said in the live colour, what is
+       still being heard quieter, a placeholder until the first word. */
+    .try {
+      margin-top: 10px; min-height: 50px; max-height: 9.6em; overflow-y: auto;
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--raise); border: 1px solid var(--line);
+      font-size: 15px; line-height: 1.6; color: var(--ink);
+    }
+    .try .now { color: var(--dim); }
+    .try .said:not(:empty) + .now:not(:empty)::before { content: ' '; }
+    .try .ph { color: var(--faint); }
+    .try.has .ph { display: none; }
+    #tryStep.live .try { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(124,108,240,.18); }
+    .avatar {
+      width: 46px; height: 46px; flex: none; border-radius: 50%;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, var(--brand), #5b4ae0 55%, var(--brand-2));
+      box-shadow: 0 6px 18px rgba(124,108,240,.35);
+      color: #fff; font-size: 17px; font-weight: 700;
+    }
+    .avatar::before { content: 'রা'; }
+    html[lang="en"] .avatar::before { content: 'MR'; }
+    .change { display: inline-block; margin-top: 10px; font-size: 13px; color: inherit; opacity: .75; }
+    .change:hover, .change:focus-visible { opacity: 1; }
     kbd {
       font: 600 10.5px/1 ui-monospace, monospace;
       padding: 5px 7px; border-radius: 6px;
@@ -234,12 +308,40 @@
       h1 { font-size: 22px; }
       .mark { width: 42px; height: 42px; font-size: 20px; }
     }
+    @media (max-width: 1180px) {
+      body { overflow: auto; place-items: start center; }
+      .page { grid-template-columns: 1.15fr .85fr; }
+      .page > .col:nth-of-type(3) { grid-column: 2; }
+    }
     @media (max-width: 880px) {
       body { overflow: auto; }
       .page { grid-template-columns: 1fr; }
     }
   }
+
+  /* Bangla is never tracked or uppercased. Letter-spacing pulls conjuncts
+     and vowel signs apart, and the script has no capitals; both rules were
+     written for Latin labels. (tests/layout.test.js) */
+  :lang(bn) { letter-spacing: 0 !important; text-transform: none !important; }
+
+  /* Light, when the computer is light (unlayered, so it wins over the
+     layers above). */
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f3f4f8; --card: #ffffff; --raise: #eef0f5; --line: #dde1ea;
+      --ink: #141925; --dim: #4c5466; --faint: #5b6375;
+      --good: #047857; --bad: #b91c1c;
+    }
+    body::before { background: radial-gradient(circle, rgba(124,108,240,.16), transparent 68%); }
+    body::after { background: radial-gradient(circle, rgba(74,168,255,.12), transparent 68%); }
+    .card { box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 16px 34px -24px rgba(15,23,42,.28); }
+    .soft { background: #fafbfd; }
+    button { border-color: rgba(0,0,0,.06); }
+    .tick::after { border-color: #ffffff; }
+  }
 </style>
+<link rel="stylesheet" href="fx.css">
 </head>
 <body>
 
@@ -259,6 +361,8 @@
       <div class="head"><div class="num">১</div><h2>মাইক্রোফোন চালু করুন</h2></div>
       <p>বাংলায় বলার জন্য মাইক্রোফোনের অনুমতি দরকার। বাটনে চাপলে Chrome
          অনুমতি চাইবে, "Allow" দিন।</p>
+      <p>কথা লেখায় বদলাতে Chrome আপনার কণ্ঠ Google এর সার্ভারে পাঠায়। উক্তি
+         নিজে কোনো কথা জমা রাখে না, কোথাও পাঠায়ও না।</p>
       <div class="row">
         <button id="mic">মাইক্রোফোন চালু করুন</button>
         <div class="status" id="micStatus"></div>
@@ -291,6 +395,16 @@
 
   <div class="col">
 
+    <section class="card" id="tryStep">
+      <div class="head"><div class="num">৩</div><h2>বলে দেখুন</h2></div>
+      <p>বোতামে চেপে বাংলায় কিছু বলুন, লেখাটা এখানেই উঠবে।</p>
+      <div class="try" id="tryBox"><span class="said"></span><span class="now"></span><span class="ph">যেমন: আমি আজকে খুব খুশি</span></div>
+      <div class="row">
+        <button id="tryMic">বলা শুরু করুন</button>
+        <div class="status" id="tryStatus"></div>
+      </div>
+    </section>
+
     <section class="card soft">
       <div class="label">মনে রাখার মতো দুইটা কথা</div>
       <div class="note">
@@ -312,17 +426,39 @@
       </div>
     </section>
 
+
+  </div>
+
+  <div class="col">
+
     <section class="card soft">
       <div class="label">শর্টকাট</div>
       <div class="keys">
         <div class="key"><span>বলা শুরু বা বন্ধ</span>
-          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div></div>
+          <div class="combo" data-command="toggle-dictation"></div></div>
         <div class="key"><span>বাংলিশ লেখা বাংলা করুন</span>
-          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>B</kbd></div></div>
+          <div class="combo" data-command="to-bangla"></div></div>
         <div class="key"><span>লেখাটা ইংরেজি করুন</span>
-          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></div></div>
+          <div class="combo" data-command="to-english"></div></div>
         <div class="key"><span>ফেরত নিন</span>
-          <div class="combo"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd></div></div>
+          <div class="combo" data-command="undo"></div></div>
+      </div>
+      <a href="#" id="changeShortcuts" class="change">শর্টকাট বদলান</a>
+    </section>
+
+    <section class="card soft maker">
+      <div class="label">নির্মাতা</div>
+      <div class="who">
+        <div class="avatar" aria-hidden="true"></div>
+        <div>
+          <b>মোঃ রাশেদুল ইসলাম</b>
+          <span>কম্পিউটার সায়েন্স (CSE) শিক্ষার্থী, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি</span>
+        </div>
+      </div>
+      <p class="why">যারা বাংলা টাইপ করতে পারেন না, তারাও যেন নিজের ভাষায় সহজে লিখতে পারেন, সেজন্যই উক্তি। একদম ফ্রি, আর আপনার কথা কোথাও জমা থাকে না।</p>
+      <div class="links">
+        <a class="link" href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">LinkedIn এ যোগাযোগ</a>
+        <button type="button" id="share" class="link">বন্ধুকে জানান</button>
       </div>
     </section>
 
@@ -331,13 +467,15 @@
   <div class="done-line">দুইটা ধাপ সবুজ হলে পেজটা বন্ধ করে দিন, উক্তি তৈরি</div>
 
   <footer>
-    বানিয়েছেন <a href="https://rashadul.me" target="_blank" rel="noopener">মোঃ রাশাদুল ইসলাম</a>
-    <span>·</span> <span class="ver">v1.0.1</span>
+    বানিয়েছেন <a href="https://www.linkedin.com/in/rashadul-islam-73790a241" target="_blank" rel="noopener">মোঃ রাশেদুল ইসলাম</a>
+    <span>·</span> <span class="ver">v1.1.0</span>
   </footer>
 
 </div>
 
+<script src="fx.js"></script>
 <script src="i18n.js"></script>
 <script src="setup.js"></script>
+<script src="shortcuts.js"></script>
 </body>
 </html>

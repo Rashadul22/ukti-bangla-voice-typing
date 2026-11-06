@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>dark page</title>
+<style>body { background: #121418; color: #e6e6e6; font: 16px system-ui; margin: 40px; }</style>
+<textarea id="ed" rows="3" cols="60" style="background:#1d2026;color:#eee;border:1px solid #444"></textarea>
+<p><button id="elsewhere">elsewhere</button></p>
+<script>
+  const el = document.getElementById('ed');
+  window.mimic = { el, kind: 'textarea', model: () => el.value,
+    setText(s) { el.value = s; el.focus(); el.setSelectionRange(s.length, s.length); } };
+</script>
