@@ -43,7 +43,8 @@ jobs:
 
           ## Install
 
-          Download `ukti-*.zip` below, unzip it, then in Chrome open
+          Download `ukti-latest.zip` below (the same file as the numbered
+          zip; the website links to it under that fixed name), unzip it, then in Chrome open
           `chrome://extensions`, turn on Developer mode, press Load unpacked
           and choose the folder. Step by step: https://uktibangla.app/en/install/
           NOTES
@@ -51,4 +52,9 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/ukti-*.zip --title "Ukti ${GITHUB_REF_NAME#v}" --notes-file notes.md
+        # Both names, the same bytes: ukti-X.Y.Z.zip and ukti-latest.zip.
+        # The site's one-click link is releases/latest/download/ukti-latest.zip.
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          cmp "dist/ukti-$v.zip" dist/ukti-latest.zip
+          gh release create "$GITHUB_REF_NAME" "dist/ukti-$v.zip" dist/ukti-latest.zip --title "Ukti $v" --notes-file notes.md

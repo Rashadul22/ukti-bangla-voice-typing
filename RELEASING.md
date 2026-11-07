@@ -70,7 +70,35 @@ manifest already shows the new version; this was measured while writing the
 upgrade test, and it is the kind of thing that makes a fix look as if it did
 not work.
 
-## 7. Upload
+## 7. Publish the GitHub Release, with BOTH zips
+
+The packager writes the same zip under two names:
+
+- `dist/ukti-X.Y.Z.zip`: the numbered one, for people who want a specific
+  version.
+- `dist/ukti-latest.zip`: a fixed name. The website's download button links
+  to `https://github.com/Rashadul22/ukti-bangla-voice-typing/releases/latest/download/ukti-latest.zip`,
+  which GitHub turns into a one-click download of that file from the newest
+  release. GitHub needs the exact file name in that URL, so the name must
+  never change.
+
+**Attach both files to every release.** If `ukti-latest.zip` is missing from
+the newest release, the website's download button gives a 404 for everyone.
+
+Pushing a version tag (`git tag vX.Y.Z && git push origin vX.Y.Z`) runs
+`.github/workflows/release.yml`, which builds and attaches both. By hand: on
+the release page, **Edit**, drag both files into the assets box, **Update
+release**.
+
+Then check, from a private window:
+
+```
+curl -sIL https://github.com/Rashadul22/ukti-bangla-voice-typing/releases/latest/download/ukti-latest.zip | grep -iE '^HTTP|content-length'
+```
+
+The last status must be 200 and the length the size of the new zip.
+
+## 8. Chrome Web Store
 
 Upload the zip to the Chrome Web Store dashboard. The listing text, privacy
 policy and submission checklist are in `store/`.

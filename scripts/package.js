@@ -10,6 +10,11 @@
 // Then builds dist/ukti-<version>.zip from exactly the files referenced (plus
 // LICENSE), so tests, docs and scratch files cannot leak into it, and loads
 // the built zip as an unpacked extension to prove it starts.
+//
+// It also writes the same bytes as dist/ukti-latest.zip. Both go on every
+// GitHub Release: the site links to
+// releases/latest/download/ukti-latest.zip, a name that never changes, so
+// the download is one click and the link survives every release.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -105,6 +110,11 @@ fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 const out = path.join('dist', `ukti-${version}.zip`);
 fs.writeFileSync(path.join(ROOT, out), zip);
 console.log(`Built ${out}: ${list.length} files, ${(zip.length / 1024).toFixed(1)} KB`);
+const latest = path.join('dist', 'ukti-latest.zip');
+fs.writeFileSync(path.join(ROOT, latest), zip);
+if (!fs.readFileSync(path.join(ROOT, latest)).equals(fs.readFileSync(path.join(ROOT, out)))) fail(latest + ' differs from ' + out);
+stop();
+console.log(`Copied it to ${latest} (the same bytes; upload both to the release)`);
 for (const f of list) console.log('  ' + f);
 
 // Prove the zip loads. Extract it and start it as an unpacked extension.
